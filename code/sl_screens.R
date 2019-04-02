@@ -1,7 +1,7 @@
 ## create SL screens, algorithm + screen combinations
 
 ## -------------------------------------------------------------------------------------
-## SL screens
+## SL screens; all models adjust for baseline covariates age, BMI at enrollment, baseline behavioral risk
 ## -------------------------------------------------------------------------------------
 ## screen dynamic range: only keep variables with 20th percentile != 80th percentile
 screen_dynamic_range <- function(Y, X, family, obsWeights, id, ...) {
@@ -18,7 +18,7 @@ screen_dynamic_range_score <- function(Y, X, family, obsWeights, id, ...) {
   }
   # need to apply with the correct label in place of X
   dynamic_range_scores <- apply(X, 2, function(x) get_dynamic_range_score(x, X))
-  vars <- dynamic_range_scores > quantile(dynamic_range_scores, probs = c(0.75))
+  vars <- dynamic_range_scores > quantile(dynamic_range_scores, probs = c(0.5))
 }
 ## screen based on lasso 
 screen_glmnet <- function(Y, X, family, obsWeights, id, alpha = 1, minscreen = 2, nfolds = 10, nlambda = 100, ...) {
@@ -52,6 +52,29 @@ screens <- c("screen_glmnet", "screen_univariate_logistic_pval",
 # skinny glm
 SL.glm.skinny <- function(Y, X, newX, family, obsWeights, ...){
   SL.glm.fit <- SL.glm(Y = Y, X = X, newX = newX, family = family, obsWeights = obsWeights, ...)
+  SL.glm.fit$fit$object$y <- NULL
+  SL.glm.fit$fit$object$model <- NULL
+  SL.glm.fit$fit$object$residuals <- NULL
+  SL.glm.fit$fit$object$fitted.values <- NULL
+  SL.glm.fit$fit$object$effects <- NULL
+  SL.glm.fit$fit$object$qr$qr <- NULL
+  SL.glm.fit$fit$object$linear.predictors <- NULL
+  SL.glm.fit$fit$object$weights <- NULL
+  SL.glm.fit$fit$object$prior.weights <- NULL
+  SL.glm.fit$fit$object$data <- NULL
+  SL.glm.fit$fit$object$family$variance <- NULL
+  SL.glm.fit$fit$object$family$dev.resids <- NULL
+  SL.glm.fit$fit$object$family$aic <- NULL
+  SL.glm.fit$fit$object$family$validmu <- NULL
+  SL.glm.fit$fit$object$family$simulate <- NULL
+  attr(SL.glm.fit$fit$object$terms, ".Environment") <- NULL
+  attr(SL.glm.fit$fit$object$formula, ".Environment") <- NULL
+  return(SL.glm.fit)
+}
+
+## skinny glm with interactions
+SL.glm.interaction.skinny <- function(Y, X, newX, family, obsWeights, ...){
+  SL.glm.fit <- SL.glm.interaction(Y = Y, X = X, newX = newX, family = family, obsWeights = obsWeights, ...)
   SL.glm.fit$fit$object$y <- NULL
   SL.glm.fit$fit$object$model <- NULL
   SL.glm.fit$fit$object$residuals <- NULL
@@ -180,7 +203,7 @@ predict.SL.naivebayes <- function(object, newdata, ...){
   pred <- predict(object$object, newdata = newdata, type = "raw")[,2]
   return(pred)
 }
-methods <- c("SL.glm.skinny", "SL.step.interaction.skinny", "SL.step.skinny",
+methods <- c("SL.glm.skinny", "SL.glm.interaction.skinny", "SL.step.interaction.skinny", "SL.step.skinny",
              "SL.gam.skinny", "SL.naivebayes", "SL.stumpboost")
 
 
