@@ -3,6 +3,9 @@
 
 ## load required libraries and functions
 library("SuperLearner")
+## only run this if necessary
+# devtools::install_github("benkeser/cvma")
+library("cvma")
 ## only run this if something has changed
 # install.packages("HVTN505_2019-4-1.tar.gz", type = "source", repos = NULL)
 library("HVTN505")

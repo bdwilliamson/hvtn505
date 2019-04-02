@@ -142,40 +142,6 @@ SL.step.skinny <- function(Y, X, newX, family, obsWeights, ...){
   return(SL.step.fit)
 }
 
-# skinny gam
-SL.gam.skinny <- function(Y, X, newX, family, obsWeights, ...){
-  SL.gam.fit <- SL.gam(Y = Y, X = X, newX = newX, family = family, obsWeights = obsWeights, ...)
-  SL.gam.fit$fit$object$y <- NULL
-  SL.gam.fit$fit$object$data <- NULL
-  SL.gam.fit$fit$object$deviance <- NULL
-  SL.gam.fit$fit$object$aic <- NULL
-  SL.gam.fit$fit$object$effects <- NULL
-  SL.gam.fit$fit$object$model <- NULL
-  SL.gam.fit$fit$object$fitted.values <- NULL
-  SL.gam.fit$fit$object$effects <- NULL
-  SL.gam.fit$fit$object$qr$qr <- NULL
-  SL.gam.fit$fit$object$nl.df <- NULL
-  SL.gam.fit$fit$object$df.residual <- NULL
-  SL.gam.fit$fit$object$var <- NULL
-  SL.gam.fit$fit$object$additive.predictors <- NULL
-  SL.gam.fit$fit$object$R <- NULL
-  SL.gam.fit$fit$object$rank <- NULL
-  SL.gam.fit$fit$object$prior.weights <- NULL
-  SL.gam.fit$fit$object$data <- NULL
-  SL.gam.fit$fit$object$control <- NULL
-  SL.gam.fit$fit$object$method <- NULL
-  SL.gam.fit$fit$object$contrasts <- NULL
-  SL.gam.fit$fit$object$nl.chisq <- NULL
-  SL.gam.fit$fit$object$formula <- NULL
-  SL.gam.fit$fit$object$family$variance <- NULL
-  SL.gam.fit$fit$object$family$dev.resids <- NULL
-  SL.gam.fit$fit$object$family$aic <- NULL
-  SL.gam.fit$fit$object$family$validmu <- NULL
-  SL.gam.fit$fit$object$family$dev.resids <- NULL
-  SL.gam.fit$fit$object$family$aic <- NULL
-  return(SL.gam.fit)
-}
-
 # boosted decision stumps
 SL.stumpboost <- function(Y, X, newX, family, obsWeights, ...){
   fit <- SL.xgboost(Y = Y, X = X, newX = newX, family = family, obsWeights = obsWeights, 
@@ -203,8 +169,9 @@ predict.SL.naivebayes <- function(object, newdata, ...){
   pred <- predict(object$object, newdata = newdata, type = "raw")[,2]
   return(pred)
 }
-methods <- c("SL.glm.skinny", "SL.glm.interaction.skinny", "SL.step.interaction.skinny", "SL.step.skinny",
-             "SL.gam.skinny", "SL.naivebayes", "SL.stumpboost")
+
+methods <- c("SL.glm.skinny", "SL.glm.interaction.skinny", "SL.step.interaction.skinny",
+             "SL.naivebayes", "SL.stumpboost", "SL.glmnet", "SL.earth")
 
 
 
