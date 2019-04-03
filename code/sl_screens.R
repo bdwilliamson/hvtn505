@@ -59,13 +59,16 @@ screen_univariate_logistic_pval_exposure_0.1 <- function(Y, X, family, obsWeight
 }
 
 ## screen to always include the various variable sets
-screen_assay_plus_exposure <- function(Y, X, obsWeights, id, assay, ...) {
+screen_assay_plus_exposure <- function(Y, X, obsWeights, id, assays, ...) {
   ## set all vars to be false
   vars <- rep(FALSE, ncol(X))
   ## set baseline exposure vars to true
   vars[names(X) %in% c("age", "BMI", "bhvrisk")] <- TRUE
-  ## set vars with CD4 and ANYHIV to be true
-  vars[grepl(assay, names(X))] <- TRUE
+  ## set vars with assay in name to be true
+  ## may be more than one
+  for (i in 1:length(assays)) {
+    vars[grepl(assays[i], names(X))] <- TRUE
+  }
 }
 ## don't actually want this for all antigen x assay combos
 # antigens <- c("ANYHIV", "ANYVRCENV", "ANYVRCGAG", "ANYVRCNEF", "ANYVRCPOL", "CMV", "EmptyAd5VRC", "gp140", "gp41", "V3", 
@@ -88,9 +91,33 @@ screen_baseline_exposure <- function(Y, X, obsWeights, id, ...) {
   vars[names(X) %in% c("age", "BMI", "bhvrisk")] <- TRUE
 }
 screen_igg_iga_plus_exposure <- function(Y, X, obsWeights, id, ...) {
-  
+  screen_assay_plus_exposure(Y, X, obsWeights, id, assays = c("IgG", "IgA"))
+}
+screen_tcells_plus_exposure <- function(Y, X, obsWeights, id, ...) {
+  screen_assay_plus_exposure(Y, X, obsWeights, id, assays = c("CD4", "CD8"))
+}
+screen_fxab_plus_exposure <- function(Y, X, obsWeights, id, ...) {
+  screen_assay_plus_exposure(Y, X, obsWeights, id, assays = c("IgG3", "phago", "fcrR2a", "fcrR3a"))
+}
+screen_igg_iga_tcells_plus_exposure <- function(Y, X, obsWeights, id, ...) {
+  screen_assay_plus_exposure(Y, X, obsWeights, id, assays = c("IgG", "IgA", "CD4", "CD8"))
+}
+screen_igg_iga_fxab_plus_exposure <- function(Y, X, obsWeights, id, ...) {
+  screen_assay_plus_exposure(Y, X, obsWeights, id, assays = c("IgG", "IgA", "IgG3", "phago", "fcrR2a", "fcrR3a"))
+}
+screen_tcells_fxab_plus_exposure <- function(Y, X, obsWeights, id, ...) {
+  screen_assay_plus_exposure(Y, X, obsWeights, id, assays = c("CD4", "CD8", "IgG3", "phago", "fcrR2a", "fcrR3a"))
+}
+screen_all <- function(Y, X, obsWeights, id, ...) {
+  vars <- rep(TRUE, ncol(X))
 }
 
+screens <- c("screen_glmnet_plus_exposure", paste0("screen_univariate_logistic_pval_plus_exposure_", c(0.01, 0.05, 0.1)),
+             "screen_dynamic_range_plus_exposure", "screen_dynamic_range_score_plus_exposure",
+             "screen_baseline_exposure", paste0("screen_", c("igg_iga", "tcells", "fxab", "igg_iga_tcells",
+                                                             "igg_iga_fxab", "tcells_fxab"),
+                                                "_plus_exposure"),
+             "screen_all")
 screens_vimp <- c("screen_glmnet_plus_exposure", paste0("screen_univariate_logistic_pval_plus_exposure_", c(0.01, 0.05, 0.1)),
                   "screen_dynamic_range_plus_exposure", "screen_dynamic_range_score_plus_exposure")
 ## -------------------------------------------------------------------------------------
