@@ -47,7 +47,7 @@ X_exposure <- dat.505 %>%
   select(age, BMI, bhvrisk)
 X <- data.frame(trt = dat.505$trt, X_exposure, X_markers)
 weights <- dat.505$wt
-Y <- dat.505$HIV
+Y <- dat.505$case
 vaccinees <- cbind.data.frame(Y, weights, X) %>% 
   filter(trt == 1) %>% 
   select(-trt)
