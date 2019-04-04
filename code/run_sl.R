@@ -11,11 +11,12 @@ library("xgboost")
 library("dplyr")
 ## only run this if necessary
 # devtools::install_github("benkeser/cvma")
-# library("cvma")
+library("cvma")
 ## only run this if something has changed
 # install.packages("HVTN505_2019-4-1.tar.gz", type = "source", repos = NULL)
 library("HVTN505")
 library("kyotil")
+library("argparse")
 
 ## set up code directory
 if (!is.na(Sys.getenv("RSTUDIO", unset = NA))) { # if running locally
@@ -24,7 +25,8 @@ if (!is.na(Sys.getenv("RSTUDIO", unset = NA))) { # if running locally
   
 }
 source(paste0(code_dir, "sl_screens.R")) # set up the screen/algorithm combinations
-source(paset0(code_dir, "utils.R")) # get CV-AUC for all algs
+source(paste0(code_dir, "utils.R")) # get CV-AUC for all algs
+plan("sequential")
 
 ## ---------------------------------------------------------------------------------
 ## pre-process the data
@@ -33,11 +35,17 @@ source(paset0(code_dir, "utils.R")) # get CV-AUC for all algs
 data("dat.505", package = "HVTN505")
 ## read in the super learner variables
 data("var.super", package = "HVTN505") # even if there is a warning message, it still exists
+## note that "var.super" contains individual vars for vaccine-matched antigens,
+## and for vaccine-mismatched antigens, has either individual var (if only one)
+## or PC1 and/or MDW (only PC1 if cor(PC1, MDW) > 0.9)
 
 ## scale vaccine recipients to have mean 0, sd 1 for all vars
 for (a in var.super$varname) {
-  dat.505[[a]]=scale(dat.505[[a]], center=mean(dat.505[[a]][dat.505$trt==1]), scale=sd(dat.505[[a]][dat.505$trt==1]))
-  dat.505[[a%.%"_bin"]]=scale(dat.505[[a%.%"_bin"]], center=mean(dat.505[[a%.%"_bin"]][dat.505$trt==1]), scale=sd(dat.505[[a%.%"_bin"]][dat.505$trt==1]))
+  dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1]))
+  dat.505[[a%.%"_bin"]] <- scale(dat.505[[a%.%"_bin"]], center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]), scale = sd(dat.505[[a%.%"_bin"]][dat.505$trt == 1]))
+}
+for (a in c("age", "BMI", "bhvrisk")) {
+  dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1]))
 }
 
 ## set up X, Y for super learning
@@ -56,21 +64,20 @@ weights_vaccine <- vaccinees$weights
 X_vaccine <- vaccinees %>% 
   select(-Y, -weights)
 
-V <- 10
+V_outer <- 5
+V_inner <- length(Y_vaccine) - 1 
 ## ---------------------------------------------------------------------------------
 ## run super learner, with leave-one-out cross-validation and all screens
 ## do 10 random starts, average over these
 ## ---------------------------------------------------------------------------------
-fits <- vector("list", length = 10)
+## ensure reproducibility
 set.seed(4747)
-for (i in 1:10) {
-  system.time(fit <- SuperLearner::CV.SuperLearner(Y = Y_vaccine, X = X_vaccine, family = binomial(),
-                                                   obsWeights = weights_vaccine,
-                                                   SL.library = SL_library, # this comes from sl_screens.R
-                                                   method = "method.CC_nloglik",
-                                                   cvControl = list(V = V),
-                                                   innerCvControl = list(list(V = length(Y_vaccine) - 1)))
-              )
-  aucs <- get_all_aucs(fit)
-  fits[[i]] <- list(fit = fit$SL.predict, folds = fit$folds, aucs = aucs)
-}
+seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
+fits <- future_lapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X_vaccine, family = "binomial",
+              obsWeights = weights_vaccine,
+              sl_lib = SL_library, # this comes from sl_screens.R
+              method = "method.CC_nloglik",
+              cvControl = list(V = V_outer),
+              innerCvControl = list(list(V = V_inner)),
+              vimp = FALSE
+)
