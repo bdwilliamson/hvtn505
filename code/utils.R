@@ -20,3 +20,18 @@ get_all_aucs <- function(sl_fit) {
   })
   rbind(out, other_aucs)
 }
+
+## run CV.SuperLearner for one given random seed
+run_cv_sl_once <- function(seed, Y, X_mat, family, obsWeights, sl_lib, method, cvControl, innerCvControl, vimp = FALSE) {
+  set.seed(seed)
+  fit <- SuperLearner::CV.SuperLearner(Y = Y, X = X_mat, family = family, 
+                                                   obsWeights = obsWeights, SL.library = sl_lib, 
+                                                   method = method, cvControl = cvControl, 
+                                                   innerCvControl = innerCvControl)
+  aucs <- get_all_aucs(fit)
+  ret_lst <- list(fit = fit, folds = fit$folds, aucs = aucs)
+  if (vimp) {
+    ret_lst <- list(fit = fit$SL.predict, folds = fit$folds, aucs = aucs)
+  }
+  return(ret_lst)
+}
