@@ -18,6 +18,17 @@ system.time(test_sl <- run_cv_sl_once(seed = seeds[1], Y = Y_vaccine, X_mat = X_
                                       innerCvControl = list(list(V = V_inner)),
                                       vimp = FALSE))
 
+## test only baseline exposure with parallelization
+system.time(test_fits_baseline_only <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X_vaccine, family = "binomial",
+                                                          obsWeights = weights_vaccine,
+                                                          sl_lib = SL_library[7], 
+                                                          method = "method.CC_nloglik",
+                                                          cvControl = list(V = V_outer, stratifyCV = TRUE),
+                                                          innerCvControl = list(list(V = V_inner)),
+                                                          vimp = FALSE,
+                                                          mc.cores = num_cores
+))
+
 ## test with CV on glm
 set.seed(seeds[1])
 train <- vaccinees %>% 

@@ -16,8 +16,8 @@ get_all_aucs <- function(sl_fit) {
     alg_auc <- cvAUC::ci.cvAUC(predictions = sl_fit$library.predict[, col], labels = sl_fit$Y, folds = sl_fit$folds)
     ## get the regexp object
     alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_", fixed = TRUE)[[1]]
-    alg <- alg_screen_string[grepl(".", alg_screen_string, fixed = TRUE)]
-    screen <- paste0(alg_screen_string[!grepl(".", alg_screen_string, fixed = TRUE)], collapse = "_")
+    alg <- tail(alg_screen_string[grepl(".", alg_screen_string, fixed = TRUE)], n = 1)
+    screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, fixed = TRUE)], collapse = "_")
     data.frame(Learner = alg, Screen = screen, AUC = alg_auc$cvAUC, ci_ll = alg_auc$ci[1], ci_ul = alg_auc$ci[2])
   }
   other_aucs <- plyr::ldply(1:ncol(sl_fit$library.predict), function(x) get_individual_auc(sl_fit, x))

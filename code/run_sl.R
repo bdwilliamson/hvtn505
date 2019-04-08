@@ -22,11 +22,13 @@ library("argparse")
 ## set up code directory
 if (!is.na(Sys.getenv("RSTUDIO", unset = NA))) { # if running locally
   code_dir <- "code/"
-  plan("sequential")
+  # plan("sequential")
 } else {
   code_dir <- ""
-  plan("multicore")
+  # plan("multicore")
 }
+num_cores <- parallel::detectCores()
+print(num_cores)
 source(paste0(code_dir, "sl_screens.R")) # set up the screen/algorithm combinations
 source(paste0(code_dir, "utils.R")) # get CV-AUC for all algs
 
@@ -81,6 +83,7 @@ fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X
               method = "method.CC_nloglik",
               cvControl = list(V = V_outer, stratifyCV = TRUE),
               innerCvControl = list(list(V = V_inner)),
-              vimp = FALSE
+              vimp = FALSE,
+              mc.cores = num_cores
 )
 saveRDS(fits, "sl_fits.rds")
