@@ -1,3 +1,14 @@
+## test only baseline exposure
+system.time(test_sl_baseline_only <- run_cv_sl_once(seed = seeds[1], Y = Y_vaccine, X_mat = X_vaccine, 
+                                                    family = "binomial",
+                                                    obsWeights = weights_vaccine,
+                                                    sl_lib = SL_library[7],
+                                                    method = "method.CC_nloglik",
+                                                    cvControl = list(V = V_outer),
+                                                    innerCvControl = list(list(V = V_inner)),
+                                                    vimp = FALSE))
+
+## test all with glm
 SL_library_test <- SL_library[grepl("glm.skinny", SL_library)]
 system.time(test_sl <- run_cv_sl_once(seed = seeds[1], Y = Y_vaccine, X_mat = X_vaccine, family = "binomial",
                                       obsWeights = weights_vaccine,
