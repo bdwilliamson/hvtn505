@@ -23,10 +23,11 @@ screen_dynamic_range_plus_exposure <- function(Y, X, family, obsWeights, id, nVa
   # keep only those with dynamic range: 20th percentile != 80th percentile
   x_quantiles <- apply(X, 2, function(x) quantile(x, probs = c(0.2, 0.8)))
   vars <- apply(x_quantiles, 2, function(x) round(x[1], 4) != round(x[2], 4))
-  
+  # also keep the first three columns of X (correspond to age, BMI, bhvrisk)
+  vars[names(X) %in% c("age", "BMI", "bhvrisk")] <- TRUE
   # keep only a max of nVar immune markers; rank by univariate p-value in a model adjusting for age, BMI, bhvrisk
   X_initial_screen <- X %>%
-    select(names(X)[vars])
+    select(names(X)[vars], "age", "BMI", "bhvrisk")
   ranked_vars <- rank_univariate_logistic_pval_plus_exposure(Y, X_initial_screen, family, obsWeights, id)
   vars[vars][ranked_vars > nVar] <- FALSE
   
@@ -36,14 +37,17 @@ screen_dynamic_range_plus_exposure <- function(Y, X, family, obsWeights, id, nVa
 }
 ## screen dynamic range score: only keep variables with sd(vacinees)/sd(placebo) > 75th percentile
 ## relies on having var.super loaded in the environment
-screen_dynamic_range_score_plus_exposure <- function(Y, X, family, obsWeights, id, sd_ratio = var.super$sd.ratio, ...) {
+screen_dynamic_range_score_plus_exposure <- function(Y, X, family, obsWeights, id, var_super = var.super, nVar = 4, ...) {
   # set all to false
   vars <- rep(FALSE, ncol(X))
   # need to apply with the correct label in place of X
-  vars <- sd_ratio > quantile(sd_ratio, probs = c(0.5))
+  vars_sd_ratio <- ifelse(is.na(var_super$sd.ratio), TRUE, var_super$sd.ratio > quantile(var_super$sd.ratio, probs = c(0.5), na.rm = TRUE))
+  vars <- names(X) %in% var_super$varname[vars_sd_ratio] | names(X) %in% paste0(var_super$varname[vars_sd_ratio], "_bin")
+  # also keep the first three columns of X (correspond to age, BMI, bhvrisk)
+  vars[names(X) %in% c("age", "BMI", "bhvrisk")] <- TRUE
   # keep only a max of nVar immune markers; rank by univariate p-value in a model adjusting for age, BMI, bhvrisk
   X_initial_screen <- X %>%
-    select(names(X)[vars])
+    select(names(X)[vars], "age", "BMI", "bhvrisk")
   ranked_vars <- rank_univariate_logistic_pval_plus_exposure(Y, X_initial_screen, family, obsWeights, id)
   vars[vars][ranked_vars > nVar] <- FALSE
   # also keep the first three columns of X (correspond to age, BMI, bhvrisk)
@@ -51,11 +55,13 @@ screen_dynamic_range_score_plus_exposure <- function(Y, X, family, obsWeights, i
   return(vars)
 }
 ## screen based on lasso 
-screen_glmnet_plus_exposure <- function(Y, X, family, obsWeights, id, alpha = 1, minscreen = 2, nfolds = 10, nlambda = 100, ...) {
+screen_glmnet_plus_exposure <- function(Y, X, family, obsWeights, id, alpha = 1, minscreen = 2, nfolds = 10, nlambda = 100, nVar = 4, ...) {
   vars <- screen.glmnet(Y, X, family, obsWeights, id, alpha = 1, minscreen = 2, nfolds = 10, nlambda = 100, ...)
+  # also keep the first three columns of X (correspond to age, BMI, bhvrisk)
+  vars[names(X) %in% c("age", "BMI", "bhvrisk")] <- TRUE
   # keep only a max of nVar immune markers; rank by univariate p-value in a model adjusting for age, BMI, bhvrisk
   X_initial_screen <- X %>%
-    select(names(X)[vars])
+    select(names(X)[vars], "age", "BMI", "bhvrisk")
   ranked_vars <- rank_univariate_logistic_pval_plus_exposure(Y, X_initial_screen, family, obsWeights, id)
   vars[vars][ranked_vars > nVar] <- FALSE
   # also keep the first three columns of X (correspond to age, BMI, bhvrisk)
@@ -63,20 +69,22 @@ screen_glmnet_plus_exposure <- function(Y, X, family, obsWeights, id, alpha = 1,
   return(vars)
 }
 ## screen based on logistic regression univariate p-value < level
-screen_univariate_logistic_pval_plus_exposure <- function(Y, X, family, obsWeights, id, minPvalue = 0.1, minscreen = 2, ...) {
+screen_univariate_logistic_pval_plus_exposure <- function(Y, X, family, obsWeights, id, minPvalue = 0.1, minscreen = 2, nVar = 4, ...) {
     ## logistic regression of outcome on each variable
     listp <- apply(X, 2, function(x, Y, family) {
       summ <- coef(summary(glm(Y ~ x + X$age + X$BMI + X$bhvrisk, family = family, weights = obsWeights)))
         ifelse(dim(summ)[1] > 1, summ[2, 4], 1)
     }, Y = Y, family = family)
     vars <- (listp <= minPvalue)
+    # also keep the first three columns of X (correspond to age, BMI, bhvrisk)
+    vars[names(X) %in% c("age", "BMI", "bhvrisk")] <- TRUE
     if (sum(vars) < minscreen) {
         warning("number of variables with p value less than minPvalue is less than minscreen")
         vars[rank(listp) <= minscreen] <- TRUE
     }
     # keep only a max of nVar immune markers; rank by univariate p-value in a model adjusting for age, BMI, bhvrisk
     X_initial_screen <- X %>%
-      select(names(X)[vars])
+      select(names(X)[vars], "age", "BMI", "bhvrisk")
     ranked_vars <- rank_univariate_logistic_pval_plus_exposure(Y, X_initial_screen, family, obsWeights, id)
     vars[vars][ranked_vars > nVar] <- FALSE
     vars[names(X) %in% c("age", "BMI", "bhvrisk")] <- TRUE
@@ -91,7 +99,7 @@ screen_univariate_logistic_pval_plus_exposure_0.05 <- function(Y, X, family, obs
 screen_univariate_logistic_pval_plus_exposure_0.1 <- function(Y, X, family, obsWeights, id, minPvalue = 0.1, minscreen = 2, ...) {
   screen_univariate_logistic_pval_plus_exposure(Y, X, family, obsWeights, id, minPvalue, minscreen = 2, ...)
 }
-screen_highcor_plus_exposure <- function(Y, X, family, obsWeights, id, ...) {
+screen_highcor_plus_exposure <- function(Y, X, family, obsWeights, id, nVar = 4, ...) {
   # set all vars to FALSE
   vars <- rep(FALSE, ncol(X))
   # compute pairwise correlations between all marker vars
@@ -100,17 +108,20 @@ screen_highcor_plus_exposure <- function(Y, X, family, obsWeights, id, ...) {
   cor_less_0.9 <- (cors <= 0.9)
   # screen out those with r > 0.9
   vars <- apply(cor_less_0.9, 1, function(x) all(x, na.rm = TRUE))
+  # also keep the first three columns of X (correspond to age, BMI, bhvrisk)
+  vars[names(X) %in% c("age", "BMI", "bhvrisk")] <- TRUE
   # keep only a max of nVar immune markers; rank by univariate p-value in a model adjusting for age, BMI, bhvrisk
   X_initial_screen <- X %>%
-    select(names(X)[vars])
+    select(names(X)[vars], "age", "BMI", "bhvrisk")
   ranked_vars <- rank_univariate_logistic_pval_plus_exposure(Y, X_initial_screen, family, obsWeights, id)
   vars[vars][ranked_vars > nVar] <- FALSE
   ## make sure that age, BMI, bhvrisk are true
   vars[names(X) %in% c("age", "BMI", "bhvrisk")] <- TRUE
+  return(vars)
 }
 
 ## screen to always include the various variable sets
-screen_assay_plus_exposure <- function(Y, X, obsWeights, id, assays, ...) {
+screen_assay_plus_exposure <- function(Y, X, family, obsWeights, id, assays, nVar = 4, ...) {
   ## set all vars to be false
   vars <- rep(FALSE, ncol(X))
   ## set vars with assay in name to be true
@@ -118,9 +129,11 @@ screen_assay_plus_exposure <- function(Y, X, obsWeights, id, assays, ...) {
   for (i in 1:length(assays)) {
     vars[grepl(assays[i], names(X))] <- TRUE
   }
+  # also keep the first three columns of X (correspond to age, BMI, bhvrisk)
+  vars[names(X) %in% c("age", "BMI", "bhvrisk")] <- TRUE
   # keep only a max of nVar immune markers; rank by univariate p-value in a model adjusting for age, BMI, bhvrisk
   X_initial_screen <- X %>%
-    select(names(X)[vars])
+    select(names(X)[vars], "age", "BMI", "bhvrisk")
   ranked_vars <- rank_univariate_logistic_pval_plus_exposure(Y, X_initial_screen, family, obsWeights, id)
   vars[vars][ranked_vars > nVar] <- FALSE
   ## set baseline exposure vars to true
@@ -130,29 +143,30 @@ screen_assay_plus_exposure <- function(Y, X, obsWeights, id, assays, ...) {
 
 ## actual screens for antigen combos
 ## baseline_exposure is the base model
-screen_baseline_exposure <- function(Y, X, obsWeights, id, ...) {
+screen_baseline_exposure <- function(Y, X, family, obsWeights, id, ...) {
   ## set all vars to false
   vars <- rep(FALSE, ncol(X))
   ## set baseline exposure vars to true
   vars[names(X) %in% c("age", "BMI", "bhvrisk")] <- TRUE
+  return(vars)
 }
-screen_igg_iga_plus_exposure <- function(Y, X, obsWeights, id, ...) {
-  screen_assay_plus_exposure(Y, X, obsWeights, id, assays = c("IgG", "IgA"))
+screen_igg_iga_plus_exposure <- function(Y, X, family, obsWeights, id, ...) {
+  screen_assay_plus_exposure(Y, X, family, obsWeights, id, assays = c("IgG", "IgA"))
 }
-screen_tcells_plus_exposure <- function(Y, X, obsWeights, id, ...) {
-  screen_assay_plus_exposure(Y, X, obsWeights, id, assays = c("CD4", "CD8"))
+screen_tcells_plus_exposure <- function(Y, X, family, obsWeights, id, ...) {
+  screen_assay_plus_exposure(Y, X, family, obsWeights, id, assays = c("CD4", "CD8"))
 }
-screen_fxab_plus_exposure <- function(Y, X, obsWeights, id, ...) {
-  screen_assay_plus_exposure(Y, X, obsWeights, id, assays = c("IgG3", "phago", "fcrR2a", "fcrR3a"))
+screen_fxab_plus_exposure <- function(Y, X, family, obsWeights, id, ...) {
+  screen_assay_plus_exposure(Y, X, family, obsWeights, id, assays = c("IgG3", "phago", "fcrR2a", "fcrR3a"))
 }
-screen_igg_iga_tcells_plus_exposure <- function(Y, X, obsWeights, id, ...) {
-  screen_assay_plus_exposure(Y, X, obsWeights, id, assays = c("IgG", "IgA", "CD4", "CD8"))
+screen_igg_iga_tcells_plus_exposure <- function(Y, X, family, obsWeights, id, ...) {
+  screen_assay_plus_exposure(Y, X,family,  obsWeights, id, assays = c("IgG", "IgA", "CD4", "CD8"))
 }
-screen_igg_iga_fxab_plus_exposure <- function(Y, X, obsWeights, id, ...) {
-  screen_assay_plus_exposure(Y, X, obsWeights, id, assays = c("IgG", "IgA", "IgG3", "phago", "fcrR2a", "fcrR3a"))
+screen_igg_iga_fxab_plus_exposure <- function(Y, X, family, obsWeights, id, ...) {
+  screen_assay_plus_exposure(Y, X, family, obsWeights, id, assays = c("IgG", "IgA", "IgG3", "phago", "fcrR2a", "fcrR3a"))
 }
-screen_tcells_fxab_plus_exposure <- function(Y, X, obsWeights, id, ...) {
-  screen_assay_plus_exposure(Y, X, obsWeights, id, assays = c("CD4", "CD8", "IgG3", "phago", "fcrR2a", "fcrR3a"))
+screen_tcells_fxab_plus_exposure <- function(Y, X, family, obsWeights, id, ...) {
+  screen_assay_plus_exposure(Y, X, family, obsWeights, id, assays = c("CD4", "CD8", "IgG3", "phago", "fcrR2a", "fcrR3a"))
 }
 
 screens <- c("screen_glmnet_plus_exposure", paste0("screen_univariate_logistic_pval_plus_exposure_", c(0.01, 0.05, 0.1)),
@@ -290,8 +304,10 @@ predict.SL.naivebayes <- function(object, newdata, ...){
   return(pred)
 }
 
+# methods <- c("SL.glm.skinny", "SL.glm.interaction.skinny", "SL.step.interaction.skinny",
+             # "SL.naivebayes", "SL.stumpboost", "SL.glmnet", "SL.earth")
 methods <- c("SL.glm.skinny", "SL.glm.interaction.skinny", "SL.step.interaction.skinny",
-             "SL.naivebayes", "SL.stumpboost", "SL.glmnet", "SL.earth")
+             "SL.stumpboost", "SL.glmnet", "SL.earth")
 
 
 

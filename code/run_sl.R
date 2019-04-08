@@ -8,10 +8,11 @@ library("future.apply")
 library("e1071")
 library("glmnet")
 library("xgboost")
+library("earth")
 library("dplyr")
 ## only run this if necessary
 # devtools::install_github("benkeser/cvma")
-library("cvma")
+# library("cvma")
 ## only run this if something has changed
 # install.packages("HVTN505_2019-4-1.tar.gz", type = "source", repos = NULL)
 library("HVTN505")
@@ -21,12 +22,13 @@ library("argparse")
 ## set up code directory
 if (!is.na(Sys.getenv("RSTUDIO", unset = NA))) { # if running locally
   code_dir <- "code/"
+  plan("sequential")
 } else {
-  
+  code_dir <- ""
+  plan("multicore")
 }
 source(paste0(code_dir, "sl_screens.R")) # set up the screen/algorithm combinations
 source(paste0(code_dir, "utils.R")) # get CV-AUC for all algs
-plan("sequential")
 
 ## ---------------------------------------------------------------------------------
 ## pre-process the data
@@ -73,11 +75,12 @@ V_inner <- length(Y_vaccine) - 1
 ## ensure reproducibility
 set.seed(4747)
 seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
-fits <- future_lapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X_vaccine, family = "binomial",
+fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X_vaccine, family = "binomial",
               obsWeights = weights_vaccine,
               sl_lib = SL_library, # this comes from sl_screens.R
               method = "method.CC_nloglik",
-              cvControl = list(V = V_outer),
+              cvControl = list(V = V_outer, stratifyCV = TRUE),
               innerCvControl = list(list(V = V_inner)),
               vimp = FALSE
 )
+saveRDS(fits, "sl_fits.rds")
