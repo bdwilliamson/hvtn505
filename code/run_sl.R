@@ -4,6 +4,7 @@
 ## make sure that it is CV.SL, averaged over 10 random starts
 
 ## load required libraries and functions
+library("methods")
 library("SuperLearner")
 library("future")
 library("future.apply")
