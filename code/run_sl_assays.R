@@ -1,8 +1,7 @@
 #!/usr/local/bin/Rscript
-## run the super learner for variable importance
-## make sure that it is CV.SL, averaged over 10 random starts
 
-sessionInfo()
+## run the super learner
+## make sure that it is CV.SL, averaged over 10 random starts
 
 ## load required libraries and functions
 library("methods")
@@ -58,30 +57,42 @@ for (a in c("age", "BMI", "bhvrisk")) {
 
 ## set up X, Y for super learning
 X_markers <- dat.505 %>% 
-  select(var.super$varname, paste0(var.super$varname, "_bin")) 
+  select(var.super$varname, paste0(var.super$varname, "_bin"))
 
-## which features should I remove?
-## create a matrix of 0/1's; rows are job_id, cols are the variables to remove
-## for groups, multiple 1's per row; for individual, one 1 per row
+## only include the following variable sets:
 assays <- unique(var.super$assay)
 antigens <- unique(var.super$antigen)
+# 1. None (baseline variables only)
+var_set_none <- rep(FALSE, ncol(X_markers))
+# 2. IgG + IgA (all antigens)
+var_set_igg_iga <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA"))
+# 3. T cells (all antigens)
+var_set_tcells <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "CD8"))
+# 4. Fx Ab (all antigens)
+var_set_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "phago", "fcrR2a", "fcrR3a"))
+# 5. 2+3
+var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8")) 
+# 6. 2+4
+var_set_igg_iga_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "phago", "fcrR2a", "fcrR3a"))
+# 7. 3+4
+var_set_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "CD8", "IgG3", "phago", "fcrR2a", "fcrR3a"))
+# 8. All
+var_set_all <- rep(TRUE, ncol(X_markers))
+## already run this
 
-group_grid <- expand.grid(assay = assays, antigen = antigens)
-group_var_mat <- t(apply(group_grid, 1, function(x) get_nms_group(X_markers, x[1], x[2])))
+## set up a matrix of all 
+var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_tcells, var_set_fxab,
+                        var_set_igg_iga_tcells, var_set_igg_iga_fxab, var_set_tcells_fxab,
+                        var_set_all)
+job_id <- job_id <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
+this_var_set <- var_set_matrix[job_id, ]
 
-indiv_grid <- matrix(names(X_markers), ncol = 1)
-indiv_var_mat <- t(apply(indiv_grid, 1, function(x) get_nms_ind(X_markers, x)))
+X_markers_varset <- X_markers %>% 
+  select(names(X_markers)[this_var_set])
 
-all_vars_mat <- rbind(group_var_mat, indiv_var_mat)
-job_id <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
-vars_vimp <- all_vars_mat[job_id, ]
-
-## remove the correct markers for vimp
-X_markers_vimp <- X_markers %>% 
-  select(names(X_markers)[vars_vimp])
 X_exposure <- dat.505 %>% 
   select(age, BMI, bhvrisk)
-X <- data.frame(trt = dat.505$trt, X_exposure, X_markers_vimp)
+X <- data.frame(trt = dat.505$trt, X_exposure, X_markers_varset)
 weights <- dat.505$wt
 Y <- dat.505$case
 vaccinees <- cbind.data.frame(Y, weights, X) %>% 
@@ -100,14 +111,14 @@ V_inner <- length(Y_vaccine) - 1
 ## ---------------------------------------------------------------------------------
 ## ensure reproducibility
 set.seed(4747)
-seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts (same as full SL)
+seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
 fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X_vaccine, family = "binomial",
                            obsWeights = weights_vaccine,
                            sl_lib = SL_library_vimp, # this comes from sl_screens.R
                            method = "method.CC_nloglik",
                            cvControl = list(V = V_outer, stratifyCV = TRUE),
                            innerCvControl = list(list(V = V_inner)),
-                           vimp = TRUE,
+                           vimp = FALSE,
                            mc.cores = num_cores
 )
-saveRDS(fits, paste0("sl_fits_vimp_", job_id, ".rds"))
+saveRDS(fits, paste0("sl_fits_varset_", job_id, ".rds"))

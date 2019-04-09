@@ -24,6 +24,9 @@ get_all_aucs <- function(sl_fit) {
   rbind(out, other_aucs)
 }
 
+## get the SL and top-performing model for a given Learner + Screen combination
+
+
 ## run CV.SuperLearner for one given random seed
 run_cv_sl_once <- function(seed, Y, X_mat, family, obsWeights, sl_lib, method, cvControl, innerCvControl, vimp = FALSE) {
   set.seed(seed)
@@ -37,6 +40,18 @@ run_cv_sl_once <- function(seed, Y, X_mat, family, obsWeights, sl_lib, method, c
     ret_lst <- list(fit = fit$SL.predict, folds = fit$folds, aucs = aucs)
   }
   return(ret_lst)
+}
+
+## get names for multiple assays, all antigens
+get_nms_group_all_antigens <- function(X, assays) {
+  ## set all vars to be false
+  vars <- rep(FALSE, ncol(X))
+  ## set vars with assay in name to be true
+  ## may be more than one
+  for (i in 1:length(assays)) {
+    vars[grepl(assays[i], names(X))] <- TRUE
+  }
+  return(vars)
 }
 
 ## get the names of a group, for importance
