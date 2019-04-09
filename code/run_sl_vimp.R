@@ -1,3 +1,4 @@
+#!/usr/local/bin/Rscript
 ## run the super learner for variable importance
 ## make sure that it is CV.SL, averaged over 10 random starts
 

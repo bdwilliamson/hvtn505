@@ -1,3 +1,5 @@
+#!/usr/local/bin/Rscript
+
 ## run the super learner
 ## make sure that it is CV.SL, averaged over 10 random starts
 
