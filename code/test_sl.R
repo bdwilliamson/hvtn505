@@ -22,7 +22,7 @@ system.time(test_sl_baseline_only <- run_cv_sl_once(seed = seeds[1], Y = Y_vacci
 SL_library_test <- sl_lib[grepl("glm.skinny", SL_library)]
 system.time(test_sl <- run_cv_sl_once(seed = seeds[1], Y = Y_vaccine, X_mat = X_vaccine, family = "binomial",
                                       obsWeights = weights_vaccine,
-                                      sl_lib = SL_library_test, # this comes from sl_screens.R
+                                      sl_lib = SL_library_test[7], # this comes from sl_screens.R
                                       method = "method.CC_nloglik",
                                       cvControl = list(V = V_outer),
                                       innerCvControl = list(list(V = V_inner)),

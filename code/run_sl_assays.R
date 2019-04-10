@@ -80,12 +80,17 @@ var_set_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "
 var_set_all <- rep(TRUE, ncol(X_markers))
 ## already run this
 
+var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_tcells", "4_fxab",
+                   "5_igg_iga_tcells", "6_igg_iga_fxab", "7_tcells_fxab",
+                   "8_all")
+
 ## set up a matrix of all 
 var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_tcells, var_set_fxab,
                         var_set_igg_iga_tcells, var_set_igg_iga_fxab, var_set_tcells_fxab,
                         var_set_all)
 job_id <- job_id <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
 this_var_set <- var_set_matrix[job_id, ]
+cat("\n Running ", var_set_names[job_id])
 
 X_markers_varset <- X_markers %>% 
   select(names(X_markers)[this_var_set])
@@ -129,4 +134,4 @@ fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X
                            vimp = FALSE,
                            mc.cores = num_cores
 )
-saveRDS(fits, paste0("sl_fits_varset_", job_id, ".rds"))
+saveRDS(fits, paste0("sl_fits_varset_", var_set_names[job_id], ".rds"))
