@@ -105,6 +105,14 @@ X_vaccine <- vaccinees %>%
 
 V_outer <- 5
 V_inner <- length(Y_vaccine) - 1 
+
+## get the SL library
+## if var_set_none, then don't need screens; otherwise do
+if (job_id == 1) {
+  sl_lib <- methods
+} else {
+  sl_lib <- SL_library
+}
 ## ---------------------------------------------------------------------------------
 ## run super learner, with leave-one-out cross-validation and all screens
 ## do 10 random starts, average over these
@@ -114,7 +122,7 @@ set.seed(4747)
 seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
 fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X_vaccine, family = "binomial",
                            obsWeights = weights_vaccine,
-                           sl_lib = SL_library, # this comes from sl_screens.R
+                           sl_lib = sl_lib, # this comes from sl_screens.R
                            method = "method.CC_nloglik",
                            cvControl = list(V = V_outer, stratifyCV = TRUE),
                            innerCvControl = list(list(V = V_inner)),
