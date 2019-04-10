@@ -6,8 +6,8 @@
 ## load required libraries and functions
 library("methods")
 library("SuperLearner")
-library("future")
-library("future.apply")
+# library("future")
+# library("future.apply")
 library("e1071")
 library("glmnet")
 library("xgboost")
