@@ -17,7 +17,7 @@ library("dplyr")
 # devtools::install_github("benkeser/cvma")
 # library("cvma")
 ## only run this if something has changed
-# install.packages("HVTN505_2019-4-1.tar.gz", type = "source", repos = NULL)
+# install.packages("HVTN505_2019-4-9.tar.gz", type = "source", repos = NULL)
 library("HVTN505")
 library("kyotil")
 library("argparse")
@@ -76,13 +76,14 @@ V_inner <- length(Y_vaccine) - 1
 ## ---------------------------------------------------------------------------------
 ## run super learner, with leave-one-out cross-validation and all screens
 ## do 10 random starts, average over these
+## use assay groups as screens
 ## ---------------------------------------------------------------------------------
 ## ensure reproducibility
 set.seed(4747)
 seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
 fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X_vaccine, family = "binomial",
               obsWeights = weights_vaccine,
-              sl_lib = SL_library, # this comes from sl_screens.R
+              sl_lib = SL_library_with_assay_groups, # this comes from sl_screens.R
               method = "method.CC_nloglik",
               cvControl = list(V = V_outer, stratifyCV = TRUE),
               innerCvControl = list(list(V = V_inner)),

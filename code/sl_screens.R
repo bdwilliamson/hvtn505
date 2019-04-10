@@ -169,13 +169,15 @@ screen_tcells_fxab_plus_exposure <- function(Y, X, family, obsWeights, id, ...) 
   screen_assay_plus_exposure(Y, X, family, obsWeights, id, assays = c("CD4", "CD8", "IgG3", "phago", "fcrR2a", "fcrR3a"))
 }
 
-screens <- c("screen_glmnet_plus_exposure", paste0("screen_univariate_logistic_pval_plus_exposure_", c(0.01, 0.05, 0.1)),
+screens_with_assay_groups <- c("screen_glmnet_plus_exposure", paste0("screen_univariate_logistic_pval_plus_exposure_", c(0.01, 0.05, 0.1)),
              "screen_dynamic_range_plus_exposure", "screen_dynamic_range_score_plus_exposure",
              "screen_baseline_exposure", paste0("screen_", c("igg_iga", "tcells", "fxab", "igg_iga_tcells",
                                                              "igg_iga_fxab", "tcells_fxab"),
-                                                "_plus_exposure"))
-screens_vimp <- c("screen_glmnet_plus_exposure", paste0("screen_univariate_logistic_pval_plus_exposure_", c(0.01, 0.05, 0.1)),
-                  "screen_dynamic_range_plus_exposure", "screen_dynamic_range_score_plus_exposure")
+                                                "_plus_exposure"),
+             "screen_highcor_plus_exposure")
+screens <- c("screen_glmnet_plus_exposure", paste0("screen_univariate_logistic_pval_plus_exposure_", c(0.01, 0.05, 0.1)),
+                  "screen_dynamic_range_plus_exposure", "screen_dynamic_range_score_plus_exposure",
+                  "screen_highcor_plus_exposure")
 ## -------------------------------------------------------------------------------------
 ## SL algorithms
 ## -------------------------------------------------------------------------------------
@@ -392,13 +394,13 @@ assign_combined_function <- function(method, screen, envir = .GlobalEnv,
 }
 
 ## make a data frame of all method/screen combinations needed
+screen_method_frame_with_assay_groups <- expand.grid(screen = screens_with_assay_groups, method = methods)
 screen_method_frame <- expand.grid(screen = screens, method = methods)
-screen_method_frame_vimp <- expand.grid(screen = screens_vimp, method = methods)
 
 ## add to global environment
+apply(screen_method_frame_with_assay_groups, 1, function(x) {assign_combined_function(screen = x[1], method = x[2], verbose = FALSE)})
 apply(screen_method_frame, 1, function(x) {assign_combined_function(screen = x[1], method = x[2], verbose = FALSE)})
-apply(screen_method_frame_vimp, 1, function(x) {assign_combined_function(screen = x[1], method = x[2], verbose = FALSE)})
 
 ## create SL library; reference method is glm with baseline exposure vars
+SL_library_with_assay_groups <- c(apply(screen_method_frame_with_assay_groups, 1, paste0, collapse = "_"))
 SL_library <- c(apply(screen_method_frame, 1, paste0, collapse = "_"))
-SL_library_vimp <- c(apply(screen_method_frame_vimp, 1, paste0, collapse = "_"))
