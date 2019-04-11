@@ -66,3 +66,26 @@ get_nms_ind <- function(X, nm_ind) {
   vars[grepl(nm_ind, names(X))] <- FALSE ## remove the one, for vimp
   return(vars)
 }
+
+## make nice names for Learner/Screen combos
+remove_str <- function(x, str) {
+  if (length(x) > 1) {
+    return(x[!grepl(str, x)])
+  } else {
+    return(x)
+  }
+}
+make_nice_learner_name <- function(learners) {
+  no_dots <- strsplit(as.character(learners), ".", fixed = TRUE) # split on the dots
+  no_sl <- lapply(no_dots, function(x) remove_str(x, "SL")) # remove SL if length is > 1
+  no_skinny <- lapply(no_sl, function(x) remove_str(x, "skinny")) # remove "skinny" if it's there
+  learner_nms <- unlist(lapply(no_skinny, function(x) paste(x, collapse = "_")))
+  return(learner_nms)
+}
+make_nice_screen_name <- function(screens) {
+  no_underscores <- strsplit(as.character(screens), "_", fixed = TRUE)
+  no_screen_plus_exposure <- lapply(no_underscores, function(x) x[!grepl("screen", x) & !grepl("plus", x) & !grepl("exposure", x)])
+  no_all <- lapply(no_screen_plus_exposure, function(x) remove_str(x, "All"))
+  screen_nms <- unlist(lapply(no_all, function(x) paste(x, collapse = "_")))
+  return(screen_nms)
+}
