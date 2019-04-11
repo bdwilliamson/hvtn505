@@ -91,28 +91,32 @@ make_nice_screen_name <- function(screens) {
 }
 
 ## get the cv vim for each fold
-get_fold_cv_vim <- function(full_fit, reduced_fit, x) {
-  ## get the full, reduced predictions from the two CV objects
-  full_fits <- lapply(as.list(1:length(full_fit[[x]]$fit$folds)), function(i) full_fit[[x]]$fit$SL.predict[full_fit[[x]]$folds[[i]]])
-  redu_fits <- lapply(as.list(1:length(reduced_fit[[x]]$fit$folds)), function(i) reduced_fit[[x]]$fit$SL.predict[reduced_fit[[x]]$folds[[i]]])
-  ys <- lapply(as.list(1:length(full_fit[[x]]$fit$folds)), function(i) full_fit[[x]]$fit$Y[full_fit[[x]]$fit$folds[[i]]])
+get_fold_cv_vim <- function(full_fit, reduced_fit, x, type) {
   ## get the outcome, folds
   y <- full_fit[[x]]$fit$Y
-  folds <- do.call(c, full_fit[[x]]$fit$folds)
+  fold_row_nums <- as.vector(do.call(cbind, full_fit[[x]]$fit$folds))
+  folds_init <- rep(as.numeric(names(full_fit[[x]]$fit$folds)), each = length(y)/length(full_fit[[x]]$fit$folds))
+  folds_mat <- cbind(fold_row_nums, folds_init)
+  folds <- folds_mat[order(folds_mat[, 1]), 2]
+  
+  ## get the full, reduced predictions from the two CV objects
+  full_fits <- lapply(as.list(1:length(full_fit[[x]]$fit$folds)), function(i) full_fit[[x]]$fit$SL.predict[folds == i])
+  redu_fits <- lapply(as.list(1:length(reduced_fit[[x]]$fit$folds)), function(i) reduced_fit[[x]]$fit$SL.predict[folds == i])
+  ys <- lapply(as.list(1:length(full_fit[[x]]$fit$folds)), function(i) full_fit[[x]]$fit$Y[folds == i])
   
   ## variable importance
   vim_est <- cv_vim(Y = y, 
                     f1 = full_fits,
                     f2 = redu_fits,
                     folds = folds,
-                    type = "r_squared",
+                    type = type,
                     run_regression = FALSE,
                     alpha = 0.05)
   return(vim_est)
 }
 ## get the CV vim averaged over the 10 folds
-get_cv_vim <- function(full_fit, reduced_fit) {
+get_cv_vim <- function(full_fit, reduced_fit, type) {
   ## get the cv vim for each fold
-  all_cv_vims <- lapply(as.list(1:length(full_fit)), get_fold_cv_vim, full_fit = full_fit, reduced_fit = reduced_fit)
+  all_cv_vims <- lapply(as.list(1:length(full_fit)), get_fold_cv_vim, full_fit = full_fit, reduced_fit = reduced_fit, type = type)
   return(all_cv_vims)
 }

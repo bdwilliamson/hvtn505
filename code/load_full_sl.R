@@ -125,4 +125,24 @@ X_vaccine <- vaccinees %>%
   select(-Y, -weights)
 
 ## do variable importance
-vimp_all_markers <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_1_baseline_exposure)
+## all markers
+vimp_all_markers <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_1_baseline_exposure, type = "r_squared")
+mean(unlist(lapply(vimp_all_markers, function(x) x$est)))
+## T cells + Fx Ab
+vimp_tcells_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_2_igg_iga, type = "r_squared")
+mean(unlist(lapply(vimp_tcells_fxab, function(x) x$est)))
+## IgG + IgA + Fx Ab
+vimp_igg_iga_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_3_tcells, type = "r_squared")
+mean(unlist(lapply(vimp_igg_iga_fxab, function(x) x$est)))
+## IgG + IgA + T cells
+vimp_igg_iga_tcells <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_4_fxab, type = "r_squared")
+mean(unlist(lapply(vimp_igg_iga_tcells, function(x) x$est)))
+## Fx Ab
+vimp_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_5_igg_iga_tcells, type = "r_squared")
+mean(unlist(lapply(vimp_fxab, function(x) x$est)))
+## T cells
+vimp_tcells <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_6_igg_iga_fxab, type = "r_squared")
+mean(unlist(lapply(vimp_tcells, function(x) x$est)))
+## IgG + IgA
+vimp_igg_iga <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_7_tcells_fxab, type = "r_squared")
+mean(unlist(lapply(vimp_igg_iga, function(x) x$est)))
