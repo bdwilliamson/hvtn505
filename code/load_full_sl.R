@@ -1,19 +1,26 @@
 ## results from full SL analysis
 ## includes CV-AUC plots
 
-## ------------------------------------------------
+## --------------------------------------------------------------------------------------------------------------------------------------
 ## set up directories, load required packages
-## ------------------------------------------------
+## --------------------------------------------------------------------------------------------------------------------------------------
 library("SuperLearner")
 library("cvAUC")
 library("tidyr")
 library("dplyr")
 library("cowplot")
+# install if anything has changed
+#  install.packages("~/Projects/UW/vimp_1.3.0.tar.gz", repos = NULL, type = "source")
+library("vimp")
 method <- "method.CC_nloglik" # since SuperLearner relies on this to be in GlobalEnv
+source("code/auc_plot_assays.R")
 
 results_dir <- "results/"
+plots_dir <- "plots/"
 
+## --------------------------------------------------------------------------------------------------------------------------------------
 ## load results objects:
+## --------------------------------------------------------------------------------------------------------------------------------------
 ## each is a length 10 list (one for each random start)
 var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_tcells", "4_fxab",
                    "5_igg_iga_tcells", "6_igg_iga_fxab", "7_tcells_fxab",
@@ -54,62 +61,68 @@ full_forest_plot_auc <- avg_aucs %>%
   xlab("CV-AUC") +
   ylab("Learner")
 
-## get SL and the top individual learner/screen combo from each assay
-top_learners <- avg_aucs %>% 
-  group_by(assay) %>% 
-  arrange(desc(AUC), .by_group = TRUE) %>% # arrange in descending order by assay group
-  filter((Learner == "SL" & Screen == "All") | row_number() == 1) %>%  # select only the SL row and the top performing learner 
-  mutate(learner_nm = make_nice_learner_name(Learner), screen_nm = make_nice_screen_name(Screen)) %>% 
-  ungroup() %>% 
-  arrange(desc(AUC))
 
-## another forest plot with the groups/learners from the analysis plan
-top_learner_plot <- top_learners %>% 
-  ggplot(aes(x = AUC, y = factor(paste0(Screen, "_", Learner, "_", assay), levels = paste0(Screen, "_", Learner, "_", assay)[order(AUC)],
-                                 labels = paste0(varset_label, " ", learner_nm, " ", screen_nm)))) + 
-  geom_errorbarh(aes(xmin = ci_ll, xmax = ci_ul)) +
-  geom_point() +
-  xlab("CV-AUC") +
-  ylab("") + 
-  xlim(c(0, 1)) +
-  theme(axis.text.y = element_blank(),
-        plot.margin=unit(c(2,0,0,0),"cm"))
-## separate plot with nice names, printed values of the AUCs
-top_row <- 0.875
-spacing <- 0.06
-num_word_space <- 0.1
-title_font_size <- 8
-main_font_size <- 11
-top_learners_labels <- top_learners %>% 
-  ungroup() %>% 
-  mutate(lab_auc = paste0(round(AUC, 3), " [", round(ci_ll, 3), ", ", round(ci_ul, 3), "]")) %>%
-  select(varset_label, learner_nm, screen_nm, lab_auc)
-## melt to make a single "value" column
-top_learners_labels$var <- 1
-top_learners_labs <- melt(top_learners_labels, id.var = "var")
-## tack on x, y coordinates
-top_learners_labs$x_coord <- apply(matrix(top_learners_labs$variable), 1, function(x) which(grepl(x, c("varset_label", "learner_nm", "screen_nm", "lab_auc"))) - 1 + c(0, 0.3, -0.3, 0)[which(grepl(x, c("varset_label", "learner_nm", "screen_nm", "lab_auc")))])
-top_learners_labs$y_coord <- rep(as.numeric(rownames(top_learners))[order(top_learners$AUC, decreasing = FALSE)], dim(top_learners_labs)[1]/length(as.numeric(rownames(top_learners))))
-top_learner_nms_plot <- top_learners_labs %>% 
-  ggplot(aes(x = x_coord, y = y_coord, label = value)) +
-  geom_text(size = 3.5, hjust = 0, vjust = 0.5) +
-  xlim(c(min(top_learners_labs$x_coord) - 1, max(top_learners_labs$x_coord)) + 1) +
-  ylim(c(1, max(top_learners_labs$y_coord) + 1)) +
-  theme(legend.position="", 
-        axis.line=element_blank(),
-        axis.text=element_blank(),
-        text = element_text(size=3.5),
-        axis.title = element_blank(), 
-        axis.ticks = element_blank(),
-        plot.margin=unit(c(0,0,0,0),"cm"),
-        panel.background=element_blank(),
-        panel.border=element_blank(),
-        panel.grid.major=element_blank(),
-        panel.grid.minor=element_blank(),
-        plot.background=element_blank())
+## --------------------------------------------------------------------------------------------------------------------------------------
+## forest plot of CV-AUC for the top learner and SL for each assay combination
+## --------------------------------------------------------------------------------------------------------------------------------------
+title_font_size <- 18
+main_font_size <- 5
+fig_width <- fig_height <- 2590
+y_title <- 0.96
+auc_forest_plot <- auc_plot_assays(avg_aucs, main_font_size)
+png(paste0(plots_dir, "cv_auc_forest_plot_sl_plus_top_learner.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
+plot_grid(auc_forest_plot$top_learner_nms_plot, auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
+  draw_label("Assay combination", size = title_font_size, x = 0.075, y = y_title) +
+  draw_label("Algorithm", size = title_font_size, x = 0.175, y = y_title) +
+  draw_label("Screen", size = title_font_size, x = 0.25, y = y_title) +
+  draw_label("CV-AUC [95% CI]", size = title_font_size, x = 0.43, y = y_title)
+dev.off()
 
-plot_grid(top_learner_nms_plot, top_learner_plot, nrow = 1, align = "h") +
-  draw_label("Assay combination", size = 1.2*title_font_size, x = 0.05, y = 0.95) +
-  draw_label("Algorithm", size = 1.2*title_font_size, x = 0.15, y = 0.95) +
-  draw_label("Screen", size = 1.2*title_font_size, x = 0.25, y = 0.95) +
-  draw_label("CV-AUC [95% CI]", size = 1.2*title_font_size, x = 0.35, y = 0.95)
+## --------------------------------------------------------------------------------------------------------------------------------------
+## Variable importance plot for the different assay combinations:
+## All markers yields the full regression fit
+## Variable set 1 gives reduced for importance of all markers (group 8)
+## Variable set 2 gives reduced for importance of Fx Ab + Tcells (group 7)
+## Variable set 3 gives reduced for importance of IgG + IgA + Fx Ab (group 6)
+## Variable set 4 gives reduced for importance of IgG + IgA + Tcells (group 5)
+## Variable set 5 gives reduced for importance of Fx Ab (group 4)
+## Variable set 6 gives reduced for importance of T cells (group 3)
+## Variable set 7 gives reduced for importance of IgG + IgA (group 2)
+## --------------------------------------------------------------------------------------------------------------------------------------
+## load the data
+## read in the full dataset
+data("dat.505", package = "HVTN505")
+## read in the super learner variables
+data("var.super", package = "HVTN505") # even if there is a warning message, it still exists
+## note that "var.super" contains individual vars for vaccine-matched antigens,
+## and for vaccine-mismatched antigens, has either individual var (if only one)
+## or PC1 and/or MDW (only PC1 if cor(PC1, MDW) > 0.9)
+
+## scale vaccine recipients to have mean 0, sd 1 for all vars
+for (a in var.super$varname) {
+  dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1]))
+  dat.505[[a%.%"_bin"]] <- scale(dat.505[[a%.%"_bin"]], center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]), 
+                                 scale = sd(dat.505[[a%.%"_bin"]][dat.505$trt == 1]))
+}
+for (a in c("age", "BMI", "bhvrisk")) {
+  dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1]))
+}
+
+## set up X, Y for super learning
+X_markers <- dat.505 %>% 
+  select(var.super$varname, paste0(var.super$varname, "_bin"))
+X_exposure <- dat.505 %>% 
+  select(age, BMI, bhvrisk)
+X <- data.frame(trt = dat.505$trt, X_exposure, X_markers)
+weights <- dat.505$wt
+Y <- dat.505$case
+vaccinees <- cbind.data.frame(Y, weights, X) %>% 
+  filter(trt == 1) %>% 
+  select(-trt)
+Y_vaccine <- vaccinees$Y
+weights_vaccine <- vaccinees$weights
+X_vaccine <- vaccinees %>% 
+  select(-Y, -weights)
+
+## do variable importance
+vimp_all_markers <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_1_baseline_exposure)
