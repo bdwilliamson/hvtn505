@@ -120,3 +120,11 @@ get_cv_vim <- function(full_fit, reduced_fit, type) {
   all_cv_vims <- lapply(as.list(1:length(full_fit)), get_fold_cv_vim, full_fit = full_fit, reduced_fit = reduced_fit, type = type)
   return(all_cv_vims)
 }
+## get estimate, CI based on averaging over the 10 random starts
+get_avg_est_ci <- function(vimp_lst) {
+  ests <- unlist(lapply(vimp_lst, function(x) x$est))
+  cis <- do.call(rbind, lapply(vimp_lst, function(x) x$ci))
+  est <- mean(ests)
+  ci <- colMeans(cis)
+  return(list(est = est, ci = ci))
+}

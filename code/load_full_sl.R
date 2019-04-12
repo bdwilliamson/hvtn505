@@ -14,6 +14,7 @@ library("cowplot")
 library("vimp")
 method <- "method.CC_nloglik" # since SuperLearner relies on this to be in GlobalEnv
 source("code/auc_plot_assays.R")
+source("code/utils.R")
 
 results_dir <- "results/"
 plots_dir <- "plots/"
@@ -126,23 +127,38 @@ X_vaccine <- vaccinees %>%
 
 ## do variable importance
 ## all markers
-vimp_all_markers <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_1_baseline_exposure, type = "r_squared")
+risk_type <- "r_squared"
+# risk_type <- "auc"
+vimp_all_markers <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_1_baseline_exposure, type = risk_type)
+unlist(lapply(vimp_all_markers, function(x) x$est))
+var(unlist(lapply(vimp_all_markers, function(x) x$est)))
 mean(unlist(lapply(vimp_all_markers, function(x) x$est)))
+median(unlist(lapply(vimp_all_markers, function(x) x$est)))
+vimp_all_markers_avg <- get_avg_est_ci(vimp_all_markers)
 ## T cells + Fx Ab
-vimp_tcells_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_2_igg_iga, type = "r_squared")
+vimp_tcells_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_2_igg_iga, type = risk_type)
 mean(unlist(lapply(vimp_tcells_fxab, function(x) x$est)))
+vimp_tcells_fxab_avg <- get_avg_est_ci(vimp_tcells_fxab)
 ## IgG + IgA + Fx Ab
-vimp_igg_iga_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_3_tcells, type = "r_squared")
+vimp_igg_iga_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_3_tcells, type = risk_type)
 mean(unlist(lapply(vimp_igg_iga_fxab, function(x) x$est)))
+vimp_igg_iga_fxab_avg <- get_avg_est_ci(vimp_igg_iga_fxab)
 ## IgG + IgA + T cells
-vimp_igg_iga_tcells <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_4_fxab, type = "r_squared")
+vimp_igg_iga_tcells <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_4_fxab, type = risk_type)
 mean(unlist(lapply(vimp_igg_iga_tcells, function(x) x$est)))
+vimp_igg_iga_tcells_avg <- get_avg_est_ci(vimp_igg_iga_tcells)
 ## Fx Ab
-vimp_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_5_igg_iga_tcells, type = "r_squared")
+vimp_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_5_igg_iga_tcells, type = risk_type)
 mean(unlist(lapply(vimp_fxab, function(x) x$est)))
+vimp_fxab_avg <- get_avg_est_ci(vimp_fxab)
 ## T cells
-vimp_tcells <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_6_igg_iga_fxab, type = "r_squared")
+vimp_tcells <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_6_igg_iga_fxab, type = risk_type)
 mean(unlist(lapply(vimp_tcells, function(x) x$est)))
+vimp_tcells_avg <- get_avg_est_ci(vimp_tcells)
 ## IgG + IgA
-vimp_igg_iga <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_7_tcells_fxab, type = "r_squared")
+vimp_igg_iga <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_7_tcells_fxab, type = risk_type)
 mean(unlist(lapply(vimp_igg_iga, function(x) x$est)))
+vimp_igg_iga_avg <- get_avg_est_ci(vimp_igg_iga)
+
+## forest plot of vimp, with labels for the groups
+vimp_forest_plot <- 
