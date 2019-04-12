@@ -92,6 +92,21 @@ X_vaccine <- vaccinees %>%
 
 V_outer <- 5
 V_inner <- length(Y_vaccine) - 1 
+
+## if risk_type == "r_squared", then use the full fitted values as the outcome
+## otherwise, use Y_vaccine
+if (risk_type == "r_squared") {
+  full_fits <- readRDS("sl_fits_varset_8_all.rds")
+  outcome <- lapply(full_fits, function(x) x$fit$SL.predict)
+  family <- "gaussian"
+  method <- "method.NNLS"
+  cv_control <- list(V = V_outer)
+} else {
+  outcome <- rep(list(Y_vaccine), 10) # need 10 for the list
+  family <- "binomial"
+  method <- "method.CC_nloglik"
+  cv_control <- list(V = V_outer, stratifyCV = TRUE)
+}
 ## ---------------------------------------------------------------------------------
 ## run super learner, with leave-one-out cross-validation and all screens
 ## do 10 random starts, average over these
@@ -99,13 +114,22 @@ V_inner <- length(Y_vaccine) - 1
 ## ensure reproducibility
 set.seed(4747)
 seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts (same as full SL)
-fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X_vaccine, family = "binomial",
-                           obsWeights = weights_vaccine,
-                           sl_lib = SL_library, # this comes from sl_screens.R
-                           method = "method.CC_nloglik",
-                           cvControl = list(V = V_outer, stratifyCV = TRUE),
-                           innerCvControl = list(list(V = V_inner)),
-                           vimp = TRUE,
+fits <- parallel::mclapply(1:length(seeds), FUN = function(X) run_cv_sl_once(Y = outcome[[X]],
+                                                                             X_mat = X_vaccine,
+                                                                             family = family,
+                                                                             obsWeights = weights_vaccine,
+                                                                             sl_lib = SL_library,
+                                                                             method = method,
+                                                                             cvConrtol = cv_control,
+                                                                             innerCvControl = list(list(V = V_inner)),
+                                                                             vimp = TRUE), 
+                           # Y = outcome, X_mat = X_vaccine, family = "binomial",
+                           # obsWeights = weights_vaccine,
+                           # sl_lib = SL_library, # this comes from sl_screens.R
+                           # method = "method.CC_nloglik",
+                           # cvControl = list(V = V_outer, stratifyCV = TRUE),
+                           # innerCvControl = list(list(V = V_inner)),
+                           # vimp = TRUE,
                            mc.cores = num_cores
 )
 saveRDS(fits, paste0("sl_fits_vimp_", job_id, ".rds"))
