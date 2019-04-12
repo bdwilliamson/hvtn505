@@ -160,5 +160,18 @@ vimp_igg_iga <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fit
 mean(unlist(lapply(vimp_igg_iga, function(x) x$est)))
 vimp_igg_iga_avg <- get_avg_est_ci(vimp_igg_iga)
 
+## combine together
+vimp_tibble <- tibble(assay_grp = c("All markers", "T Cells + Fx Ab", "IgG + IgA + Fx Ab", 
+                                    "IgG + IgA + T Cells", "Fx Ab", "T Cells", "IgG + IgA"),
+                      est = c(vimp_all_markers_avg$est, vimp_tcells_fxab_avg$est, vimp_igg_iga_fxab$est,
+                              vimp_igg_iga_tcells_avg$est, vimp_fxab_avg$est, vimp_tcells_avg$est,
+                              vimp_igg_iga_avg$est),
+                      cil = c(vimp_all_markers_avg$ci[1], vimp_tcells_fxab_avg$ci[1], vimp_igg_iga_fxab$ci[1],
+                              vimp_igg_iga_tcells_avg$ci[1], vimp_fxab_avg$ci[1], vimp_tcells_avg$ci[1],
+                              vimp_igg_iga_avg$ci[1]),
+                      ciu = c(vimp_all_markers_avg$ci[2], vimp_tcells_fxab_avg$ci[2], vimp_igg_iga_fxab$ci[2],
+                              vimp_igg_iga_tcells_avg$ci[2], vimp_fxab_avg$ci[2], vimp_tcells_avg$ci[2],
+                              vimp_igg_iga_avg$ci[2]))
+
 ## forest plot of vimp, with labels for the groups
 vimp_forest_plot <- 
