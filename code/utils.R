@@ -41,6 +41,11 @@ run_cv_sl_once <- function(seed, Y, X_mat, family, obsWeights, sl_lib, method, c
   }
   return(ret_lst)
 }
+## run SuperLearner given the set of results from the CV.SL with all markers
+run_reduced_cv_sl_once <- function(seed, full_fit, X_mat, family, obsWeights, sl_lib, method, innerCvControl, vimp = TRUE) {
+  set.seed(seed)
+  ## use the same folds as the CV.SuperLearner
+}
 
 ## get names for multiple assays, all antigens
 get_nms_group_all_antigens <- function(X, assays) {
@@ -127,4 +132,8 @@ get_avg_est_ci <- function(vimp_lst) {
   est <- mean(ests)
   ci <- colMeans(cis)
   return(list(est = est, ci = ci))
+}
+## get estimate, CI based on averaging over 10 random starts for individual risk estimators
+get_avg_est_ci_individual_risk <- function(vimp_lst) {
+  
 }

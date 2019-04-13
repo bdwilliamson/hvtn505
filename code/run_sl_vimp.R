@@ -21,13 +21,17 @@ library("HVTN505")
 library("kyotil")
 library("argparse")
 
+parser <- ArgumentParser()
+parser$add_argument("--risk-type", default = "r_squared", help = "the risk type to use")
+args <- parser$parse_args()
+
 ## set up code directory
 if (!is.na(Sys.getenv("RSTUDIO", unset = NA))) { # if running locally
   code_dir <- "code/"
-  # plan("sequential")
+  results_dir <- "results/"
 } else {
   code_dir <- ""
-  # plan("multicore")
+  results_dir <- ""
 }
 num_cores <- parallel::detectCores()
 print(num_cores)
@@ -64,13 +68,37 @@ X_markers <- dat.505 %>%
 assays <- unique(var.super$assay)
 antigens <- unique(var.super$antigen)
 
+## assay combinations:
+# 1. None (baseline variables only)
+var_set_none <- rep(FALSE, ncol(X_markers))
+# 2. IgG + IgA (all antigens)
+var_set_igg_iga <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA"))
+# 3. T cells (all antigens)
+var_set_tcells <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "CD8"))
+# 4. Fx Ab (all antigens)
+var_set_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "phago", "fcrR2a", "fcrR3a"))
+# 5. 2+3
+var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8")) 
+# 6. 2+4
+var_set_igg_iga_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "phago", "fcrR2a", "fcrR3a"))
+# 7. 3+4
+var_set_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "CD8", "IgG3", "phago", "fcrR2a", "fcrR3a"))
+## already run this
+
+var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_tcells", "4_fxab",
+                   "5_igg_iga_tcells", "6_igg_iga_fxab", "7_tcells_fxab")
+
+## set up a matrix of all 
+var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_tcells, var_set_fxab,
+                        var_set_igg_iga_tcells, var_set_igg_iga_fxab, var_set_tcells_fxab)
+
 group_grid <- expand.grid(assay = assays, antigen = antigens)
 group_var_mat <- t(apply(group_grid, 1, function(x) get_nms_group(X_markers, x[1], x[2])))
 
 indiv_grid <- matrix(names(X_markers), ncol = 1)
 indiv_var_mat <- t(apply(indiv_grid, 1, function(x) get_nms_ind(X_markers, x)))
 
-all_vars_mat <- rbind(group_var_mat, indiv_var_mat)
+all_vars_mat <- rbind(var_set_matrix, group_var_mat, indiv_var_mat)
 job_id <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
 vars_vimp <- all_vars_mat[job_id, ]
 
@@ -95,8 +123,8 @@ V_inner <- length(Y_vaccine) - 1
 
 ## if risk_type == "r_squared", then use the full fitted values as the outcome
 ## otherwise, use Y_vaccine
-if (risk_type == "r_squared") {
-  full_fits <- readRDS("sl_fits_varset_8_all.rds")
+if (args$risk_type == "r_squared") {
+  full_fits <- readRDS(paste0(results_dir, "sl_fits_varset_8_all.rds"))
   outcome <- lapply(full_fits, function(x) x$fit$SL.predict)
   family <- "gaussian"
   method <- "method.NNLS"
@@ -120,7 +148,7 @@ fits <- parallel::mclapply(1:length(seeds), FUN = function(X) run_cv_sl_once(Y =
                                                                              obsWeights = weights_vaccine,
                                                                              sl_lib = SL_library,
                                                                              method = method,
-                                                                             cvConrtol = cv_control,
+                                                                             cvControl = cv_control,
                                                                              innerCvControl = list(list(V = V_inner)),
                                                                              vimp = TRUE), 
                            # Y = outcome, X_mat = X_vaccine, family = "binomial",
