@@ -72,7 +72,7 @@ run_reduced_cv_sl_once <- function(seed, Y, X_mat, family, obsWeights, sl_lib, m
   preds_mat <- do.call(rbind.data.frame, lapply(preds_lst, function(x) cbind.data.frame(x, row_num = as.numeric(rownames(x)))))
   preds_mat_ordered <- preds_mat[order(preds_mat$row_num), ]
   ## return
-  ret_lst <- list(fit = preds_mat_ordered[, 1], folds = fit$folds)
+  ret_lst <- list(fit = preds_mat_ordered[, 1], folds = full_fit$folds)
 }
 
 ## get names for multiple assays, all antigens
