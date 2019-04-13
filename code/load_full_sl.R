@@ -14,6 +14,7 @@ library("cowplot")
 library("vimp")
 method <- "method.CC_nloglik" # since SuperLearner relies on this to be in GlobalEnv
 source("code/auc_plot_assays.R")
+source("code/r2_plot_assays.R")
 source("code/utils.R")
 
 results_dir <- "results/"
@@ -80,6 +81,36 @@ plot_grid(auc_forest_plot$top_learner_nms_plot, auc_forest_plot$top_learner_plot
 dev.off()
 
 ## --------------------------------------------------------------------------------------------------------------------------------------
+## forest plot of CV-R^2 for the top learner and SL for each assay combination
+## --------------------------------------------------------------------------------------------------------------------------------------
+## get the R-squareds
+for (i in 1:length(var_set_names)) {
+  this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
+  eval(parse(text = paste0("all_r2s_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) get_all_r2s_lst(x))))")))
+  eval(parse(text = paste0("avg_r2s_", var_set_names[i]," <- all_r2s_i %>% 
+    group_by(Learner, Screen) %>% 
+    summarize(R2 = mean(R2), ci_ll = mean(ci_ll), ci_ul = mean(ci_ul)) %>% 
+    mutate(assay = this_name, varset_label = var_set_labels[i]) %>% 
+    ungroup()")))
+}
+## combine into a full tibble; add a column to each that is the assay
+avg_r2s <- bind_rows(avg_r2s_1_baseline_exposure, avg_r2s_2_igg_iga, avg_r2s_3_tcells,
+                      avg_r2s_4_fxab, avg_r2s_5_igg_iga_tcells, avg_r2s_6_igg_iga_fxab,
+                      avg_r2s_7_tcells_fxab, avg_r2s_8_all)
+
+title_font_size <- 18
+main_font_size <- 5
+fig_width <- fig_height <- 2590
+y_title <- 0.96
+r2_forest_plot <- r2_plot_assays(avg_r2s, main_font_size)
+png(paste0(plots_dir, "cv_r2_forest_plot_sl_plus_top_learner.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
+plot_grid(r2_forest_plot$top_learner_nms_plot, r2_forest_plot$top_learner_plot, nrow = 1, align = "h", rel_widths = c(1, 0.55)) +
+  draw_label("Assay combination", size = title_font_size, x = 0.075, y = y_title) +
+  draw_label("Algorithm", size = title_font_size, x = 0.25, y = y_title) +
+  draw_label("Screen", size = title_font_size, x = 0.34, y = y_title) +
+  draw_label(expression(paste("CV-", R^2, " [95% CI]", sep = "")), size = title_font_size, x = 0.55, y = y_title)
+dev.off()
+## --------------------------------------------------------------------------------------------------------------------------------------
 ## Variable importance plot for the different assay combinations:
 ## All markers yields the full regression fit
 ## Variable set 1 gives reduced for importance of all markers (group 8)
@@ -135,6 +166,7 @@ var(unlist(lapply(vimp_all_markers, function(x) x$est)))
 mean(unlist(lapply(vimp_all_markers, function(x) x$est)))
 median(unlist(lapply(vimp_all_markers, function(x) x$est)))
 vimp_all_markers_avg <- get_avg_est_ci(vimp_all_markers)
+vimp_all_markers_avg_risk <- get_avg_risk_ci(vimp_all_markers)
 ## T cells + Fx Ab
 vimp_tcells_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_2_igg_iga, type = risk_type)
 mean(unlist(lapply(vimp_tcells_fxab, function(x) x$est)))
