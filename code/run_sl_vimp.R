@@ -121,6 +121,14 @@ X_vaccine <- vaccinees %>%
 V_outer <- 5
 V_inner <- length(Y_vaccine) - 1 
 
+## ---------------------------------------------------------------------------------
+## run super learner, with leave-one-out cross-validation and all screens
+## do 10 random starts, average over these
+## ---------------------------------------------------------------------------------
+## ensure reproducibility
+set.seed(4747)
+seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts (same as full SL)
+
 ## if risk_type == "r_squared", then use the full fitted values as the outcome
 ## otherwise, use Y_vaccine
 if (args$risk_type == "r_squared") {
@@ -129,35 +137,26 @@ if (args$risk_type == "r_squared") {
   family <- "gaussian"
   method <- "method.NNLS"
   cv_control <- list(V = V_outer)
+  fits <- parallel::mclapply(1:length(seeds), FUN = function(x) {
+    run_reduced_cv_sl_once(seeds[x], full_fits[[x]]$fit, X_vaccine, family = "gaussian",
+                           obsWeights = weights_vaccine, sl_lib = SL_library_continuous,
+                           method = "method.NNLS", cvControl = list(V = V_inner),
+                           vimp = TRUE)
+  }, mc.cores = num_cores)
 } else {
   outcome <- rep(list(Y_vaccine), 10) # need 10 for the list
   family <- "binomial"
   method <- "method.CC_nloglik"
   cv_control <- list(V = V_outer, stratifyCV = TRUE)
+  fits <- parallel::mclapply(seeds, run_cv_sl_once(Y = outcome, X_mat = X_vaccine, family = "binomial",
+                             obsWeights = weights_vaccine,
+                             sl_lib = SL_library, # this comes from sl_screens.R
+                             method = "method.CC_nloglik",
+                             cvControl = list(V = V_outer, stratifyCV = TRUE),
+                             innerCvControl = list(list(V = V_inner)),
+                             vimp = TRUE),
+                             mc.cores = num_cores
+  )
+  
 }
-## ---------------------------------------------------------------------------------
-## run super learner, with leave-one-out cross-validation and all screens
-## do 10 random starts, average over these
-## ---------------------------------------------------------------------------------
-## ensure reproducibility
-set.seed(4747)
-seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts (same as full SL)
-fits <- parallel::mclapply(1:length(seeds), FUN = function(X) run_cv_sl_once(Y = outcome[[X]],
-                                                                             X_mat = X_vaccine,
-                                                                             family = family,
-                                                                             obsWeights = weights_vaccine,
-                                                                             sl_lib = SL_library,
-                                                                             method = method,
-                                                                             cvControl = cv_control,
-                                                                             innerCvControl = list(list(V = V_inner)),
-                                                                             vimp = TRUE), 
-                           # Y = outcome, X_mat = X_vaccine, family = "binomial",
-                           # obsWeights = weights_vaccine,
-                           # sl_lib = SL_library, # this comes from sl_screens.R
-                           # method = "method.CC_nloglik",
-                           # cvControl = list(V = V_outer, stratifyCV = TRUE),
-                           # innerCvControl = list(list(V = V_inner)),
-                           # vimp = TRUE,
-                           mc.cores = num_cores
-)
 saveRDS(fits, paste0("sl_fits_vimp_", job_id, ".rds"))

@@ -42,9 +42,19 @@ run_cv_sl_once <- function(seed, Y, X_mat, family, obsWeights, sl_lib, method, c
   return(ret_lst)
 }
 ## run SuperLearner given the set of results from the CV.SL with all markers
+## full fit is only the "fit" object from the CV.SL results object
 run_reduced_cv_sl_once <- function(seed, full_fit, X_mat, family, obsWeights, sl_lib, method, innerCvControl, vimp = TRUE) {
-  set.seed(seed)
   ## use the same folds as the CV.SuperLearner
+  fold_row_nums <- as.vector(do.call(cbind, full_fit$folds))
+  folds_init <- rep(as.numeric(names(full_fit$folds)), each = length(y)/length(full_fit$folds))
+  folds_mat <- cbind(fold_row_nums, folds_init)
+  folds <- folds_mat[order(folds_mat[, 1]), 2]
+  
+  ## set the seed, run the SL
+  set.seed(seed)
+  for (v in 1:)
+  
+  
 }
 
 ## get names for multiple assays, all antigens
