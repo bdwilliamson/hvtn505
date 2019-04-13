@@ -46,13 +46,23 @@ run_cv_sl_once <- function(seed, Y, X_mat, family, obsWeights, sl_lib, method, c
 run_reduced_cv_sl_once <- function(seed, full_fit, X_mat, family, obsWeights, sl_lib, method, innerCvControl, vimp = TRUE) {
   ## use the same folds as the CV.SuperLearner
   fold_row_nums <- as.vector(do.call(cbind, full_fit$folds))
-  folds_init <- rep(as.numeric(names(full_fit$folds)), each = length(y)/length(full_fit$folds))
+  folds_init <- rep(as.numeric(names(full_fit$folds)), each = dim(X_mat)[1]/length(full_fit$folds))
   folds_mat <- cbind(fold_row_nums, folds_init)
   folds <- folds_mat[order(folds_mat[, 1]), 2]
+  V <- length(unique(folds))
   
   ## set the seed, run the SL
   set.seed(seed)
-  for (v in 1:)
+  preds_lst <- vector("list", length = V)
+  for (v in 1:V) {
+    ## run an SL of full fit on reduced set of predictors
+    inner_sl <- SuperLearner::SuperLearner(Y = full_fit$SL.predict[folds != v], X = X_mat[folds != v, , drop = FALSE],
+                                           newX = X_mat[folds == v, , drop = FALSE],
+                                           family = family, obsWeights = obsWeights[folds != v], SL.library = sl_lib,
+                                           method = method, cvControl = innerCvControl)
+    ## get the predicted values on the vth fold
+    preds_lst[[v]] <- inner_sl$SL.predict
+  } 
   
   
 }
