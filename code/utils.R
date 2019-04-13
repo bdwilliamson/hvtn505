@@ -43,7 +43,12 @@ run_cv_sl_once <- function(seed, Y, X_mat, family, obsWeights, sl_lib, method, c
 }
 ## run SuperLearner given the set of results from the CV.SL with all markers
 ## full fit is only the "fit" object from the CV.SL results object
-run_reduced_cv_sl_once <- function(seed, full_fit, X_mat, family, obsWeights, sl_lib, method, innerCvControl, vimp = TRUE) {
+run_reduced_cv_sl_once <- function(seed, Y, X_mat, family, obsWeights, sl_lib, method, innerCvControl, vimp = TRUE) {
+  ## pull out the correct set of fitted values
+  set.seed(4747)
+  seeds <- round(runif(10, 1000, 10000))
+  indx <- which(seed == seeds)
+  full_fit <- Y[[indx]]$fit
   ## use the same folds as the CV.SuperLearner
   fold_row_nums <- as.vector(do.call(cbind, full_fit$folds))
   folds_init <- rep(as.numeric(names(full_fit$folds)), each = dim(X_mat)[1]/length(full_fit$folds))
@@ -63,8 +68,11 @@ run_reduced_cv_sl_once <- function(seed, full_fit, X_mat, family, obsWeights, sl
     ## get the predicted values on the vth fold
     preds_lst[[v]] <- inner_sl$SL.predict
   } 
-  
-  
+  ## make a vector out of the predictions
+  preds_mat <- do.call(rbind.data.frame, lapply(preds_lst, function(x) cbind.data.frame(x, row_num = as.numeric(rownames(x)))))
+  preds_mat_ordered <- preds_mat[order(preds_mat$row_num), ]
+  ## return
+  ret_lst <- list(fit = preds_mat_ordered[, 1], folds = fit$folds)
 }
 
 ## get names for multiple assays, all antigens

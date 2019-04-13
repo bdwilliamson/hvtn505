@@ -140,10 +140,10 @@ seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts (same as 
 ## otherwise, use Y_vaccine
 if (args$risk_type == "r_squared") {
   full_fits <- readRDS(paste0(results_dir, "sl_fits_varset_8_all.rds"))
-  fits <- parallel::mclapply(1:length(seeds), FUN = run_reduced_cv_sl_once,
-                             seed = seeds[X], Y = full_fits[[X]]$fit, X_mat = X_vaccine, family = "gaussian",
+  fits <- parallel::mclapply(seeds, FUN = run_reduced_cv_sl_once,
+                             Y = full_fits, X_mat = X_vaccine, family = "gaussian",
                              obsWeights = weights_vaccine, sl_lib = sl_lib,
-                             method = "method.CC_LS", cvControl = list(V = V_inner),
+                             method = "method.CC_LS", innerCvControl = list(V = V_inner),
                              vimp = TRUE, mc.cores = num_cores)
 } else {
   fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once,
