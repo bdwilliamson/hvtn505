@@ -26,7 +26,7 @@ get_all_aucs <- function(sl_fit) {
 
 ## get all R^2s for SL, discrete SL, and individual algorithms
 one_r2 <- function(preds, Y) {
-  var_y <- var(Y)
+  var_y <- mean((Y - mean(Y))^2)
   mse <- mean((Y - preds)^2)
   ic_mse <- (Y - preds)^2 - mse
   ic_var <-  (Y - mean(Y))^2 - var_y
@@ -208,18 +208,25 @@ get_fold_cv_vim <- function(full_fit, reduced_fit, x, type) {
   folds <- folds_mat[order(folds_mat[, 1]), 2]
   
   ## get the full, reduced predictions from the two CV objects
+  get_reduced_fit <- function(i) {
+    if (type == "r_squared" & is.null(reduced_fit[[x]]$fit$Y)) {
+      tryCatch(reduced_fit[[x]]$fit[folds == i], error = function(e) rep(NA, sum(folds == i)))
+    } else {
+      reduced_fit[[x]]$fit$SL.predict[folds == i]  
+    }
+  }
   full_fits <- lapply(as.list(1:length(full_fit[[x]]$fit$folds)), function(i) full_fit[[x]]$fit$SL.predict[folds == i])
-  redu_fits <- lapply(as.list(1:length(reduced_fit[[x]]$fit$folds)), function(i) reduced_fit[[x]]$fit$SL.predict[folds == i])
+  redu_fits <- lapply(as.list(1:length(full_fit[[x]]$fit$folds)), function(i) get_reduced_fit(i))
   ys <- lapply(as.list(1:length(full_fit[[x]]$fit$folds)), function(i) full_fit[[x]]$fit$Y[folds == i])
   
   ## variable importance
-  vim_est <- cv_vim(Y = y, 
+  vim_est <- tryCatch(cv_vim(Y = y, 
                     f1 = full_fits,
                     f2 = redu_fits,
                     folds = folds,
                     type = type,
                     run_regression = FALSE,
-                    alpha = 0.05)
+                    alpha = 0.05), error = function(e) NA)
   return(vim_est)
 }
 ## get the CV vim averaged over the 10 folds

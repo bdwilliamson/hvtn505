@@ -156,11 +156,42 @@ weights_vaccine <- vaccinees$weights
 X_vaccine <- vaccinees %>% 
   select(-Y, -weights)
 
+## ----------------------------------------------------------------------------------------------
 ## do variable importance
-## all markers
+## ----------------------------------------------------------------------------------------------
+## read in the reduced regressions based on all markers fit, for R^2 vimp;
+## note that 1 = baseline_exposure, 7 = tcells + fxab
+for (i in 1:(length(var_set_names) - 1)) {
+  eval(parse(text = paste0("sl_fits_vimp_", i, " <- readRDS(paste0(results_dir, 'sl_fits_vimp_', i, '.rds'))")))
+}
+
 risk_type <- "r_squared"
 # risk_type <- "auc"
-vimp_all_markers <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_1_baseline_exposure, type = risk_type)
+
+## run variable importance; based on risk type
+# if (risk_type == "r_squared") {
+#   # baseline exposure only
+#   reduced_fit_1 <- sl_fits_vimp_1
+#   # igg and iga only
+#   reduced_fit_2 <- sl_fits_vimp_2
+#   # t cells only
+#   reduced_fit_3 <- sl_fits_vimp_3
+#   reduced_fit_4 <- sl_fits_vimp_4
+#   reduced_fit_5 <- sl_fits_vimp_5
+#   reduced_fit_6 <- sl_fits_vimp_6
+#   reduced_fit_7 <- sl_fits_vimp_7
+# } else {
+  reduced_fit_1 <- sl_fits_varset_1_baseline_exposure
+  reduced_fit_2 <- sl_fits_varset_2_igg_iga
+  reduced_fit_3 <- sl_fits_varset_3_tcells
+  reduced_fit_4 <- sl_fits_varset_4_fxab
+  reduced_fit_5 <- sl_fits_varset_5_igg_iga_tcells
+  reduced_fit_6 <- sl_fits_varset_6_igg_iga_fxab
+  reduced_fit_7 <- sl_fits_varset_7_tcells_fxab
+# }
+
+## all markers
+vimp_all_markers <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = reduced_fit_1, type = risk_type)
 unlist(lapply(vimp_all_markers, function(x) x$est))
 var(unlist(lapply(vimp_all_markers, function(x) x$est)))
 mean(unlist(lapply(vimp_all_markers, function(x) x$est)))
@@ -168,27 +199,27 @@ median(unlist(lapply(vimp_all_markers, function(x) x$est)))
 vimp_all_markers_avg <- get_avg_est_ci(vimp_all_markers)
 vimp_all_markers_avg_risk <- get_avg_risk_ci(vimp_all_markers)
 ## T cells + Fx Ab
-vimp_tcells_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_2_igg_iga, type = risk_type)
+vimp_tcells_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = reduced_fit_2, type = risk_type)
 mean(unlist(lapply(vimp_tcells_fxab, function(x) x$est)))
 vimp_tcells_fxab_avg <- get_avg_est_ci(vimp_tcells_fxab)
 ## IgG + IgA + Fx Ab
-vimp_igg_iga_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_3_tcells, type = risk_type)
+vimp_igg_iga_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = reduced_fit_3, type = risk_type)
 mean(unlist(lapply(vimp_igg_iga_fxab, function(x) x$est)))
 vimp_igg_iga_fxab_avg <- get_avg_est_ci(vimp_igg_iga_fxab)
 ## IgG + IgA + T cells
-vimp_igg_iga_tcells <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_4_fxab, type = risk_type)
+vimp_igg_iga_tcells <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = reduced_fit_4, type = risk_type)
 mean(unlist(lapply(vimp_igg_iga_tcells, function(x) x$est)))
 vimp_igg_iga_tcells_avg <- get_avg_est_ci(vimp_igg_iga_tcells)
 ## Fx Ab
-vimp_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_5_igg_iga_tcells, type = risk_type)
+vimp_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = reduced_fit_5, type = risk_type)
 mean(unlist(lapply(vimp_fxab, function(x) x$est)))
 vimp_fxab_avg <- get_avg_est_ci(vimp_fxab)
 ## T cells
-vimp_tcells <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_6_igg_iga_fxab, type = risk_type)
+vimp_tcells <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = reduced_fit_6, type = risk_type)
 mean(unlist(lapply(vimp_tcells, function(x) x$est)))
 vimp_tcells_avg <- get_avg_est_ci(vimp_tcells)
 ## IgG + IgA
-vimp_igg_iga <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = sl_fits_varset_7_tcells_fxab, type = risk_type)
+vimp_igg_iga <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = reduced_fit_7, type = risk_type)
 mean(unlist(lapply(vimp_igg_iga, function(x) x$est)))
 vimp_igg_iga_avg <- get_avg_est_ci(vimp_igg_iga)
 
