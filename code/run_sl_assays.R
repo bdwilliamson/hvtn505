@@ -64,23 +64,30 @@ antigens <- unique(var.super$antigen)
 var_set_none <- rep(FALSE, ncol(X_markers))
 # 2. IgG + IgA (all antigens)
 var_set_igg_iga <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA"))
-# 3. T cells (all antigens)
+# 3. IgG3
+var_set_igg3 <- get_nms_group_all_antigens(X_markers, assays = "IgG3")
+# 4. T cells (all antigens)
 var_set_tcells <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "CD8"))
-# 4. Fx Ab (all antigens)
-var_set_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "phago", "fcrR2a", "fcrR3a"))
-# 5. 2+3
+# 5. Fx Ab (all antigens)
+var_set_fxab <- get_nms_group_all_antigens(X_markers, assays = c("phago", "fcrR2a", "fcrR3a", ""))
+# 6. 1+2+3
+var_set_igg_iga_igg3 <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3"))
+# 7. 1+2+4
 var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8")) 
-# 6. 2+4
-var_set_igg_iga_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "phago", "fcrR2a", "fcrR3a"))
-# 7. 3+4
-var_set_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "CD8", "IgG3", "phago", "fcrR2a", "fcrR3a"))
-# 8. All
+# 8. 1+2+3+4
+var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "CD4", "CD8")) 
+# 9. 1+2+3+5
+var_set_igg_iga_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "phago", "fcrR2a", "fcrR3a"))
+# 10. 1+4+5
+var_set_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "CD8", "phago", "fcrR2a", "fcrR3a"))
+# 11. All
 var_set_all <- rep(TRUE, ncol(X_markers))
 ## already run this
 
-var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_tcells", "4_fxab",
-                   "5_igg_iga_tcells", "6_igg_iga_fxab", "7_tcells_fxab",
-                   "8_all")
+var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_igg3","4_tcells", "5_fxab",
+                   "6_igg_iga_igg3", "7_igg_iga_tcells", "8_igg_iga_igg3_tcells", 
+                   "9_igg_iga_igg3_fxab", "10_tcells_fxab",
+                   "11_all")
 
 ## set up a matrix of all 
 var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_tcells, var_set_fxab,
