@@ -17,7 +17,7 @@ library("dplyr")
 # devtools::install_github("benkeser/cvma")
 # library("cvma")
 ## only run this if something has changed
-# install.packages("HVTN505_2019-4-9.tar.gz", type = "source", repos = NULL)
+# install.packages("HVTN505_2019-4-25.tar.gz", type = "source", repos = NULL)
 library("HVTN505")
 library("kyotil")
 library("argparse")
@@ -25,10 +25,8 @@ library("argparse")
 ## set up code directory
 if (!is.na(Sys.getenv("RSTUDIO", unset = NA))) { # if running locally
   code_dir <- "code/"
-  # plan("sequential")
 } else {
   code_dir <- ""
-  # plan("multicore")
 }
 num_cores <- parallel::detectCores()
 print(num_cores)
