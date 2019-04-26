@@ -101,7 +101,7 @@ var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_igg3, var_set_tce
                         var_set_igg3_fxab, var_set_igg_iga_tcells_fxab, var_set_igg3_tcells_fxab)
 job_id <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
 this_var_set <- var_set_matrix[job_id, ]
-cat("\n Running ", var_set_names[job_id])
+cat("\n Running ", var_set_names[job_id], "\n")
 
 X_markers_varset <- X_markers %>% 
   select(names(X_markers)[this_var_set])
