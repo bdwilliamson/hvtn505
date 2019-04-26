@@ -36,7 +36,7 @@ auc_plot_assays <- function(avg_aucs, main_font_size) {
   top_learners_labs <- melt(top_learners_labels, id.var = "var")
   ## tack on x, y coordinates
   top_learners_labs$x_coord <- apply(matrix(top_learners_labs$variable), 1, function(x) which(grepl(x, c("varset_label", "learner_nm", "screen_nm", "lab_auc"))) - 1 + c(0, 0.3, -0.3, 0.2)[which(grepl(x, c("varset_label", "learner_nm", "screen_nm", "lab_auc")))])
-  top_learners_labs$y_coord <- rep(as.numeric(rownames(top_learners))[order(top_learners$AUC, decreasing = FALSE)], dim(top_learners_labs)[1]/length(as.numeric(rownames(top_learners))))
+  top_learners_labs$y_coord <- rep(rev(as.numeric(rownames(top_learners))), dim(top_learners_labs)[1]/length(as.numeric(rownames(top_learners))))
   top_learner_nms_plot <- top_learners_labs %>% 
     ggplot(aes(x = x_coord, y = y_coord, label = value)) +
     geom_text(size = main_font_size, hjust = 0, vjust = 0.5) +
