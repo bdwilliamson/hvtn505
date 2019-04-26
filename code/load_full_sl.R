@@ -169,12 +169,16 @@ X_vaccine <- vaccinees %>%
 risk_type <- "r_squared"
 # risk_type <- "auc"
 
-reduced_fit_all <- sl_fits_varset_1_baseline_exposure
-reduced_fit_tcells_fxab <- sl_fits_varset_2_igg_iga
-reduced_fit_igg_iga_igg3_fxab <- sl_fits_varset_3_igg3
-reduced_fit_igg_iga_igg3_tcells <- sl_fits_varset_4_tcells
-reduced_fit_fxab <- sl_fits_varset_5_igg_iga_tcells
-reduced_fit_tcells <- sl_fits_varset_6_igg_iga_fxab
+reduced_fit_11_all <- sl_fits_varset_1_baseline_exposure
+reduced_fit_10_tcells_fxab <- sl_fits_varset_6_igg_iga_igg3
+reduced_fit_9_igg_iga_igg3_fxab <- sl_fits_varset_4_tcells
+reduced_fit_8_igg_iga_igg3_tcells <- sl_fits_varset_5_fxab
+reduced_fit_7_igg_iga_tcells <- sl_fits_varset_
+reduced_fit_6_igg_iga_igg3 <- sl_fits_varset_10_tcells_fxab
+reduced_fit_5_fxab <- sl_fits_varset_8_igg_iga_igg3_tcells
+reduced_fit_4_tcells <- sl_fits_varset_9_igg_iga_igg3_fxab
+reduced_fit_3_igg3 <- sl_fits_varset_
+reduced_fit_2_igg_iga <- sl_fits_varset_
 reduced_fit_7 <- sl_fits_varset_7_tcells_fxab
 
 
