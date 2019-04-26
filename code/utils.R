@@ -151,13 +151,18 @@ run_reduced_cv_sl_once <- function(seed, Y, X_mat, family, obsWeights, sl_lib, m
 }
 
 ## get names for multiple assays, all antigens
-get_nms_group_all_antigens <- function(X, assays) {
+get_nms_group_all_antigens <- function(X, assays, assays_to_exclude = "") {
   ## set all vars to be false
   vars <- rep(FALSE, ncol(X))
   ## set vars with assay in name to be true
   ## may be more than one
   for (i in 1:length(assays)) {
-    vars[grepl(assays[i], names(X))] <- TRUE
+    if (assays_to_exclude != "") {
+      vars[grepl(assays[i], names(X)) & !grepl(assays_to_exclude, names(X))] <- TRUE  
+    } else {
+      vars[grepl(assays[i], names(X))] <- TRUE
+    }
+    
   }
   return(vars)
 }

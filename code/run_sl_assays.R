@@ -63,19 +63,19 @@ antigens <- unique(var.super$antigen)
 # 1. None (baseline variables only)
 var_set_none <- rep(FALSE, ncol(X_markers))
 # 2. IgG + IgA (all antigens)
-var_set_igg_iga <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA"))
+var_set_igg_iga <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA"), assays_to_exclude = "IgG3")
 # 3. IgG3
 var_set_igg3 <- get_nms_group_all_antigens(X_markers, assays = "IgG3")
 # 4. T cells (all antigens)
 var_set_tcells <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "CD8"))
 # 5. Fx Ab (all antigens)
-var_set_fxab <- get_nms_group_all_antigens(X_markers, assays = c("phago", "fcrR2a", "fcrR3a", ""))
+var_set_fxab <- get_nms_group_all_antigens(X_markers, assays = c("phago", "fcrR2a", "fcrR3a"))
 # 6. 1+2+3
 var_set_igg_iga_igg3 <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3"))
 # 7. 1+2+4
-var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8")) 
+var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8"), assays_to_exclude = "IgG3") 
 # 8. 1+2+3+4
-var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "CD4", "CD8")) 
+var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "CD4", "CD8"), assays_to_exclude = "IgG3") 
 # 9. 1+2+3+5
 var_set_igg_iga_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "phago", "fcrR2a", "fcrR3a"))
 # 10. 1+4+5
@@ -90,10 +90,11 @@ var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_igg3","4_tcells", "5_f
                    "11_all")
 
 ## set up a matrix of all 
-var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_tcells, var_set_fxab,
-                        var_set_igg_iga_tcells, var_set_igg_iga_fxab, var_set_tcells_fxab,
+var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_igg3, var_set_tcells, var_set_fxab,
+                        var_set_igg_iga_igg3, var_set_igg_iga_tcells, var_set_igg_iga_igg3_tcells,
+                        var_set_igg_iga_igg3_fxab, var_set_tcells_fxab,
                         var_set_all)
-job_id <- job_id <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
+job_id <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
 this_var_set <- var_set_matrix[job_id, ]
 cat("\n Running ", var_set_names[job_id])
 
