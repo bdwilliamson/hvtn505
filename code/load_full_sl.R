@@ -98,9 +98,11 @@ for (i in 1:length(var_set_names)) {
     ungroup()")))
 }
 ## combine into a full tibble; add a column to each that is the assay
-avg_r2s <- bind_rows(avg_r2s_1_baseline_exposure, avg_r2s_2_igg_iga, avg_r2s_3_tcells,
-                      avg_r2s_4_fxab, avg_r2s_5_igg_iga_tcells, avg_r2s_6_igg_iga_fxab,
-                      avg_r2s_7_tcells_fxab, avg_r2s_8_all)
+avg_r2s <- bind_rows(avg_r2s_1_baseline_exposure, avg_r2s_2_igg_iga, avg_r2s_3_igg3,
+                     avg_r2s_4_tcells, avg_r2s_5_fxab, avg_r2s_6_igg_iga_igg3,
+                     avg_r2s_7_igg_iga_tcells, avg_r2s_8_igg_iga_igg3_tcells,
+                     avg_r2s_9_igg_iga_igg3_fxab, avg_r2s_10_tcells_fxab,
+                     avg_r2s_11_all)
 
 title_font_size <- 18
 main_font_size <- 5
