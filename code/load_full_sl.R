@@ -165,36 +165,18 @@ X_vaccine <- vaccinees %>%
 ## ----------------------------------------------------------------------------------------------
 ## do variable importance
 ## ----------------------------------------------------------------------------------------------
-## read in the reduced regressions based on all markers fit, for R^2 vimp;
-## note that 1 = baseline_exposure, 7 = tcells + fxab
-for (i in 1:(length(var_set_names) - 1)) {
-  eval(parse(text = paste0("sl_fits_vimp_", i, " <- readRDS(paste0(results_dir, 'sl_fits_vimp_', i, '.rds'))")))
-}
 
 risk_type <- "r_squared"
 # risk_type <- "auc"
 
-## run variable importance; based on risk type
-# if (risk_type == "r_squared") {
-#   # baseline exposure only
-#   reduced_fit_1 <- sl_fits_vimp_1
-#   # igg and iga only
-#   reduced_fit_2 <- sl_fits_vimp_2
-#   # t cells only
-#   reduced_fit_3 <- sl_fits_vimp_3
-#   reduced_fit_4 <- sl_fits_vimp_4
-#   reduced_fit_5 <- sl_fits_vimp_5
-#   reduced_fit_6 <- sl_fits_vimp_6
-#   reduced_fit_7 <- sl_fits_vimp_7
-# } else {
-  reduced_fit_1 <- sl_fits_varset_1_baseline_exposure
-  reduced_fit_2 <- sl_fits_varset_2_igg_iga
-  reduced_fit_3 <- sl_fits_varset_3_tcells
-  reduced_fit_4 <- sl_fits_varset_4_fxab
-  reduced_fit_5 <- sl_fits_varset_5_igg_iga_tcells
-  reduced_fit_6 <- sl_fits_varset_6_igg_iga_fxab
-  reduced_fit_7 <- sl_fits_varset_7_tcells_fxab
-# }
+reduced_fit_all <- sl_fits_varset_1_baseline_exposure
+reduced_fit_tcells_fxab <- sl_fits_varset_2_igg_iga
+reduced_fit_igg_iga_igg3_fxab <- sl_fits_varset_3_igg3
+reduced_fit_igg_iga_igg3_tcells <- sl_fits_varset_4_tcells
+reduced_fit_fxab <- sl_fits_varset_5_igg_iga_tcells
+reduced_fit_tcells <- sl_fits_varset_6_igg_iga_fxab
+reduced_fit_7 <- sl_fits_varset_7_tcells_fxab
+
 
 ## all markers
 vimp_all_markers <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = reduced_fit_1, type = risk_type)
