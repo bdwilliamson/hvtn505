@@ -24,9 +24,10 @@ plots_dir <- "plots/"
 ## load results objects:
 ## --------------------------------------------------------------------------------------------------------------------------------------
 ## each is a length 10 list (one for each random start)
-var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_tcells", "4_fxab",
-                   "5_igg_iga_tcells", "6_igg_iga_fxab", "7_tcells_fxab",
-                   "8_all")
+var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_igg3","4_tcells", "5_fxab",
+                   "6_igg_iga_igg3", "7_igg_iga_tcells", "8_igg_iga_igg3_tcells", 
+                   "9_igg_iga_igg3_fxab", "10_tcells_fxab",
+                   "11_all")
 for (i in 1:length(var_set_names)) {
   eval(parse(text = paste0("sl_fits_varset_", var_set_names[i], " <- readRDS(paste0(results_dir, 'sl_fits_varset_', var_set_names[i], '.rds'))")))
 }
@@ -38,8 +39,9 @@ lapply(sl_fits_varset_1_baseline_exposure, function(x) x$fit$whichDiscreteSL)
 lapply(sl_fits_varset_1_baseline_exposure, function(x) sort(colMeans(x$fit$coef), decreasing=TRUE))
 
 ## average the AUCs over the 10 folds, for each
-var_set_labels <- c("No markers", "IgG + IgA", "T Cells", "Fx Ab", "IgG + IgA + T Cells",
-                    "IgG + IgA + Fx Ab", "T Cells + Fx Ab", "All markers")
+var_set_labels <- c("No markers", "IgG + IgA", "IgG3", "T Cells", "Fx Ab", "IgG + IgA + IgG3",
+                    "IgG + IgA + T Cells", "IgG + IgA + IgG3 + T Cells",
+                    "IgG + IgA + IgG3 + Fx Ab", "T Cells + Fx Ab", "All markers")
 for (i in 1:length(var_set_names)) {
   this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
   eval(parse(text = paste0("all_aucs_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) x$aucs)))")))
@@ -51,9 +53,11 @@ for (i in 1:length(var_set_names)) {
 }
 
 ## combine into a full tibble; add a column to each that is the assay
-avg_aucs <- bind_rows(avg_aucs_1_baseline_exposure, avg_aucs_2_igg_iga, avg_aucs_3_tcells,
-                     avg_aucs_4_fxab, avg_aucs_5_igg_iga_tcells, avg_aucs_6_igg_iga_fxab,
-                     avg_aucs_7_tcells_fxab, avg_aucs_8_all)
+avg_aucs <- bind_rows(avg_aucs_1_baseline_exposure, avg_aucs_2_igg_iga, avg_aucs_3_igg3,
+                      avg_aucs_4_tcells, avg_aucs_5_fxab, avg_aucs_6_igg_iga_igg3,
+                      avg_aucs_7_igg_iga_tcells, avg_aucs_8_igg_iga_igg3_tcells,
+                      avg_aucs_9_igg_iga_igg3_fxab, avg_aucs_10_tcells_fxab, 
+                      avg_aucs_11_all)
 
 ## forest plot of AUCs; this one is super nasty, but shows that it works
 full_forest_plot_auc <- avg_aucs %>% 
