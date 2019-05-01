@@ -62,35 +62,48 @@ for (a in c("age", "BMI", "bhvrisk")) {
 X_markers <- dat.505 %>% 
   select(var.super$varname, paste0(var.super$varname, "_bin")) 
 
-## which features should I remove?
-## create a matrix of 0/1's; rows are job_id, cols are the variables to remove
-## for groups, multiple 1's per row; for individual, one 1 per row
+## only include the following variable sets:
 assays <- unique(var.super$assay)
 antigens <- unique(var.super$antigen)
-
-## assay combinations:
 # 1. None (baseline variables only)
 var_set_none <- rep(FALSE, ncol(X_markers))
 # 2. IgG + IgA (all antigens)
-var_set_igg_iga <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA"))
-# 3. T cells (all antigens)
+var_set_igg_iga <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA"), assays_to_exclude = "IgG3")
+# 3. IgG3
+var_set_igg3 <- get_nms_group_all_antigens(X_markers, assays = "IgG3")
+# 4. T cells (all antigens)
 var_set_tcells <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "CD8"))
-# 4. Fx Ab (all antigens)
-var_set_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "phago", "fcrR2a", "fcrR3a"))
-# 5. 2+3
-var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8")) 
-# 6. 2+4
-var_set_igg_iga_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "phago", "fcrR2a", "fcrR3a"))
-# 7. 3+4
-var_set_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "CD8", "IgG3", "phago", "fcrR2a", "fcrR3a"))
-## already run this
+# 5. Fx Ab (all antigens)
+var_set_fxab <- get_nms_group_all_antigens(X_markers, assays = c("phago", "fcrR2a", "fcrR3a"))
+# 6. 1+2+3
+var_set_igg_iga_igg3 <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3"))
+# 7. 1+2+4
+var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8"), assays_to_exclude = "IgG3") 
+# 8. 1+2+3+4
+var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "CD4", "CD8"), assays_to_exclude = "IgG3") 
+# 9. 1+2+3+5
+var_set_igg_iga_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "phago", "fcrR2a", "fcrR3a"))
+# 10. 1+4+5
+var_set_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "CD8", "phago", "fcrR2a", "fcrR3a"))
+# 11. All
+var_set_all <- rep(TRUE, ncol(X_markers))
+## 12--14: extra runs to get variable importance
+var_set_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "phago", "fcrR2a", "fcrR3a"))
+var_set_igg_iga_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8", "phago", "fcrR2a", "fcrR3a"), assays_to_exclude = "IgG3")
+var_set_igg3_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "CD4", "CD8", "phago", "fcrR2a", "fcrR3a"))
 
-var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_tcells", "4_fxab",
-                   "5_igg_iga_tcells", "6_igg_iga_fxab", "7_tcells_fxab")
+var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_igg3","4_tcells", "5_fxab",
+                   "6_igg_iga_igg3", "7_igg_iga_tcells", "8_igg_iga_igg3_tcells", 
+                   "9_igg_iga_igg3_fxab", "10_tcells_fxab",
+                   "11_all",
+                   "12_igg3_fxab", "13_igg_iga_tcells_fxab", "14_igg3_tcells_fxab")
 
 ## set up a matrix of all 
-var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_tcells, var_set_fxab,
-                        var_set_igg_iga_tcells, var_set_igg_iga_fxab, var_set_tcells_fxab)
+var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_igg3, var_set_tcells, var_set_fxab,
+                        var_set_igg_iga_igg3, var_set_igg_iga_tcells, var_set_igg_iga_igg3_tcells,
+                        var_set_igg_iga_igg3_fxab, var_set_tcells_fxab,
+                        var_set_all,
+                        var_set_igg3_fxab, var_set_igg_iga_tcells_fxab, var_set_igg3_tcells_fxab)
 
 group_grid <- expand.grid(assay = assays, antigen = antigens)
 group_var_mat <- t(apply(group_grid, 1, function(x) get_nms_group(X_markers, x[1], x[2])))
