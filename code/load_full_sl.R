@@ -27,7 +27,8 @@ plots_dir <- "plots/"
 var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_igg3","4_tcells", "5_fxab",
                    "6_igg_iga_igg3", "7_igg_iga_tcells", "8_igg_iga_igg3_tcells", 
                    "9_igg_iga_igg3_fxab", "10_tcells_fxab",
-                   "11_all")
+                   "11_all",
+                   "12_igg3_fxab", "13_igg_iga_tcells_fxab", "14_igg3_tcells_fxab") # these three are only for vimp
 for (i in 1:length(var_set_names)) {
   eval(parse(text = paste0("sl_fits_varset_", var_set_names[i], " <- readRDS(paste0(results_dir, 'sl_fits_varset_', var_set_names[i], '.rds'))")))
 }
@@ -42,7 +43,7 @@ lapply(sl_fits_varset_1_baseline_exposure, function(x) sort(colMeans(x$fit$coef)
 var_set_labels <- c("No markers", "IgG + IgA", "IgG3", "T Cells", "Fx Ab", "IgG + IgA + IgG3",
                     "IgG + IgA + T Cells", "IgG + IgA + IgG3 + T Cells",
                     "IgG + IgA + IgG3 + Fx Ab", "T Cells + Fx Ab", "All markers")
-for (i in 1:length(var_set_names)) {
+for (i in 1:(length(var_set_names) - 3)) { # only do it for the groups I actually care about
   this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
   eval(parse(text = paste0("all_aucs_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) x$aucs)))")))
   eval(parse(text = paste0("avg_aucs_", var_set_names[i]," <- all_aucs_i %>% 
@@ -166,66 +167,126 @@ X_vaccine <- vaccinees %>%
 ## do variable importance
 ## ----------------------------------------------------------------------------------------------
 
-risk_type <- "r_squared"
-# risk_type <- "auc"
+# risk_type <- "r_squared"
+risk_type <- "auc"
 
+## set up the reduced fits
 reduced_fit_11_all <- sl_fits_varset_1_baseline_exposure
 reduced_fit_10_tcells_fxab <- sl_fits_varset_6_igg_iga_igg3
 reduced_fit_9_igg_iga_igg3_fxab <- sl_fits_varset_4_tcells
 reduced_fit_8_igg_iga_igg3_tcells <- sl_fits_varset_5_fxab
-reduced_fit_7_igg_iga_tcells <- sl_fits_varset_
+reduced_fit_7_igg_iga_tcells <- sl_fits_varset_12_igg3_fxab
 reduced_fit_6_igg_iga_igg3 <- sl_fits_varset_10_tcells_fxab
 reduced_fit_5_fxab <- sl_fits_varset_8_igg_iga_igg3_tcells
 reduced_fit_4_tcells <- sl_fits_varset_9_igg_iga_igg3_fxab
-reduced_fit_3_igg3 <- sl_fits_varset_
-reduced_fit_2_igg_iga <- sl_fits_varset_
-reduced_fit_7 <- sl_fits_varset_7_tcells_fxab
+reduced_fit_3_igg3 <- sl_fits_varset_13_igg_iga_tcells_fxab
+reduced_fit_2_igg_iga <- sl_fits_varset_14_igg3_tcells_fxab
 
 
-## all markers
-vimp_all_markers <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = reduced_fit_1, type = risk_type)
+## (11) all markers
+vimp_all_markers <- get_cv_vim(full_fit = sl_fits_varset_11_all, 
+                               reduced_fit = reduced_fit_11_all, type = risk_type)
 unlist(lapply(vimp_all_markers, function(x) x$est))
 var(unlist(lapply(vimp_all_markers, function(x) x$est)))
 mean(unlist(lapply(vimp_all_markers, function(x) x$est)))
 median(unlist(lapply(vimp_all_markers, function(x) x$est)))
 vimp_all_markers_avg <- get_avg_est_ci(vimp_all_markers)
 vimp_all_markers_avg_risk <- get_avg_risk_ci(vimp_all_markers)
-## T cells + Fx Ab
-vimp_tcells_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = reduced_fit_2, type = risk_type)
+
+## (10) T cells + Fx Ab
+vimp_tcells_fxab <- get_cv_vim(full_fit = sl_fits_varset_11_all, 
+                               reduced_fit = reduced_fit_10_tcells_fxab, type = risk_type)
 mean(unlist(lapply(vimp_tcells_fxab, function(x) x$est)))
 vimp_tcells_fxab_avg <- get_avg_est_ci(vimp_tcells_fxab)
-## IgG + IgA + Fx Ab
-vimp_igg_iga_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = reduced_fit_3, type = risk_type)
-mean(unlist(lapply(vimp_igg_iga_fxab, function(x) x$est)))
-vimp_igg_iga_fxab_avg <- get_avg_est_ci(vimp_igg_iga_fxab)
-## IgG + IgA + T cells
-vimp_igg_iga_tcells <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = reduced_fit_4, type = risk_type)
+
+## (9) IgG + IgA + IgG3 + Fx Ab
+vimp_igg_iga_igg3_fxab <- get_cv_vim(full_fit = sl_fits_varset_11_all, 
+                                reduced_fit = reduced_fit_9_igg_iga_igg3_fxab, type = risk_type)
+mean(unlist(lapply(vimp_igg_iga_igg3_fxab, function(x) x$est)))
+vimp_igg_iga_igg3_fxab_avg <- get_avg_est_ci(vimp_igg_iga_igg3_fxab)
+
+## (8) IgG + IgA + IgG3 + T cells
+vimp_igg_iga_igg3_tcells <- get_cv_vim(full_fit = sl_fits_varset_11_all, 
+                                  reduced_fit = reduced_fit_8_igg_iga_igg3_tcells, type = risk_type)
+mean(unlist(lapply(vimp_igg_iga_igg3_tcells, function(x) x$est)))
+vimp_igg_iga_igg3_tcells_avg <- get_avg_est_ci(vimp_igg_iga_igg3_tcells)
+
+## (7) IgG + IgA + T cells
+vimp_igg_iga_tcells <- get_cv_vim(full_fit = sl_fits_varset_11_all, 
+                        reduced_fit = reduced_fit_7_igg_iga_tcells, type = risk_type)
 mean(unlist(lapply(vimp_igg_iga_tcells, function(x) x$est)))
 vimp_igg_iga_tcells_avg <- get_avg_est_ci(vimp_igg_iga_tcells)
-## Fx Ab
-vimp_fxab <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = reduced_fit_5, type = risk_type)
+
+## (6) IgG + IgA + IgG3
+vimp_igg_iga_igg3 <- get_cv_vim(full_fit = sl_fits_varset_11_all, 
+                          reduced_fit = reduced_fit_6_igg_iga_igg3, type = risk_type)
+mean(unlist(lapply(vimp_igg_iga_igg3, function(x) x$est)))
+vimp_igg_iga_igg3_avg <- get_avg_est_ci(vimp_igg_iga_igg3)
+
+## (5) Fx Ab
+vimp_fxab <- get_cv_vim(full_fit = sl_fits_varset_11_all, 
+                           reduced_fit = reduced_fit_5_fxab, type = risk_type)
 mean(unlist(lapply(vimp_fxab, function(x) x$est)))
 vimp_fxab_avg <- get_avg_est_ci(vimp_fxab)
-## T cells
-vimp_tcells <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = reduced_fit_6, type = risk_type)
+
+## (4) T cells
+vimp_tcells <- get_cv_vim(full_fit = sl_fits_varset_11_all,
+                          reduced_fit = reduced_fit_4_tcells, type = risk_type)
 mean(unlist(lapply(vimp_tcells, function(x) x$est)))
 vimp_tcells_avg <- get_avg_est_ci(vimp_tcells)
-## IgG + IgA
-vimp_igg_iga <- get_cv_vim(full_fit = sl_fits_varset_8_all, reduced_fit = reduced_fit_7, type = risk_type)
+
+## (3) IgG3
+vimp_igg3 <- get_cv_vim(full_fit = sl_fits_varset_11_all,
+                          reduced_fit = reduced_fit_3_igg3, type = risk_type)
+mean(unlist(lapply(vimp_igg3, function(x) x$est)))
+vimp_igg3_avg <- get_avg_est_ci(vimp_igg3)
+
+## (2) IgG + IgA
+vimp_igg_iga <- get_cv_vim(full_fit = sl_fits_varset_11_all,
+                          reduced_fit = reduced_fit_2_igg_iga, type = risk_type)
 mean(unlist(lapply(vimp_igg_iga, function(x) x$est)))
 vimp_igg_iga_avg <- get_avg_est_ci(vimp_igg_iga)
 
 ## combine together
-vimp_tibble <- tibble(assay_grp = c("All markers", "T Cells + Fx Ab", "IgG + IgA + Fx Ab", 
-                                    "IgG + IgA + T Cells", "Fx Ab", "T Cells", "IgG + IgA"),
-                      est = c(vimp_all_markers_avg$est, vimp_tcells_fxab_avg$est, vimp_igg_iga_fxab_avg$est,
-                              vimp_igg_iga_tcells_avg$est, vimp_fxab_avg$est, vimp_tcells_avg$est,
+vimp_tibble <- tibble(assay_grp = c("All markers", 
+                                    "T Cells + Fx Ab", 
+                                    "IgG + IgA + IgG3 + Fx Ab", 
+                                    "IgG + IgA + IgG3 + T Cells", 
+                                    "IgG + IgA + T cells",
+                                    "IgG + IgA + IgG3",
+                                    "Fx Ab", 
+                                    "T Cells", 
+                                    "IgG3",
+                                    "IgG + IgA"),
+                      est = c(vimp_all_markers_avg$est, 
+                              vimp_tcells_fxab_avg$est, 
+                              vimp_igg_iga_igg3_fxab_avg$est,
+                              vimp_igg_iga_igg3_tcells_avg$est, 
+                              vimp_igg_iga_tcells_avg$est,
+                              vimp_igg_iga_igg3_avg$est,
+                              vimp_fxab_avg$est, 
+                              vimp_tcells_avg$est,
+                              vimp_igg3_avg$est,
                               vimp_igg_iga_avg$est),
-                      cil = c(vimp_all_markers_avg$ci[1], vimp_tcells_fxab_avg$ci[1], vimp_igg_iga_fxab_avg$ci[1],
-                              vimp_igg_iga_tcells_avg$ci[1], vimp_fxab_avg$ci[1], vimp_tcells_avg$ci[1],
+                      cil = c(vimp_all_markers_avg$ci[1], 
+                              vimp_tcells_fxab_avg$ci[1], 
+                              vimp_igg_iga_igg3_fxab_avg$ci[1],
+                              vimp_igg_iga_igg3_tcells_avg$ci[1], 
+                              vimp_igg_iga_tcells_avg$ci[1],
+                              vimp_igg_iga_igg3_avg$ci[1],
+                              vimp_fxab_avg$ci[1], 
+                              vimp_tcells_avg$ci[1],
+                              vimp_igg3_avg$ci[1],
                               vimp_igg_iga_avg$ci[1]),
-                      ciu = c(vimp_all_markers_avg$ci[2], vimp_tcells_fxab_avg$ci[2], vimp_igg_iga_fxab_avg$ci[2],
-                              vimp_igg_iga_tcells_avg$ci[2], vimp_fxab_avg$ci[2], vimp_tcells_avg$ci[2],
+                      ciu = c(vimp_all_markers_avg$ci[2], 
+                              vimp_tcells_fxab_avg$ci[2], 
+                              vimp_igg_iga_igg3_fxab_avg$ci[2],
+                              vimp_igg_iga_igg3_tcells_avg$ci[2], 
+                              vimp_igg_iga_tcells_avg$ci[2],
+                              vimp_igg_iga_igg3_avg$ci[2],
+                              vimp_fxab_avg$ci[2], 
+                              vimp_tcells_avg$ci[2],
+                              vimp_igg3_avg$ci[2],
                               vimp_igg_iga_avg$ci[2]))
 
 ## forest plot of vimp, with labels for the groups
