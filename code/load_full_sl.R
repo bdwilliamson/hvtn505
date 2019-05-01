@@ -12,6 +12,8 @@ library("cowplot")
 # install if anything has changed
 #  install.packages("~/Projects/UW/vimp_1.3.0.tar.gz", repos = NULL, type = "source")
 library("vimp")
+library("HVTN505")
+library("kyotil")
 method <- "method.CC_nloglik" # since SuperLearner relies on this to be in GlobalEnv
 source("code/auc_plot_assays.R")
 source("code/r2_plot_assays.R")
@@ -188,13 +190,13 @@ reduced_fit_none <- sl_fits_varset_1_baseline_exposure
 vimp_all_markers <- get_cv_vim(full_fit = full_fit_11_all,
                                reduced_fit = reduced_fit_none,
                                type = risk_type)
-vimp_all_markers_avg <- get_avg_est_ci(vimp_all_markers_avg)
+vimp_all_markers_avg <- get_avg_est_ci(vimp_all_markers)
 
 ## (10) T cells  + Fx Ab
 vimp_tcells_fxab <- get_cv_vim(full_fit = full_fit_10_tcells_fxab,
                                reduced_fit = reduced_fit_none,
                                type = risk_type)
-vimp_tcells_fxab_avg <- get_avg_est_ci(vimp_10_tcells_fxab)
+vimp_tcells_fxab_avg <- get_avg_est_ci(vimp_tcells_fxab)
 
 ## (9) IgG + IgA + IgG3 + Fx Ab
 vimp_igg_iga_igg3_fxab <- get_cv_vim(full_fit = full_fit_9_igg_iga_igg3_fxab,
@@ -243,6 +245,59 @@ vimp_igg_iga <- get_cv_vim(full_fit = full_fit_2_igg_iga,
                                reduced_fit = reduced_fit_none,
                                type = risk_type)
 vimp_igg_iga_avg <- get_avg_est_ci(vimp_igg_iga)
+
+## combine together
+vimp_tibble <- tibble(assay_grp = c("All markers", 
+                                    "T Cells + Fx Ab", 
+                                    "IgG + IgA + IgG3 + Fx Ab", 
+                                    "IgG + IgA + IgG3 + T Cells", 
+                                    "IgG + IgA + T cells",
+                                    "IgG + IgA + IgG3",
+                                    "Fx Ab", 
+                                    "T Cells", 
+                                    "IgG3",
+                                    "IgG + IgA"),
+                      est = c(vimp_all_markers_avg$est, 
+                              vimp_tcells_fxab_avg$est, 
+                              vimp_igg_iga_igg3_fxab_avg$est,
+                              vimp_igg_iga_igg3_tcells_avg$est, 
+                              vimp_igg_iga_tcells_avg$est,
+                              vimp_igg_iga_igg3_avg$est,
+                              vimp_fxab_avg$est, 
+                              vimp_tcells_avg$est,
+                              vimp_igg3_avg$est,
+                              vimp_igg_iga_avg$est),
+                      cil = c(vimp_all_markers_avg$ci[1], 
+                              vimp_tcells_fxab_avg$ci[1], 
+                              vimp_igg_iga_igg3_fxab_avg$ci[1],
+                              vimp_igg_iga_igg3_tcells_avg$ci[1], 
+                              vimp_igg_iga_tcells_avg$ci[1],
+                              vimp_igg_iga_igg3_avg$ci[1],
+                              vimp_fxab_avg$ci[1], 
+                              vimp_tcells_avg$ci[1],
+                              vimp_igg3_avg$ci[1],
+                              vimp_igg_iga_avg$ci[1]),
+                      ciu = c(vimp_all_markers_avg$ci[2], 
+                              vimp_tcells_fxab_avg$ci[2], 
+                              vimp_igg_iga_igg3_fxab_avg$ci[2],
+                              vimp_igg_iga_igg3_tcells_avg$ci[2], 
+                              vimp_igg_iga_tcells_avg$ci[2],
+                              vimp_igg_iga_igg3_avg$ci[2],
+                              vimp_fxab_avg$ci[2], 
+                              vimp_tcells_avg$ci[2],
+                              vimp_igg3_avg$ci[2],
+                              vimp_igg_iga_avg$ci[2]))
+
+## forest plot of vimp, with labels for the groups
+vimp_forest_plot <- vimp_tibble %>% 
+  ggplot(aes(x = est, y = factor(assay_grp, levels = assay_grp[order(est)], labels = assay_grp[order(est)]))) +
+  geom_point() +
+  geom_errorbarh(aes(xmin = cil, xmax = ciu)) +
+  ylab("Assay group") +
+  xlab(paste0("Variable importance estimate: difference in ", ifelse(risk_type == "r_squared", expression(R^2), "AUC")))
+png(paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
+vimp_forest_plot
+dev.off()
 
 ## ----------------------------------------------------------------------------------------------
 ## do variable importance relative to everything but the set of interest
@@ -377,6 +432,6 @@ vimp_forest_plot <- vimp_tibble %>%
   geom_errorbarh(aes(xmin = cil, xmax = ciu)) +
   ylab("Assay group") +
   xlab(paste0("Variable importance estimate: difference in ", ifelse(risk_type == "r_squared", expression(R^2), "AUC")))
-png(paste0(plots_dir, "vimp_forest_plot_", risk_type, ".png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
+png(paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_reduced.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
 vimp_forest_plot
 dev.off()
