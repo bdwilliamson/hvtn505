@@ -164,7 +164,88 @@ X_vaccine <- vaccinees %>%
   select(-Y, -weights)
 
 ## ----------------------------------------------------------------------------------------------
-## do variable importance
+## do variable importance relative to baseline risk vars only
+## ----------------------------------------------------------------------------------------------
+# risk_type <- "r_squared"
+risk_type <- "auc"
+
+## set up the full fits
+full_fit_11_all <- sl_fits_varset_11_all
+full_fit_10_tcells_fxab <- sl_fits_varset_10_tcells_fxab
+full_fit_9_igg_iga_igg3_fxab <- sl_fits_varset_9_igg_iga_igg3_fxab
+full_fit_8_igg_iga_igg3_tcells <- sl_fits_varset_8_igg_iga_igg3_tcells
+full_fit_7_igg_iga_tcells <- sl_fits_varset_7_igg_iga_tcells
+full_fit_6_igg_iga_igg3 <- sl_fits_varset_6_igg_iga_igg3
+full_fit_5_fxab <- sl_fits_varset_5_fxab
+full_fit_4_tcells <- sl_fits_varset_4_tcells
+full_fit_3_igg3 <- sl_fits_varset_3_igg3
+full_fit_2_igg_iga <- sl_fits_varset_2_igg_iga
+
+## reduced fit for all
+reduced_fit_none <- sl_fits_varset_1_baseline_exposure
+
+## (11) all markers
+vimp_all_markers <- get_cv_vim(full_fit = full_fit_11_all,
+                               reduced_fit = reduced_fit_none,
+                               type = risk_type)
+vimp_all_markers_avg <- get_avg_est_ci(vimp_all_markers_avg)
+
+## (10) T cells  + Fx Ab
+vimp_tcells_fxab <- get_cv_vim(full_fit = full_fit_10_tcells_fxab,
+                               reduced_fit = reduced_fit_none,
+                               type = risk_type)
+vimp_tcells_fxab_avg <- get_avg_est_ci(vimp_10_tcells_fxab)
+
+## (9) IgG + IgA + IgG3 + Fx Ab
+vimp_igg_iga_igg3_fxab <- get_cv_vim(full_fit = full_fit_9_igg_iga_igg3_fxab,
+                               reduced_fit = reduced_fit_none,
+                               type = risk_type)
+vimp_igg_iga_igg3_fxab_avg <- get_avg_est_ci(vimp_igg_iga_igg3_fxab)
+
+## (8) IgG + IgA + IgG3 + T cells
+vimp_igg_iga_igg3_tcells <- get_cv_vim(full_fit = full_fit_8_igg_iga_igg3_tcells,
+                               reduced_fit = reduced_fit_none,
+                               type = risk_type)
+vimp_igg_iga_igg3_tcells_avg <- get_avg_est_ci(vimp_igg_iga_igg3_tcells)
+
+## (7) IgG + IgA + T cells
+vimp_igg_iga_tcells <- get_cv_vim(full_fit = full_fit_7_igg_iga_tcells,
+                               reduced_fit = reduced_fit_none,
+                               type = risk_type)
+vimp_igg_iga_tcells_avg <- get_avg_est_ci(vimp_igg_iga_tcells)
+
+## (6) IgG + IgA + IgG3
+vimp_igg_iga_igg3 <- get_cv_vim(full_fit = full_fit_6_igg_iga_igg3,
+                               reduced_fit = reduced_fit_none,
+                               type = risk_type)
+vimp_igg_iga_igg3_avg <- get_avg_est_ci(vimp_igg_iga_igg3)
+
+## (5) Fx Ab
+vimp_fxab <- get_cv_vim(full_fit = full_fit_5_fxab,
+                               reduced_fit = reduced_fit_none,
+                               type = risk_type)
+vimp_fxab_avg <- get_avg_est_ci(vimp_fxab)
+
+## (4) T cells
+vimp_tcells <- get_cv_vim(full_fit = full_fit_4_tcells,
+                               reduced_fit = reduced_fit_none,
+                               type = risk_type)
+vimp_tcells_avg <- get_avg_est_ci(vimp_tcells)
+
+## (3) IgG3
+vimp_igg3 <- get_cv_vim(full_fit = full_fit_3_igg3,
+                               reduced_fit = reduced_fit_none,
+                               type = risk_type)
+vimp_igg3_avg <- get_avg_est_ci(vimp_igg3)
+
+## (2) IgG + IgA
+vimp_igg_iga <- get_cv_vim(full_fit = full_fit_2_igg_iga,
+                               reduced_fit = reduced_fit_none,
+                               type = risk_type)
+vimp_igg_iga_avg <- get_avg_est_ci(vimp_igg_iga)
+
+## ----------------------------------------------------------------------------------------------
+## do variable importance relative to everything but the set of interest
 ## ----------------------------------------------------------------------------------------------
 
 # risk_type <- "r_squared"
