@@ -69,7 +69,7 @@ var_set_igg3 <- get_nms_group_all_antigens(X_markers, assays = "IgG3")
 # 4. T cells (all antigens)
 var_set_tcells <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "CD8"))
 # 5. Fx Ab (all antigens)
-var_set_fxab <- get_nms_group_all_antigens(X_markers, assays = c("phago", "fcrR2a", "fcrR3a"))
+var_set_fxab <- get_nms_group_all_antigens(X_markers, assays = c("phago", "R2a", "R3a"))
 # 6. 1+2+3
 var_set_igg_iga_igg3 <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3"))
 # 7. 1+2+4
@@ -77,15 +77,15 @@ var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG"
 # 8. 1+2+3+4
 var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "CD4", "CD8"), assays_to_exclude = "IgG3") 
 # 9. 1+2+3+5
-var_set_igg_iga_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "phago", "fcrR2a", "fcrR3a"))
+var_set_igg_iga_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "phago", "R2a", "R3a"))
 # 10. 1+4+5
-var_set_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "CD8", "phago", "fcrR2a", "fcrR3a"))
+var_set_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "CD8", "phago", "R2a", "R3a"))
 # 11. All
 var_set_all <- rep(TRUE, ncol(X_markers))
 ## 12--14: extra runs to get variable importance
-var_set_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "phago", "fcrR2a", "fcrR3a"))
-var_set_igg_iga_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8", "phago", "fcrR2a", "fcrR3a"), assays_to_exclude = "IgG3")
-var_set_igg3_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "CD4", "CD8", "phago", "fcrR2a", "fcrR3a"))
+var_set_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "phago", "R2a", "R3a"))
+var_set_igg_iga_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8", "phago", "R2a", "R3a"), assays_to_exclude = "IgG3")
+var_set_igg3_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "CD4", "CD8", "phago", "R2a", "R3a"))
 
 var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_igg3","4_tcells", "5_fxab",
                    "6_igg_iga_igg3", "7_igg_iga_tcells", "8_igg_iga_igg3_tcells", 

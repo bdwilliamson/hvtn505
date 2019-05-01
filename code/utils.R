@@ -169,14 +169,14 @@ get_nms_group_all_antigens <- function(X, assays, assays_to_exclude = "") {
 
 ## get the names of a group, for importance
 get_nms_group <- function(X, assay, antigen) {
-  vars <- rep(TRUE, ncol(X)) ## initially include all vars
-  vars[grepl(assay, names(X)) & grepl(antigen, names(X))] <- FALSE # remove the ones in assay x antigen combo, for vimp
+  vars <- rep(FALSE, ncol(X)) ## initially include all vars
+  vars[grepl(assay, names(X)) & grepl(antigen, names(X))] <- TRUE # toggle on the ones in assay/antigen group
   return(vars)
 }
 ## get the names of an individual, for importance
 get_nms_ind <- function(X, nm_ind) {
-  vars <- rep(TRUE, ncol(X))
-  vars[grepl(nm_ind, names(X))] <- FALSE ## remove the one, for vimp
+  vars <- rep(FALSE, ncol(X))
+  vars[grepl(nm_ind, names(X))] <- TRUE ## toggle on the one, for vimp compared to baseline only
   return(vars)
 }
 
