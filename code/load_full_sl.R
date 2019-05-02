@@ -44,7 +44,7 @@ lapply(sl_fits_varset_1_baseline_exposure, function(x) sort(colMeans(x$fit$coef)
 var_set_labels <- c("No markers", "IgG + IgA", "IgG3", "T Cells", "Fx Ab", "IgG + IgA + IgG3",
                     "IgG + IgA + T Cells", "IgG + IgA + IgG3 + T Cells",
                     "IgG + IgA + IgG3 + Fx Ab", "T Cells + Fx Ab", "All markers")
-for (i in 1:(length(var_set_names) - 3)) { # only do it for the groups I actually care about
+for (i in 1:(length(var_set_names))) { 
   this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
   eval(parse(text = paste0("all_aucs_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) x$aucs)))")))
   eval(parse(text = paste0("avg_aucs_", var_set_names[i]," <- all_aucs_i %>% 
