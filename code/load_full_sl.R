@@ -289,7 +289,7 @@ vimp_tibble <- tibble(assay_grp = c("All markers",
 
 ## forest plot of vimp, with labels for the groups
 vimp_forest_plot <- vimp_tibble %>% 
-  ggplot(aes(x = est, y = factor(assay_grp, levels = assay_grp[order(est)], labels = assay_grp[order(est)]))) +
+  ggplot(aes(x = est, y = factor(assay_grp, levels = assay_grp[order(est, decreasing = TRUE)], labels = assay_grp[order(est, decreasing = TRUE)]))) +
   geom_point() +
   geom_errorbarh(aes(xmin = cil, xmax = ciu)) +
   ylab("Assay group") +
