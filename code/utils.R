@@ -204,48 +204,68 @@ make_nice_screen_name <- function(screens) {
 }
 
 ## get the cv vim for each fold
-get_fold_cv_vim <- function(full_fit, reduced_fit, x, type) {
+get_fold_cv_vim <- function(full_fit, reduced_fit, x, type, vimp = FALSE) {
   ## get the outcome, folds
-  y <- full_fit[[x]]$fit$Y
-  fold_row_nums <- as.vector(do.call(cbind, full_fit[[x]]$fit$folds))
-  folds_init <- rep(as.numeric(names(full_fit[[x]]$fit$folds)), each = length(y)/length(full_fit[[x]]$fit$folds))
-  folds_mat <- cbind(fold_row_nums, folds_init)
-  folds <- folds_mat[order(folds_mat[, 1]), 2]
-  
-  ## get the full, reduced predictions from the two CV objects
-  get_reduced_fit <- function(i) {
-    if (type == "r_squared" & is.null(reduced_fit[[x]]$fit$Y)) {
-      tryCatch(reduced_fit[[x]]$fit[folds == i], error = function(e) rep(NA, sum(folds == i)))
-    } else {
-      reduced_fit[[x]]$fit$SL.predict[folds == i]  
-    }
+  if (!vimp) {
+    y <- full_fit[[x]]$fit$Y  
+  } else {
+    y <- reduced_fit[[x]]$fit$Y
   }
-  full_fits <- lapply(as.list(1:length(full_fit[[x]]$fit$folds)), function(i) full_fit[[x]]$fit$SL.predict[folds == i])
-  redu_fits <- lapply(as.list(1:length(full_fit[[x]]$fit$folds)), function(i) get_reduced_fit(i))
-  ys <- lapply(as.list(1:length(full_fit[[x]]$fit$folds)), function(i) full_fit[[x]]$fit$Y[folds == i])
-  
-  ## variable importance
-  vim_est <- tryCatch(cv_vim(Y = y, 
-                    f1 = full_fits,
-                    f2 = redu_fits,
-                    folds = folds,
-                    type = type,
-                    run_regression = FALSE,
-                    alpha = 0.05), error = function(e) NA)
+  if (is.null(full_fit[[x]]$folds)) {
+    vim_est <- NA
+  } else {
+    fold_row_nums <- as.vector(do.call(cbind, full_fit[[x]]$folds))
+    folds_init <- rep(as.numeric(names(full_fit[[x]]$folds)), each = length(y)/length(full_fit[[x]]$folds))
+    folds_mat <- cbind(fold_row_nums, folds_init)
+    folds <- folds_mat[order(folds_mat[, 1]), 2]
+    
+    ## get the full, reduced predictions from the two CV objects
+    get_reduced_fit <- function(i) {
+      if (type == "r_squared" & is.null(reduced_fit[[x]]$fit$Y)) {
+        tryCatch(reduced_fit[[x]]$fit[folds == i], error = function(e) rep(NA, sum(folds == i)))
+      } else {
+        if (is.list(reduced_fit[[x]]$fit)) {
+          reduced_fit[[x]]$fit$SL.predict[folds == i]    
+        } else {
+          reduced_fit[[x]]$fit[folds == i]
+        }
+      }
+    }
+    full_fits <- lapply(as.list(1:length(full_fit[[x]]$folds)), function(i) {
+      if (is.list(full_fit[[x]]$fit)) {
+        full_fit[[x]]$fit$SL.predict[folds == i]  
+      } else {
+        full_fit[[x]]$fit[folds == i]
+      }
+      
+    })
+    redu_fits <- lapply(as.list(1:length(full_fit[[x]]$folds)), function(i) get_reduced_fit(i))
+    ys <- lapply(as.list(1:length(full_fit[[x]]$folds)), function(i) y[folds == i])
+    
+    ## variable importance
+    vim_est <- tryCatch(cv_vim(Y = y, 
+                               f1 = full_fits,
+                               f2 = redu_fits,
+                               folds = folds,
+                               type = type,
+                               run_regression = FALSE,
+                               alpha = 0.05), error = function(e) NA)
+  }
   return(vim_est)
 }
 ## get the CV vim averaged over the 10 folds
-get_cv_vim <- function(full_fit, reduced_fit, type) {
+get_cv_vim <- function(full_fit, reduced_fit, type, vimp = FALSE) {
   ## get the cv vim for each fold
-  all_cv_vims <- lapply(as.list(1:length(full_fit)), get_fold_cv_vim, full_fit = full_fit, reduced_fit = reduced_fit, type = type)
+  all_cv_vims <- lapply(as.list(1:length(full_fit)), get_fold_cv_vim, full_fit = full_fit, 
+                        reduced_fit = reduced_fit, type = type, vimp = vimp)
   return(all_cv_vims)
 }
 ## get estimate, CI based on averaging over the 10 random starts
 get_avg_est_ci <- function(vimp_lst) {
-  ests <- unlist(lapply(vimp_lst, function(x) x$est))
-  cis <- do.call(rbind, lapply(vimp_lst, function(x) x$ci))
-  est <- mean(ests)
-  ci <- colMeans(cis)
+  ests <- unlist(lapply(vimp_lst, function(x) if (length(x) > 1) {x$est} else {NA}))
+  cis <- do.call(rbind, lapply(vimp_lst, function(x) if (length(x) > 1) {x$ci} else {NA}))
+  est <- mean(ests, na.rm = TRUE)
+  ci <- colMeans(cis, na.rm = TRUE)
   return(list(est = est, ci = ci))
 }
 ## get the risk estimate, CI based on averaging over the 10 random starts
