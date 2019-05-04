@@ -78,16 +78,20 @@ fx_ab <- get_nms_group_all_antigens(X_markers, assays =  c("phago", "R2a", "R3a"
 igg_iga <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA"), assays_to_exclude = "IgG3")
 igg3 <- get_nms_group_all_antigens(X_markers, assays = "IgG3")
 tcells <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "CD8"))
+assay_nms <- rep(NA, length(var_names))
+assay_nms[fx_ab] <- "Fx Ab"
+assay_nms[igg_iga] <- "IgG + IgA"
+assay_nms[igg3] <- "IgG3"
+assay_nms[tcells] <- "T cells"
 
 ## make forest plot, with Fx Ab on top, then IgG + IgA, then IgG3, then T cells
 vimp_tibble_ind <- tibble(var_name = var_names[1], assay_group = "T cells", 
                           est = vimp_1_avg$est, cil = vimp_1_avg$ci[1],
                           ciu = vimp_1_avg$ci[2])
-assay_nms <- c("Fx Ab", "IgG + IgA", "IgG3", "T cells")
 for (i in 2:length(var_names)) {
   this_est <- eval(parse(text = paste0("vimp_", i, "_avg")))
   vimp_tibble_ind <- vimp_tibble_ind %>% 
-    tibble::add_row(var_name = var_names[i], assay_group = 
+    tibble::add_row(var_name = var_names[i], assay_group = ,
                     est = this_est$est, cil = this_est$ci[1],
                     ciu = this_est$ci[2])
 }
