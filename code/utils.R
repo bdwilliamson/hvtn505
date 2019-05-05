@@ -170,6 +170,18 @@ get_nms_group_all_antigens <- function(X, assays, assays_to_exclude = "") {
   return(vars)
 }
 
+## get names for multiple antigens, all assays
+get_nms_group_all_assays <- function(X, antigens) {
+  ## set all vars to be false
+  vars <- rep(FALSE, ncol(X))
+  ## set vars with assay in name to be true
+  ## may be more than one
+  for (i in 1:length(antigens)) {
+    vars[grepl(antigens[i], names(X))] <- TRUE
+  }
+  return(vars)
+}
+
 ## get the names of a group, for importance
 get_nms_group <- function(X, assay, antigen) {
   vars <- rep(FALSE, ncol(X)) ## initially include all vars
@@ -204,6 +216,16 @@ make_nice_screen_name <- function(screens) {
   no_all <- lapply(no_screen_plus_exposure, function(x) remove_str(x, "All"))
   screen_nms <- unlist(lapply(no_all, function(x) paste(x, collapse = "_")))
   return(screen_nms)
+}
+## make nice variable names
+make_nice_variable_name <- function(varname, antigen, assay) {
+  if (stringr::str_count(varname, "_") > 1) {
+    gsub(paste0(antigen, "_"), "",
+         gsub(paste0(assay, "_"),
+              "", varname))
+  } else {
+    varname
+  }
 }
 
 ## get the cv vim for each fold
