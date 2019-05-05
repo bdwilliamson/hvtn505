@@ -148,16 +148,17 @@ for (i in 2:length(var_names)) {
                     ciu = this_est$ci[2])
 }
 
+## --------------------------------------------------------------------------------------------------------------------------------------
+## Fx Ab: one plot for each antigen type
+## --------------------------------------------------------------------------------------------------------------------------------------
 ## forest plot of vimp, with labels for the groups
-vimp_forest_plot_ind_fxab <- vimp_tibble_ind %>% 
-  filter(assay_group == "Fx Ab") %>% 
-  ggplot(aes(x = est, y = factor(var_name, levels = var_name[order(est, decreasing = TRUE)], labels = var_name[order(est, decreasing = TRUE)]))) +
-  geom_point() +
-  geom_errorbarh(aes(xmin = cil, xmax = ciu)) +
-  geom_vline(xintercept = 0, color = "red", linetype = "dotted") + 
-  ylab("Variable name") +
-  xlab(paste0("Variable importance estimate: difference in ", ifelse(risk_type == "r_squared", expression(R^2), "AUC"))) +
-  facet_wrap(~antigen_group)
+vimp_forest_plot_ind_fxab <- assay_antigen_plot_list(vimp_tibble_ind, assay = "Fx Ab", 
+                                                     antigens = unique((vimp_tibble_ind %>% filter(assay_group == "Fx Ab"))$antigen_group),
+                                                     risk_type = risk_type)
+  
+## --------------------------------------------------------------------------------------------------------------------------------------
+## IgG + IgA: one plot for each antigen type
+## --------------------------------------------------------------------------------------------------------------------------------------
 vimp_forest_plot_ind_igg_iga <- vimp_tibble_ind %>% 
   filter(assay_group == "IgG + IgA") %>% 
   ggplot(aes(x = est, y = factor(var_name, levels = var_name[order(est, decreasing = TRUE)], labels = var_name[order(est, decreasing = TRUE)]))) +
@@ -167,6 +168,10 @@ vimp_forest_plot_ind_igg_iga <- vimp_tibble_ind %>%
   ylab("Variable name") +
   xlab(paste0("Variable importance estimate: difference in ", ifelse(risk_type == "r_squared", expression(R^2), "AUC")))+
   facet_wrap(~antigen_group)
+
+## --------------------------------------------------------------------------------------------------------------------------------------
+## IgG3: one plot for each antigen type
+## --------------------------------------------------------------------------------------------------------------------------------------
 vimp_forest_plot_ind_igg3 <- vimp_tibble_ind %>% 
   filter(assay_group == "IgG3") %>% 
   ggplot(aes(x = est, y = factor(var_name, levels = var_name[order(est, decreasing = TRUE)], labels = var_name[order(est, decreasing = TRUE)]))) +
@@ -176,6 +181,10 @@ vimp_forest_plot_ind_igg3 <- vimp_tibble_ind %>%
   ylab("Variable name") +
   xlab(paste0("Variable importance estimate: difference in ", ifelse(risk_type == "r_squared", expression(R^2), "AUC")))+
   facet_wrap(~antigen_group)
+
+## --------------------------------------------------------------------------------------------------------------------------------------
+## T cells: one plot for each antigen type
+## --------------------------------------------------------------------------------------------------------------------------------------
 vimp_forest_plot_ind_tcells <- vimp_tibble_ind %>% 
   filter(assay_group == "T cells") %>% 
   ggplot(aes(x = est, y = factor(var_name, levels = var_name[order(est, decreasing = TRUE)], labels = var_name[order(est, decreasing = TRUE)]))) +
@@ -191,15 +200,15 @@ vimp_forest_plot_ind_tcells <- vimp_tibble_ind %>%
 #           vimp_forest_plot_ind_igg3, vimp_forest_plot_ind_tcells,
 #           labels = c("Fx Ab", "IgG + IgA", "IgG3", "T cells"))
 # dev.off()
-png(paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_fxab.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
+png(paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_fxab.png"), width = 2*fig_width, height = 2*fig_height, units = "px", res = 300)
 vimp_forest_plot_ind_fxab
 dev.off()
-png(paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_igg_iga.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
+png(paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_igg_iga.png"), width = 2*fig_width, height = 2*fig_height, units = "px", res = 300)
 vimp_forest_plot_ind_igg_iga
 dev.off()
-png(paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_igg3.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
+png(paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_igg3.png"), width = 2*fig_width, height = 2*fig_height, units = "px", res = 300)
 vimp_forest_plot_ind_igg3
 dev.off()
-png(paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_tcells.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
+png(paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_tcells.png"), width = 2*fig_width, height = 2*fig_height, units = "px", res = 300)
 vimp_forest_plot_ind_tcells
 dev.off()

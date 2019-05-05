@@ -306,3 +306,21 @@ get_avg_risk_ci <- function(vimp_lst) {
   return(list(risk_full = est_full, risk_reduced = est_redu,
               risk_ci_full = ci_full, risk_ci_reduced = ci_redu))
 }
+
+## make a plot for a given assay and antigen
+assay_antigen_plot <- function(vimp_tibble, assay, antigen, risk_type) {
+  vimp_tibble %>% 
+    filter(assay_group == assay, antigen_group == antigen) %>% 
+    ggplot(aes(x = est, y = factor(var_name, levels = var_name[order(est, decreasing = TRUE)], labels = var_name[order(est, decreasing = TRUE)]))) +
+    geom_point() +
+    geom_errorbarh(aes(xmin = cil, xmax = ciu)) +
+    geom_vline(xintercept = 0, color = "red", linetype = "dotted") + 
+    ylab("Variable name") +
+    xlab(paste0("Variable importance estimate: difference in ", ifelse(risk_type == "r_squared", expression(R^2), "AUC")))
+}
+
+## list of plots for a given assay type, one for each antigen
+assay_antigen_plot_list <- function(vimp_tibble, assay, antigens, risk_type) {
+  plot_lst <- lapply(as.list(antigens), assay_antigen_plot, vimp_tibble = vimp_tibble, assay = assay, risk_type = risk_type)
+  return(plot_lst)
+}
