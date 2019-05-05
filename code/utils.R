@@ -78,25 +78,29 @@ get_all_r2s <- function(sl_fit) {
 
 get_all_r2s_lst <- function(sl_fit_lst) {
   # get the CV-R^2 of the SuperLearner predictions
-  sl_r2 <- cv_r2(preds = sl_fit_lst$fit$SL.predict, Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds)
-  out <- data.frame(Learner="SL", Screen="All", R2 = sl_r2$r2, ci_ll = sl_r2$ci[1], ci_ul=sl_r2$ci[2])
-  
-  # Get the CV-R2 of the Discrete SuperLearner predictions
-  discrete_sl_r2 <- cv_r2(preds = sl_fit_lst$fit$discreteSL.predict, Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds)
-  out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All", R2 = discrete_sl_r2$r2, ci_ll = discrete_sl_r2$ci[1], ci_ul = discrete_sl_r2$ci[2]))
-  
-  # Get the cvr2 of the individual learners in the library
-  get_individual_r2 <- function(sl_fit, col) {
-    if(any(is.na(sl_fit$library.predict[, col]))) return(NULL)
-    alg_r2 <- cv_r2(preds = sl_fit$library.predict[, col], Y = sl_fit$Y, folds = sl_fit$folds)
-    ## get the regexp object
-    alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_", fixed = TRUE)[[1]]
-    alg <- tail(alg_screen_string[grepl(".", alg_screen_string, fixed = TRUE)], n = 1)
-    screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, fixed = TRUE)], collapse = "_")
-    data.frame(Learner = alg, Screen = screen, R2 = alg_r2$r2, ci_ll = alg_r2$ci[1], ci_ul = alg_r2$ci[2])
+  if (is.null(sl_fit_lst)) {
+    return(NA)
+  } else {
+    sl_r2 <- cv_r2(preds = sl_fit_lst$fit$SL.predict, Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds)
+    out <- data.frame(Learner="SL", Screen="All", R2 = sl_r2$r2, ci_ll = sl_r2$ci[1], ci_ul=sl_r2$ci[2])
+    
+    # Get the CV-R2 of the Discrete SuperLearner predictions
+    discrete_sl_r2 <- cv_r2(preds = sl_fit_lst$fit$discreteSL.predict, Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds)
+    out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All", R2 = discrete_sl_r2$r2, ci_ll = discrete_sl_r2$ci[1], ci_ul = discrete_sl_r2$ci[2]))
+    
+    # Get the cvr2 of the individual learners in the library
+    get_individual_r2 <- function(sl_fit, col) {
+      if(any(is.na(sl_fit$library.predict[, col]))) return(NULL)
+      alg_r2 <- cv_r2(preds = sl_fit$library.predict[, col], Y = sl_fit$Y, folds = sl_fit$folds)
+      ## get the regexp object
+      alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_", fixed = TRUE)[[1]]
+      alg <- tail(alg_screen_string[grepl(".", alg_screen_string, fixed = TRUE)], n = 1)
+      screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, fixed = TRUE)], collapse = "_")
+      data.frame(Learner = alg, Screen = screen, R2 = alg_r2$r2, ci_ll = alg_r2$ci[1], ci_ul = alg_r2$ci[2])
+    }
+    other_r2s <- plyr::ldply(1:ncol(sl_fit_lst$fit$library.predict), function(x) get_individual_r2(sl_fit_lst$fit, x))
+    rbind(out, other_r2s)  
   }
-  other_r2s <- plyr::ldply(1:ncol(sl_fit_lst$fit$library.predict), function(x) get_individual_r2(sl_fit_lst$fit, x))
-  rbind(out, other_r2s)
 }
 
 ## get the SL and top-performing model for a given Learner + Screen combination

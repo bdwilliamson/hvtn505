@@ -93,6 +93,8 @@ dev.off()
 for (i in 1:length(var_set_names)) {
   this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
   eval(parse(text = paste0("all_r2s_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) get_all_r2s_lst(x))))")))
+  all_r2s_i <- all_r2s_i %>% 
+    filter(!is.na(all_r2s_i$Learner))
   eval(parse(text = paste0("avg_r2s_", var_set_names[i]," <- all_r2s_i %>% 
     group_by(Learner, Screen) %>% 
     summarize(R2 = mean(R2), ci_ll = mean(ci_ll), ci_ul = mean(ci_ul)) %>% 
