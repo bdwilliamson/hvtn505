@@ -59,7 +59,8 @@ for (i in 1:length(var_names)) {
 
 title_font_size <- 18
 main_font_size <- 5
-fig_width <- fig_height <- 2590
+# fig_width <- fig_height <- 2590
+fig_width <- fig_height <- 20
 width_mult <- 2
 height_mult <- 1.5
 
@@ -151,17 +152,22 @@ for (i in 2:length(var_names)) {
 }
 
 ## --------------------------------------------------------------------------------------------------------------------------------------
-## Fx Ab: one plot for each antigen type
+## Fx Ab: one plot for each antigen type, make them entirely different plots
 ## --------------------------------------------------------------------------------------------------------------------------------------
 ## forest plot of vimp, with labels for the groups
 antigen_labs_fxab <- unique((vimp_tibble_ind %>% filter(assay_group == "Fx Ab"))$antigen_group)
 vimp_forest_plot_ind_fxab <- assay_antigen_plot_list(vimp_tibble_ind, assay = "Fx Ab", 
                                                      antigens = antigen_labs_fxab,
                                                      risk_type = risk_type)
-## create the final plot
-png(paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_fxab.png"), width = width_mult*fig_width, height = height_mult*fig_height, units = "px", res = 300)
-plot_grid(plotlist = vimp_forest_plot_ind_fxab, labels = antigen_labs_fxab)
-dev.off()
+## create the final plots
+for (i in 1:length(antigen_labs_fxab)) {
+  file_name <- paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_fxab_", antigen_labs_fxab[i], ".png")
+  ggsave(file_name, plot = plot_grid(vimp_forest_plot_ind_fxab[[i]], labels = antigen_labs_fxab[i]), 
+         device = "png",
+         height = fig_height, width = fig_width,
+         units = "cm", dpi = 300)
+  
+}
 ## --------------------------------------------------------------------------------------------------------------------------------------
 ## IgG + IgA: one plot for each antigen type
 ## --------------------------------------------------------------------------------------------------------------------------------------
@@ -170,11 +176,15 @@ antigen_labs_igg_iga <- unique((vimp_tibble_ind %>% filter(assay_group == "IgG +
 vimp_forest_plot_ind_igg_iga <- assay_antigen_plot_list(vimp_tibble_ind, assay = "IgG + IgA", 
                                                      antigens = antigen_labs_igg_iga,
                                                      risk_type = risk_type)
-## create the final plot
-png(paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_igg_iga.png"), width = (4/width_mult)*width_mult*fig_width, height = (3/height_mult)*height_mult*fig_height, units = "px", res = 300)
-plot_grid(plotlist = vimp_forest_plot_ind_igg_iga, labels = antigen_labs_igg_iga)
-dev.off()
-
+## create the final plots
+for (i in 1:length(antigen_labs_igg_iga)) {
+  file_name <- paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_igg_iga_", antigen_labs_igg_iga[i], ".png")
+  ggsave(file_name, plot = plot_grid(vimp_forest_plot_ind_igg_iga[[i]], labels = antigen_labs_igg_iga[i]), 
+         device = "png",
+         height = fig_height, width = fig_width,
+         units = "cm", dpi = 300)
+  
+}
 ## --------------------------------------------------------------------------------------------------------------------------------------
 ## IgG3: one plot for each antigen type
 ## --------------------------------------------------------------------------------------------------------------------------------------
@@ -183,11 +193,15 @@ antigen_labs_igg3 <- unique((vimp_tibble_ind %>% filter(assay_group == "IgG3"))$
 vimp_forest_plot_ind_igg3 <- assay_antigen_plot_list(vimp_tibble_ind, assay = "IgG3", 
                                                      antigens = antigen_labs_igg3,
                                                      risk_type = risk_type)
-## create the final plot
-png(paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_igg3.png"), width = width_mult*fig_width, height = height_mult*fig_height, units = "px", res = 300)
-plot_grid(plotlist = vimp_forest_plot_ind_igg3, labels = antigen_labs_igg3)
-dev.off()
-
+## create the final plots
+for (i in 1:length(antigen_labs_igg3)) {
+  file_name <- paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_igg3_", antigen_labs_igg3[i], ".png")
+  ggsave(file_name, plot = plot_grid(vimp_forest_plot_ind_igg3[[i]], labels = antigen_labs_igg3[i]), 
+         device = "png",
+         height = fig_height, width = fig_width,
+         units = "cm", dpi = 300)
+  
+}
 ## --------------------------------------------------------------------------------------------------------------------------------------
 ## T cells: one plot for each antigen type
 ## --------------------------------------------------------------------------------------------------------------------------------------
@@ -196,7 +210,12 @@ antigen_labs_tcells <- unique((vimp_tibble_ind %>% filter(assay_group == "T cell
 vimp_forest_plot_ind_tcells <- assay_antigen_plot_list(vimp_tibble_ind, assay = "T cells", 
                                                      antigens = antigen_labs_tcells,
                                                      risk_type = risk_type)
-## create the final plot
-png(paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_tcells.png"), width = (3/width_mult)*width_mult*fig_width, height = (3/height_mult)*height_mult*fig_height, units = "px", res = 300)
-plot_grid(plotlist = vimp_forest_plot_ind_tcells, labels = antigen_labs_tcells)
-dev.off()
+## create the final plots
+for (i in 1:length(antigen_labs_tcells)) {
+  file_name <- paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_tcells_", antigen_labs_tcells[i], ".png")
+  ggsave(file_name, plot = plot_grid(vimp_forest_plot_ind_tcells[[i]], labels = antigen_labs_tcells[i]), 
+         device = "png",
+         height = fig_height, width = fig_width,
+         units = "cm", dpi = 300)
+  
+}
