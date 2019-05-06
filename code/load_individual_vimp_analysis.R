@@ -76,7 +76,7 @@ for (i in 1:length(var_names)) {
   #                          vimp = TRUE)")))
   # eval(parse(text = paste0("vimp_", i, "_avg <- get_avg_est_ci(vimp_", i, ")")))
   # eval(parse(text = paste0("saveRDS(vimp_", i, "_avg, paste0(results_dir, 'vimp_", i, "_avg.rds'))")))
-  eval(parse(text = paste0("vimp_", i, "<- readRDS(paste0(results_dir, 'vimp_", i, "_avg.rds'))")))
+  eval(parse(text = paste0("vimp_", i, "_avg <- readRDS(paste0(results_dir, 'vimp_", i, "_avg.rds'))")))
 }
 
 ## make groups of marker variables;
