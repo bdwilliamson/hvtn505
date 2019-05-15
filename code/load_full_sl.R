@@ -153,7 +153,7 @@ main_font_size_forest <- 20
 main_font_size_lab <- 8
 fig_width <- fig_height <- 2590
 y_title <- 0.96
-r2_forest_plot <- r2_plot_assays(avg_r2s, main_font_size_forest = main_font_size_forest, 
+r2_forest_plot <- plot_assays(avg_r2s, type = "r2", main_font_size_forest = main_font_size_forest, 
                                    main_font_size_lab = main_font_size_lab,
                                    sl_only = TRUE, immunoassay = TRUE,
                                    colors = cbbPalette)

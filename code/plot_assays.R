@@ -3,10 +3,12 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest, main_font_siz
   ## if type is AUC, make correct labels
   if (type == "auc") {
     x_lab <- "CV-AUC"
+    x_lim <- c(0.4, 1)
     avgs <- avgs %>% 
       mutate(measure = AUC)
   } else {
     x_lab <- expression(paste("CV-", R^2))
+    x_lim <- c(-0.6, 0.4)
     avgs <- avgs %>% 
       mutate(measure = R2)
   }
@@ -35,9 +37,9 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest, main_font_siz
     geom_point() +
     xlab(x_lab) +
     ylab("") + 
-    scale_x_continuous(breaks = seq(0.4, 1, 0.1),
-                       labels = as.character(seq(0.4, 1, 0.1)),
-                       limits = c(0.4, 1)) +
+    scale_x_continuous(breaks = round(seq(x_lim[1], x_lim[2], 0.1), 1),
+                       labels = as.character(round(seq(x_lim[1], x_lim[2], 0.1), 1)),
+                       limits = x_lim) +
     theme(legend.position = "", 
           axis.text.y = element_blank(),
           text = element_text(size = main_font_size_forest),
