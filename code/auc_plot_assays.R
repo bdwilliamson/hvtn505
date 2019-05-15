@@ -1,7 +1,7 @@
 # create the forest plot of CV-AUC for each of the top learner and SL from each assay combination
-auc_plot_assays <- function(avg_aucs, main_font_size) {
+auc_plot_assays <- function(avg_aucs, main_font_size_forest, main_font_size_lab, sl_only = TRUE, immunoassay = TRUE) {
   ## get SL and the top individual learner/screen combo from each assay
-  top_learners <- avg_aucs %>% 
+  top_learners_init <- avg_aucs %>% 
     group_by(assay) %>% 
     arrange(desc(AUC), .by_group = TRUE) %>% # arrange in descending order by assay group
     filter((Learner == "SL" & Screen == "All") | row_number() == 1) %>%  # select only the SL row and the top performing learner 
@@ -9,7 +9,15 @@ auc_plot_assays <- function(avg_aucs, main_font_size) {
     ungroup() %>% 
     arrange(desc(AUC))
   
-  ## another forest plot with the groups/learners from the analysis plan
+  ## if sl_only, only use the SL algorithm for each assay
+  if (sl_only) {
+    top_learners <- top_learners_init %>% 
+      filter(Learner == "SL")
+  } else {
+    top_learners <- top_learners_init
+  }
+  
+  ## forest plot with the groups/learners from the analysis plan
   top_learner_plot <- top_learners %>% 
     ggplot(aes(x = AUC, y = factor(paste0(Screen, "_", Learner, "_", assay), levels = paste0(Screen, "_", Learner, "_", assay)[order(AUC)],
                                    labels = paste0(varset_label, " ", learner_nm, " ", screen_nm)[order(AUC)]))) + 
@@ -17,26 +25,46 @@ auc_plot_assays <- function(avg_aucs, main_font_size) {
     geom_point() +
     xlab("CV-AUC") +
     ylab("") + 
-    xlim(c(0.4, 1)) +
-    theme(legend.position="", 
-          axis.text.y=element_blank(),
-          text = element_text(size=35),
-          axis.title = element_text(size=25), 
-          axis.title.x = element_text(margin = ggplot2::margin(t = 20, r = 0, b = 0, l = 0)),
+    scale_x_continuous(breaks = seq(0.4, 1, 0.1),
+                     labels = as.character(seq(0.4, 1, 0.1)),
+                     limits = c(0.4, 1)) +
+    theme(legend.position = "", 
+          axis.text.y = element_blank(),
+          text = element_text(size = main_font_size_forest),
+          axis.title = element_text(size = main_font_size_forest), 
+          axis.text.x = element_text(size = main_font_size_forest),
+          axis.title.x = element_text(margin = ggplot2::margin(t = 20, r = 0, b = 0, l = 0), size = main_font_size_forest),
           plot.margin=unit(c(1,0.5,0,0),"cm")) # top, right, bottom, left
-  ## separate plot with nice names, printed values of the AUCs
-  top_learners_labels <- top_learners %>% 
-    ungroup() %>% 
-    mutate(lab_auc = paste0(format(round(AUC, 3), nsmall = 3), " [", 
-                            format(round(ci_ll, 3), nsmall = 3), ", ", 
-                            format(round(ci_ul, 3), nsmall = 3), "]")) %>%
-    select(varset_label, learner_nm, screen_nm, lab_auc)
-  ## melt to make a single "value" column
-  top_learners_labels$var <- 1
-  top_learners_labs <- melt(top_learners_labels, id.var = "var")
-  ## tack on x, y coordinates
-  top_learners_labs$x_coord <- apply(matrix(top_learners_labs$variable), 1, function(x) which(grepl(x, c("varset_label", "learner_nm", "screen_nm", "lab_auc"))) - 1 + c(0, 0.3, -0.3, 0.2)[which(grepl(x, c("varset_label", "learner_nm", "screen_nm", "lab_auc")))])
-  top_learners_labs$y_coord <- rep(rev(as.numeric(rownames(top_learners))), dim(top_learners_labs)[1]/length(as.numeric(rownames(top_learners))))
+  if (immunoassay) {
+    ## separate plot with nice names, printed values of AUCs, based on immunoassays only
+    top_learners_labels <- top_learners %>% 
+      ungroup() %>% 
+      mutate(lab_auc = paste0(format(round(AUC, 3), nsmall = 3), " [", 
+                              format(round(ci_ll, 3), nsmall = 3), ", ", 
+                              format(round(ci_ul, 3), nsmall = 3), "]")) %>%
+      select(varset_label, immunoassay_set, lab_auc)
+    ## melt to make a single "value" column
+    top_learners_labels$var <- 1
+    top_learners_labs <- melt(top_learners_labels, id.var = "var")
+    ## tack on x, y coordinates
+    top_learners_labs$x_coord <- apply(matrix(top_learners_labs$variable), 1, function(x) which(grepl(x, c("varset_label", "immunoassay_set", "lab_auc"))) - 1 + c(0, 0.3, 0.2)[which(grepl(x, c("varset_label", "immunoassay_set", "lab_auc")))])
+    top_learners_labs$y_coord <- rep(rev(as.numeric(rownames(top_learners))), dim(top_learners_labs)[1]/length(as.numeric(rownames(top_learners))))
+  } else {
+    ## separate plot with nice names, printed values of the AUCs
+    top_learners_labels <- top_learners %>% 
+      ungroup() %>% 
+      mutate(lab_auc = paste0(format(round(AUC, 3), nsmall = 3), " [", 
+                              format(round(ci_ll, 3), nsmall = 3), ", ", 
+                              format(round(ci_ul, 3), nsmall = 3), "]")) %>%
+      select(varset_label, learner_nm, screen_nm, lab_auc)
+    ## melt to make a single "value" column
+    top_learners_labels$var <- 1
+    top_learners_labs <- melt(top_learners_labels, id.var = "var")
+    ## tack on x, y coordinates
+    top_learners_labs$x_coord <- apply(matrix(top_learners_labs$variable), 1, function(x) which(grepl(x, c("varset_label", "learner_nm", "screen_nm", "lab_auc"))) - 1 + c(0, 0.3, -0.3, 0.2)[which(grepl(x, c("varset_label", "learner_nm", "screen_nm", "lab_auc")))])
+    top_learners_labs$y_coord <- rep(rev(as.numeric(rownames(top_learners))), dim(top_learners_labs)[1]/length(as.numeric(rownames(top_learners))))
+  }
+  ## make the plot
   top_learner_nms_plot <- top_learners_labs %>% 
     ggplot(aes(x = x_coord, y = y_coord, label = value)) +
     geom_text(size = main_font_size, hjust = 0, vjust = 0.5) +
@@ -45,7 +73,7 @@ auc_plot_assays <- function(avg_aucs, main_font_size) {
     theme(legend.position="", 
           axis.line=element_blank(),
           axis.text=element_blank(),
-          text = element_text(size = main_font_size),
+          text = element_text(size = main_font_size_lab),
           axis.title = element_blank(), 
           axis.ticks = element_blank(),
           plot.margin=unit(c(0,0,0,0),"cm"),
@@ -54,5 +82,7 @@ auc_plot_assays <- function(avg_aucs, main_font_size) {
           panel.grid.major=element_blank(),
           panel.grid.minor=element_blank(),
           plot.background=element_blank())
+  
+  
   return(list(top_learner_plot = top_learner_plot, top_learner_nms_plot = top_learner_nms_plot))
 }
