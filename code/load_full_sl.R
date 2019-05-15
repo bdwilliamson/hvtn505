@@ -71,13 +71,13 @@ full_forest_plot_auc <- avg_aucs %>%
 
 
 ## --------------------------------------------------------------------------------------------------------------------------------------
-## forest plot of CV-AUC for the top learner and SL for each assay combination
+## FIGURE 1: forest plot of CV-AUC for the top learner and SL for each assay combination
 ## --------------------------------------------------------------------------------------------------------------------------------------
 title_font_size <- 18
 main_font_size <- 5
 fig_width <- fig_height <- 2590
 y_title <- 0.96
-auc_forest_plot <- auc_plot_assays(avg_aucs, main_font_size)
+auc_forest_plot <- auc_plot_assays(avg_aucs, main_font_size, main_font_size, sl_only = FALSE, immunoassay = FALSE)
 png(paste0(plots_dir, "cv_auc_forest_plot_sl_plus_top_learner.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
 plot_grid(auc_forest_plot$top_learner_nms_plot, auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
   draw_label("Assay combination", size = title_font_size, x = 0.075, y = y_title) +
@@ -86,8 +86,30 @@ plot_grid(auc_forest_plot$top_learner_nms_plot, auc_forest_plot$top_learner_plot
   draw_label("CV-AUC [95% CI]", size = title_font_size, x = 0.43, y = y_title)
 dev.off()
 
+## add on immunoassay set
+avg_aucs <- avg_aucs %>% 
+  mutate(immunoassay_set = get_immunoassay_set(varset_label))
+
+title_font_size <- 18
+main_font_size_forest <- 20
+main_font_size_lab <- 14
+fig_width <- fig_height <- 2590
+y_title <- 0.96
+auc_forest_plot <- auc_plot_assays(avg_aucs, main_font_size_forest = main_font_size_forest, 
+                                   main_font_size_lab = main_font_size_lab,
+                                   sl_only = TRUE, immunoassay = TRUE)
+png(paste0(plots_dir, "cv_auc_forest_plot_sl.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
+plot_grid(auc_forest_plot$top_learner_nms_plot, 
+          auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
+  draw_label("Assay combination", size = title_font_size, x = 0.075, y = y_title) +
+  draw_label("Immunoassay set", size = title_font_size, x = 0.175, y = y_title) +
+  draw_label("CV-AUC [95% CI]", size = title_font_size, x = 0.43, y = y_title)
+dev.off()
+
+
+
 ## --------------------------------------------------------------------------------------------------------------------------------------
-## forest plot of CV-R^2 for the top learner and SL for each assay combination
+## FIGURE 2: forest plot of CV-R^2 for the top learner and SL for each assay combination
 ## --------------------------------------------------------------------------------------------------------------------------------------
 ## get the R-squareds
 for (i in 1:length(var_set_names)) {
@@ -167,7 +189,7 @@ X_vaccine <- vaccinees %>%
   select(-Y, -weights)
 
 ## ----------------------------------------------------------------------------------------------
-## do variable importance relative to baseline risk vars only
+## FIGURE 3, 4: do variable importance relative to baseline risk vars only
 ## ----------------------------------------------------------------------------------------------
 # risk_type <- "r_squared"
 risk_type <- "auc"
