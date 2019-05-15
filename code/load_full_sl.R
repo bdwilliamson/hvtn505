@@ -15,12 +15,14 @@ library("vimp")
 library("HVTN505")
 library("kyotil")
 method <- "method.CC_nloglik" # since SuperLearner relies on this to be in GlobalEnv
-source("code/auc_plot_assays.R")
-source("code/r2_plot_assays.R")
+source("code/plot_assays.R")
 source("code/utils.R")
 
 results_dir <- "results/"
 plots_dir <- "plots/"
+
+# The palette with black:
+cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
 ## --------------------------------------------------------------------------------------------------------------------------------------
 ## load results objects:
@@ -77,7 +79,7 @@ title_font_size <- 18
 main_font_size <- 5
 fig_width <- fig_height <- 2590
 y_title <- 0.96
-auc_forest_plot <- auc_plot_assays(avg_aucs, main_font_size, main_font_size, sl_only = FALSE, immunoassay = FALSE)
+auc_forest_plot <- plot_assays(avg_aucs, type = "auc", main_font_size, main_font_size, sl_only = FALSE, immunoassay = FALSE)
 png(paste0(plots_dir, "cv_auc_forest_plot_sl_plus_top_learner.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
 plot_grid(auc_forest_plot$top_learner_nms_plot, auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
   draw_label("Assay combination", size = title_font_size, x = 0.075, y = y_title) +
@@ -90,23 +92,21 @@ dev.off()
 avg_aucs <- avg_aucs %>% 
   mutate(immunoassay_set = get_immunoassay_set(varset_label))
 
-title_font_size <- 18
+title_font_size <- 22
 main_font_size_forest <- 20
-main_font_size_lab <- 14
+main_font_size_lab <- 8
 fig_width <- fig_height <- 2590
 y_title <- 0.96
-auc_forest_plot <- auc_plot_assays(avg_aucs, main_font_size_forest = main_font_size_forest, 
+auc_forest_plot <- plot_assays(avg_aucs, type = "auc", main_font_size_forest = main_font_size_forest, 
                                    main_font_size_lab = main_font_size_lab,
-                                   sl_only = TRUE, immunoassay = TRUE)
+                                   sl_only = TRUE, immunoassay = TRUE,
+                                   colors = cbbPalette)
 png(paste0(plots_dir, "cv_auc_forest_plot_sl.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
 plot_grid(auc_forest_plot$top_learner_nms_plot, 
           auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
-  draw_label("Assay combination", size = title_font_size, x = 0.075, y = y_title) +
-  draw_label("Immunoassay set", size = title_font_size, x = 0.175, y = y_title) +
-  draw_label("CV-AUC [95% CI]", size = title_font_size, x = 0.43, y = y_title)
+  draw_label("Assay combination", size = title_font_size, x = 0.1, y = y_title) +
+  draw_label("CV-AUC [95% CI]", size = title_font_size, x = 0.38, y = y_title)
 dev.off()
-
-
 
 ## --------------------------------------------------------------------------------------------------------------------------------------
 ## FIGURE 2: forest plot of CV-R^2 for the top learner and SL for each assay combination
@@ -134,13 +134,34 @@ title_font_size <- 18
 main_font_size <- 5
 fig_width <- fig_height <- 2590
 y_title <- 0.96
-r2_forest_plot <- r2_plot_assays(avg_r2s, main_font_size)
+r2_forest_plot <- plot_assays(avg_r2s, type = "r2", main_font_size, main_font_size,
+                              sl_only = FALSE, immunoassay = FALSE)
 png(paste0(plots_dir, "cv_r2_forest_plot_sl_plus_top_learner.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
 plot_grid(r2_forest_plot$top_learner_nms_plot, r2_forest_plot$top_learner_plot, nrow = 1, align = "h", rel_widths = c(1, 0.55)) +
   draw_label("Assay combination", size = title_font_size, x = 0.075, y = y_title) +
   draw_label("Algorithm", size = title_font_size, x = 0.25, y = y_title) +
   draw_label("Screen", size = title_font_size, x = 0.34, y = y_title) +
   draw_label(expression(paste("CV-", R^2, " [95% CI]", sep = "")), size = title_font_size, x = 0.55, y = y_title)
+dev.off()
+
+## add on immunoassay set
+avg_r2s <- avg_r2s %>% 
+  mutate(immunoassay_set = get_immunoassay_set(varset_label))
+
+title_font_size <- 22
+main_font_size_forest <- 20
+main_font_size_lab <- 8
+fig_width <- fig_height <- 2590
+y_title <- 0.96
+r2_forest_plot <- r2_plot_assays(avg_r2s, main_font_size_forest = main_font_size_forest, 
+                                   main_font_size_lab = main_font_size_lab,
+                                   sl_only = TRUE, immunoassay = TRUE,
+                                   colors = cbbPalette)
+png(paste0(plots_dir, "cv_r2_forest_plot_sl.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
+plot_grid(r2_forest_plot$top_learner_nms_plot, 
+          r2_forest_plot$top_learner_plot, nrow = 1, align = "h") +
+  draw_label("Assay combination", size = title_font_size, x = 0.1, y = y_title) +
+  draw_label(expression(paste("CV-", R^2, " [95% CI]", sep = "")), size = title_font_size, x = 0.38, y = y_title)
 dev.off()
 ## --------------------------------------------------------------------------------------------------------------------------------------
 ## Variable importance plot for the different assay combinations:
