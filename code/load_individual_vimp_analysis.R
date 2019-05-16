@@ -57,10 +57,13 @@ for (i in 1:length(var_names)) {
   eval(parse(text = paste0("sl_fit_var_", i, " <- readRDS(paste0(results_dir, 'sl_fits_vimp_', i + 190, '.rds'))")))
 }
 
-title_font_size <- 18
-main_font_size <- 5
-# fig_width <- fig_height <- 2590
-fig_width <- fig_height <- 20
+title_font_size <- 22
+main_font_size_forest <- 20
+main_font_size_lab <- 8
+y_title <- 0.96
+point_size <- 5
+fig_width <- 30
+fig_height <- 23
 width_mult <- 2
 height_mult <- 1.5
 
@@ -72,12 +75,12 @@ height_mult <- 1.5
 risk_type <- "auc"
 for (i in 1:length(var_names)) {
   ## only run if results computation changes
-  # eval(parse(text = paste0("vimp_", i, "<- get_cv_vim(full_fit = sl_fit_var_", i, 
-  #                          ", reduced_fit = sl_fits_varset_1_baseline_exposure, type = risk_type,
-  #                          vimp = TRUE)")))
-  # eval(parse(text = paste0("vimp_", i, "_avg <- get_avg_est_ci(vimp_", i, ")")))
-  # eval(parse(text = paste0("saveRDS(vimp_", i, "_avg, paste0(results_dir, 'vimp_", i, "_avg.rds'))")))
-  eval(parse(text = paste0("vimp_", i, "_avg <- readRDS(paste0(results_dir, 'vimp_", i, "_avg.rds'))")))
+  eval(parse(text = paste0("vimp_", i, "<- get_cv_vim(full_fit = sl_fit_var_", i,
+                           ", reduced_fit = sl_fits_varset_1_baseline_exposure, type = risk_type,
+                           vimp = TRUE)")))
+  eval(parse(text = paste0("vimp_", i, "_avg <- get_avg_est_ci(vimp_", i, ")")))
+  eval(parse(text = paste0("saveRDS(vimp_", i, "_avg, paste0(results_dir, 'vimp_", i, "_avg.rds'))")))
+  # eval(parse(text = paste0("vimp_", i, "_avg <- readRDS(paste0(results_dir, 'vimp_", i, "_avg.rds'))")))
 }
 
 ## make groups of marker variables;
@@ -158,7 +161,10 @@ for (i in 2:length(var_names)) {
 antigen_labs_fxab <- unique((vimp_tibble_ind %>% filter(assay_group == "Fx Ab"))$antigen_group)
 vimp_forest_plot_ind_fxab <- assay_antigen_plot_list(vimp_tibble_ind, assay = "Fx Ab", 
                                                      antigens = antigen_labs_fxab,
-                                                     risk_type = risk_type)
+                                                     risk_type = risk_type,
+                                                     main_font_size = main_font_size_forest,
+                                                     point_size = point_size,
+                                                     x_lim = c(-0.2, 0.2))
 ## create the final plots
 for (i in 1:length(antigen_labs_fxab)) {
   file_name <- paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_fxab_", antigen_labs_fxab[i], ".png")
@@ -175,13 +181,16 @@ for (i in 1:length(antigen_labs_fxab)) {
 antigen_labs_igg_iga <- unique((vimp_tibble_ind %>% filter(assay_group == "IgG + IgA"))$antigen_group)
 vimp_forest_plot_ind_igg_iga <- assay_antigen_plot_list(vimp_tibble_ind, assay = "IgG + IgA", 
                                                      antigens = antigen_labs_igg_iga,
-                                                     risk_type = risk_type)
+                                                     risk_type = risk_type,
+                                                     main_font_size = main_font_size_forest,
+                                                     point_size = point_size,
+                                                     x_lim = c(-0.2, 0.2))
 ## create the final plots
 for (i in 1:length(antigen_labs_igg_iga)) {
   file_name <- paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_igg_iga_", antigen_labs_igg_iga[i], ".png")
   ggsave(file_name, plot = plot_grid(vimp_forest_plot_ind_igg_iga[[i]], labels = antigen_labs_igg_iga[i]), 
          device = "png",
-         height = fig_height, width = fig_width,
+         height = fig_height*(height_mult + 0.25), width = fig_width,
          units = "cm", dpi = 300)
   
 }
@@ -192,7 +201,10 @@ for (i in 1:length(antigen_labs_igg_iga)) {
 antigen_labs_igg3 <- unique((vimp_tibble_ind %>% filter(assay_group == "IgG3"))$antigen_group)
 vimp_forest_plot_ind_igg3 <- assay_antigen_plot_list(vimp_tibble_ind, assay = "IgG3", 
                                                      antigens = antigen_labs_igg3,
-                                                     risk_type = risk_type)
+                                                     risk_type = risk_type,
+                                                     main_font_size = main_font_size_forest,
+                                                     point_size = point_size,
+                                                     x_lim = c(-0.2, 0.3))
 ## create the final plots
 for (i in 1:length(antigen_labs_igg3)) {
   file_name <- paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_igg3_", antigen_labs_igg3[i], ".png")
@@ -209,7 +221,10 @@ for (i in 1:length(antigen_labs_igg3)) {
 antigen_labs_tcells <- unique((vimp_tibble_ind %>% filter(assay_group == "T cells"))$antigen_group)
 vimp_forest_plot_ind_tcells <- assay_antigen_plot_list(vimp_tibble_ind, assay = "T cells", 
                                                      antigens = antigen_labs_tcells,
-                                                     risk_type = risk_type)
+                                                     risk_type = risk_type,
+                                                     main_font_size = main_font_size_forest,
+                                                     point_size = point_size,
+                                                     x_lim = c(-0.2, 0.3))
 ## create the final plots
 for (i in 1:length(antigen_labs_tcells)) {
   file_name <- paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_tcells_", antigen_labs_tcells[i], ".png")
