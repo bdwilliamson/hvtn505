@@ -35,7 +35,7 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest,
   top_learner_plot <- top_learners %>% 
     ggplot(aes(x = measure, y = factor(paste0(Screen, "_", Learner, "_", assay), levels = paste0(Screen, "_", Learner, "_", assay)[order(measure)],
                                    labels = paste0(varset_label, " ", learner_nm, " ", screen_nm)[order(measure)]))) + 
-    geom_errorbarh(aes(xmin = ci_ll, xmax = ci_ul)) +
+    geom_errorbarh(aes(xmin = ci_ll, xmax = ci_ul), size = point_size/2) +
     geom_point(size = point_size) +
     xlab(x_lab) +
     ylab("") + 
@@ -52,7 +52,8 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest,
   if (immunoassay) {
     ## add on a legend to top_learner_plot, color based on immunoassay set
     top_learner_plot <- top_learner_plot +
-      geom_errorbarh(aes(xmin = top_learners$ci_ll, xmax = top_learners$ci_ul, color = top_learners$immunoassay_set)) +
+      geom_errorbarh(aes(xmin = top_learners$ci_ll, xmax = top_learners$ci_ul, color = top_learners$immunoassay_set),
+                     size = point_size/2) +
       geom_point(aes(x = top_learners$measure, y = factor(paste0(Screen, "_", Learner, "_", assay), levels = paste0(Screen, "_", Learner, "_", assay)[order(measure)],
                                                           labels = paste0(varset_label, " ", learner_nm, " ", screen_nm)[order(measure)])),
                  size = point_size) +
