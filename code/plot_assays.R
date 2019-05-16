@@ -1,5 +1,7 @@
 # create the forest plot of the specified measure for each of the top learner and SL from each assay combination
-plot_assays <- function(avgs, type = "auc", main_font_size_forest, main_font_size_lab, sl_only = TRUE, immunoassay = TRUE, colors = NULL) {
+plot_assays <- function(avgs, type = "auc", main_font_size_forest, 
+                        main_font_size_lab, sl_only = TRUE, immunoassay = TRUE, colors = NULL,
+                        point_size = 3) {
   ## if type is AUC, make correct labels
   if (type == "auc") {
     x_lab <- "CV-AUC"
@@ -34,7 +36,7 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest, main_font_siz
     ggplot(aes(x = measure, y = factor(paste0(Screen, "_", Learner, "_", assay), levels = paste0(Screen, "_", Learner, "_", assay)[order(measure)],
                                    labels = paste0(varset_label, " ", learner_nm, " ", screen_nm)[order(measure)]))) + 
     geom_errorbarh(aes(xmin = ci_ll, xmax = ci_ul)) +
-    geom_point() +
+    geom_point(size = point_size) +
     xlab(x_lab) +
     ylab("") + 
     scale_x_continuous(breaks = round(seq(x_lim[1], x_lim[2], 0.1), 1),
@@ -51,6 +53,9 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest, main_font_siz
     ## add on a legend to top_learner_plot, color based on immunoassay set
     top_learner_plot <- top_learner_plot +
       geom_errorbarh(aes(xmin = top_learners$ci_ll, xmax = top_learners$ci_ul, color = top_learners$immunoassay_set)) +
+      geom_point(aes(x = top_learners$measure, y = factor(paste0(Screen, "_", Learner, "_", assay), levels = paste0(Screen, "_", Learner, "_", assay)[order(measure)],
+                                                          labels = paste0(varset_label, " ", learner_nm, " ", screen_nm)[order(measure)])),
+                 size = point_size) +
       scale_color_manual(values = colors) +
       labs(color = "Immunoassay set") +
       theme(legend.position = c(0.63, 0.2), 

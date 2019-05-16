@@ -97,10 +97,12 @@ main_font_size_forest <- 20
 main_font_size_lab <- 8
 fig_width <- fig_height <- 2590
 y_title <- 0.96
+point_size <- 5
 auc_forest_plot <- plot_assays(avg_aucs, type = "auc", main_font_size_forest = main_font_size_forest, 
                                    main_font_size_lab = main_font_size_lab,
                                    sl_only = TRUE, immunoassay = TRUE,
-                                   colors = cbbPalette)
+                                   colors = cbbPalette,
+                               point_size = point_size)
 png(paste0(plots_dir, "cv_auc_forest_plot_sl.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
 plot_grid(auc_forest_plot$top_learner_nms_plot, 
           auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
@@ -295,7 +297,7 @@ vimp_tibble <- tibble(assay_grp = c("All markers",
                                     "T Cells + Fx Ab", 
                                     "IgG + IgA + IgG3 + Fx Ab", 
                                     "IgG + IgA + IgG3 + T Cells", 
-                                    "IgG + IgA + T cells",
+                                    "IgG + IgA + T Cells",
                                     "IgG + IgA + IgG3",
                                     "Fx Ab", 
                                     "T Cells", 
@@ -331,14 +333,26 @@ vimp_tibble <- tibble(assay_grp = c("All markers",
                               vimp_tcells_avg$ci[2],
                               vimp_igg3_avg$ci[2],
                               vimp_igg_iga_avg$ci[2]))
-
+vimp_tibble <- tibble::add_column(vimp_tibble, immunoassay_set = get_immunoassay_set(vimp_tibble$assay_grp))
+## save this object for easy loading
+saveRDS(vimp_tibble, paste0(results_dir, "vimp_tibble_", risk_type))
+vimp_tibble <- readRDS(paste0(results_dir, "vimp_tibble_", risk_type))
 ## forest plot of vimp, with labels for the groups
 vimp_forest_plot <- vimp_tibble %>% 
   ggplot(aes(x = est, y = factor(assay_grp, levels = assay_grp[order(est, decreasing = TRUE)], labels = assay_grp[order(est, decreasing = TRUE)]))) +
-  geom_point() +
-  geom_errorbarh(aes(xmin = cil, xmax = ciu)) +
+  geom_errorbarh(aes(xmin = cil, xmax = ciu, color = immunoassay_set)) +
+  geom_point(size = point_size) +
+  scale_color_manual(values = cbbPalette) +
   ylab("Assay group") +
-  xlab(paste0("Variable importance estimate: difference in ", ifelse(risk_type == "r_squared", expression(R^2), "AUC")))
+  labs(color = "Immunoassay set") +
+  xlab(paste0("Variable importance estimate: difference in ", ifelse(risk_type == "r_squared", expression(R^2), "AUC"))) +
+  theme(legend.position = c(0.1, 0.2), 
+        axis.text.y = element_text(size = main_font_size_forest),
+        text = element_text(size = main_font_size_forest),
+        axis.title = element_text(size = main_font_size_forest), 
+        axis.text.x = element_text(size = main_font_size_forest),
+        axis.title.x = element_text(margin = ggplot2::margin(t = 20, r = 0, b = 0, l = 0), size = main_font_size_forest),
+        plot.margin=unit(c(1,0.5,0,0),"cm")) # top, right, bottom, left
 png(paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
 vimp_forest_plot
 dev.off()
