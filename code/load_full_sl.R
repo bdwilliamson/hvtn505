@@ -344,16 +344,21 @@ main_font_size_lab <- 8
 fig_width <- fig_height <- 2590
 y_title <- 0.96
 point_size <- 5
+if (risk_type == "r_squared") {
+  lgnd_pos <- c(0, 0.1)
+} else {
+  lgnd_pos <- c(0.1, 0.2)
+}
 ## forest plot of vimp, with labels for the groups
 vimp_forest_plot <- vimp_tibble %>% 
   ggplot(aes(x = est, y = factor(assay_grp, levels = assay_grp[order(est, decreasing = TRUE)], labels = assay_grp[order(est, decreasing = TRUE)]))) +
-  geom_errorbarh(aes(xmin = cil, xmax = ciu, color = immunoassay_set)) +
+  geom_errorbarh(aes(xmin = cil, xmax = ciu, color = immunoassay_set), size = point_size/2) +
   geom_point(size = point_size) +
-  scale_color_manual(values = cbbPalette) +
+  scale_color_manual(values = cbbPalette[-2]) + # make sure that colors match with other forest plot
   ylab("Assay group") +
   labs(color = "Immunoassay set") +
   xlab(paste0("Variable importance estimate: difference in CV-", ifelse(risk_type == "r_squared", expression(R^2), "AUC"))) +
-  theme(legend.position = c(0.1, 0.2), 
+  theme(legend.position = lgnd_pos, 
         axis.text.y = element_text(size = main_font_size_forest),
         text = element_text(size = main_font_size_forest),
         axis.title = element_text(size = main_font_size_forest), 
