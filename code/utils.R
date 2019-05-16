@@ -320,7 +320,7 @@ assay_antigen_plot <- function(vimp_tibble, assay, antigen, risk_type) {
     geom_errorbarh(aes(xmin = cil, xmax = ciu)) +
     geom_vline(xintercept = 0, color = "red", linetype = "dotted") + 
     ylab("Variable name") +
-    xlab(paste0("Variable importance estimate: difference in ", ifelse(risk_type == "r_squared", expression(R^2), "AUC")))
+    xlab(paste0("Variable importance estimate: difference in CV-", ifelse(risk_type == "r_squared", expression(R^2), "AUC")))
 }
 
 ## list of plots for a given assay type, one for each antigen
@@ -332,7 +332,7 @@ assay_antigen_plot_list <- function(vimp_tibble, assay, antigens, risk_type) {
 ## get immunoassay set from character vector: T cells, Ab only, T cells and Ab
 get_immunoassay_set <- function(vec) {
   get_one_immunoassay <- function(x) {
-    ret_vec <- c("T Cells", "Ab variables", "T Cells and Ab variables", "No markers")
+    ret_vec <- c("T Cell variables", "Ab variables", "T Cell and Ab variables", "No markers")
     if (grepl("T Cells", x)) {
       ret_init <- ret_vec[c(1, 3)]
       if (grepl("IgG", x) | grepl("IgA", x) | grepl("IgG3", x) | grepl("Fx Ab", x)) {

@@ -337,6 +337,13 @@ vimp_tibble <- tibble::add_column(vimp_tibble, immunoassay_set = get_immunoassay
 ## save this object for easy loading
 saveRDS(vimp_tibble, paste0(results_dir, "vimp_tibble_", risk_type))
 vimp_tibble <- readRDS(paste0(results_dir, "vimp_tibble_", risk_type))
+
+title_font_size <- 22
+main_font_size_forest <- 20
+main_font_size_lab <- 8
+fig_width <- fig_height <- 2590
+y_title <- 0.96
+point_size <- 5
 ## forest plot of vimp, with labels for the groups
 vimp_forest_plot <- vimp_tibble %>% 
   ggplot(aes(x = est, y = factor(assay_grp, levels = assay_grp[order(est, decreasing = TRUE)], labels = assay_grp[order(est, decreasing = TRUE)]))) +
@@ -345,7 +352,7 @@ vimp_forest_plot <- vimp_tibble %>%
   scale_color_manual(values = cbbPalette) +
   ylab("Assay group") +
   labs(color = "Immunoassay set") +
-  xlab(paste0("Variable importance estimate: difference in ", ifelse(risk_type == "r_squared", expression(R^2), "AUC"))) +
+  xlab(paste0("Variable importance estimate: difference in CV-", ifelse(risk_type == "r_squared", expression(R^2), "AUC"))) +
   theme(legend.position = c(0.1, 0.2), 
         axis.text.y = element_text(size = main_font_size_forest),
         text = element_text(size = main_font_size_forest),
