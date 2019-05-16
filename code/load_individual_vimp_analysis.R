@@ -140,7 +140,10 @@ vimp_tibble_ind <- tibble(assay_group = assay_nms[1],
                           #                                    all_var_supers$assay[1]),
                           var_name = var_names[1],
                           est = vimp_1_avg$est, cil = vimp_1_avg$ci[1],
-                          ciu = vimp_1_avg$ci[2])
+                          ciu = vimp_1_avg$ci[2],
+                          p = vimp_1_avg$p,
+                          greater_zero = vimp_1_avg$ci[1] > 0,
+                          signif_p = vimp_1_avg$p < 0.05)
 for (i in 2:length(var_names)) {
   this_est <- eval(parse(text = paste0("vimp_", i, "_avg")))
   vimp_tibble_ind <- vimp_tibble_ind %>% 
@@ -151,7 +154,10 @@ for (i in 2:length(var_names)) {
                     #                                    all_var_supers$assay[i]), 
                     var_name = var_names[i],
                     est = this_est$est, cil = this_est$ci[1],
-                    ciu = this_est$ci[2])
+                    ciu = this_est$ci[2],
+                    p = this_est$p,
+                    greater_zero = this_est$ci[1] > 0,
+                    signif_p = this_est$p < 0.05)
 }
 
 ## --------------------------------------------------------------------------------------------------------------------------------------
