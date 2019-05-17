@@ -237,7 +237,7 @@ for (i in 1:length(antigen_labs_tcells)) {
   file_name <- paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_tcells_", antigen_labs_tcells[i], ".png")
   ggsave(file_name, plot = plot_grid(vimp_forest_plot_ind_tcells[[i]], labels = antigen_labs_tcells[i]), 
          device = "png",
-         height = fig_height, width = fig_width,
+         height = fig_height, width = fig_width*(width_mult*2/3),
          units = "cm", dpi = 300)
   
 }

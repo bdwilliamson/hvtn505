@@ -319,8 +319,8 @@ assay_antigen_plot <- function(vimp_tibble, assay, antigen, risk_type,
   vimp_tibble %>% 
     filter(assay_group == assay, antigen_group == antigen) %>% 
     ggplot(aes(x = est, y = factor(var_name, levels = var_name[order(est, decreasing = TRUE)], labels = var_name[order(est, decreasing = TRUE)]))) +
-    geom_point(size = point_size) +
     geom_errorbarh(aes(xmin = cil, xmax = ciu, color = greater_zero), size = point_size/2) +
+    geom_point(size = point_size) +
     geom_vline(xintercept = 0, color = "red", linetype = "dotted") + 
     scale_color_manual(values = cols) +
     xlim(x_lim) +
