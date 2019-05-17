@@ -66,6 +66,9 @@ fig_width <- 30
 fig_height <- 23
 width_mult <- 2
 height_mult <- 1.5
+# The palette with black:
+cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
 
 ## --------------------------------------------------------------------------------------------------------------------------------------
 ## Variable importance analysis
@@ -75,12 +78,12 @@ height_mult <- 1.5
 risk_type <- "auc"
 for (i in 1:length(var_names)) {
   ## only run if results computation changes
-  eval(parse(text = paste0("vimp_", i, "<- get_cv_vim(full_fit = sl_fit_var_", i,
-                           ", reduced_fit = sl_fits_varset_1_baseline_exposure, type = risk_type,
-                           vimp = TRUE)")))
-  eval(parse(text = paste0("vimp_", i, "_avg <- get_avg_est_ci(vimp_", i, ")")))
-  eval(parse(text = paste0("saveRDS(vimp_", i, "_avg, paste0(results_dir, 'vimp_", i, "_avg.rds'))")))
-  # eval(parse(text = paste0("vimp_", i, "_avg <- readRDS(paste0(results_dir, 'vimp_", i, "_avg.rds'))")))
+  # eval(parse(text = paste0("vimp_", i, "<- get_cv_vim(full_fit = sl_fit_var_", i,
+  #                          ", reduced_fit = sl_fits_varset_1_baseline_exposure, type = risk_type,
+  #                          vimp = TRUE)")))
+  # eval(parse(text = paste0("vimp_", i, "_avg <- get_avg_est_ci(vimp_", i, ")")))
+  # eval(parse(text = paste0("saveRDS(vimp_", i, "_avg, paste0(results_dir, 'vimp_", i, "_avg.rds'))")))
+  eval(parse(text = paste0("vimp_", i, "_avg <- readRDS(paste0(results_dir, 'vimp_", i, "_avg.rds'))")))
 }
 
 ## make groups of marker variables;
@@ -135,9 +138,6 @@ antigen_nms[vrc_nef_b] <- "VRC Nef B"
 ## display_var_names removes assay and antigen
 vimp_tibble_ind <- tibble(assay_group = assay_nms[1], 
                           antigen_group = antigen_nms[1],
-                          # var_name = make_nice_variable_name(var_names[1], 
-                          #                                    all_var_supers$antigen[1],
-                          #                                    all_var_supers$assay[1]),
                           var_name = var_names[1],
                           est = vimp_1_avg$est, cil = vimp_1_avg$ci[1],
                           ciu = vimp_1_avg$ci[2],
@@ -149,9 +149,6 @@ for (i in 2:length(var_names)) {
   vimp_tibble_ind <- vimp_tibble_ind %>% 
     tibble::add_row(assay_group = assay_nms[i],
                     antigen_group = antigen_nms[i],
-                    # var_name = make_nice_variable_name(var_names[i], 
-                    #                                    all_var_supers$antigen[i],
-                    #                                    all_var_supers$assay[i]), 
                     var_name = var_names[i],
                     est = this_est$est, cil = this_est$ci[1],
                     ciu = this_est$ci[2],
@@ -170,7 +167,8 @@ vimp_forest_plot_ind_fxab <- assay_antigen_plot_list(vimp_tibble_ind, assay = "F
                                                      risk_type = risk_type,
                                                      main_font_size = main_font_size_forest,
                                                      point_size = point_size,
-                                                     x_lim = c(-0.2, 0.2))
+                                                     x_lim = c(-0.2, 0.2),
+                                                     cols = cbbPalette[c(1, 3)])
 ## create the final plots
 for (i in 1:length(antigen_labs_fxab)) {
   file_name <- paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_fxab_", antigen_labs_fxab[i], ".png")
@@ -190,7 +188,8 @@ vimp_forest_plot_ind_igg_iga <- assay_antigen_plot_list(vimp_tibble_ind, assay =
                                                      risk_type = risk_type,
                                                      main_font_size = main_font_size_forest,
                                                      point_size = point_size,
-                                                     x_lim = c(-0.2, 0.2))
+                                                     x_lim = c(-0.2, 0.2),
+                                                     cols = cbbPalette[c(1, 3)])
 ## create the final plots
 for (i in 1:length(antigen_labs_igg_iga)) {
   file_name <- paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_igg_iga_", antigen_labs_igg_iga[i], ".png")
@@ -210,7 +209,8 @@ vimp_forest_plot_ind_igg3 <- assay_antigen_plot_list(vimp_tibble_ind, assay = "I
                                                      risk_type = risk_type,
                                                      main_font_size = main_font_size_forest,
                                                      point_size = point_size,
-                                                     x_lim = c(-0.2, 0.3))
+                                                     x_lim = c(-0.2, 0.3),
+                                                     cols = cbbPalette[c(1, 3)])
 ## create the final plots
 for (i in 1:length(antigen_labs_igg3)) {
   file_name <- paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_igg3_", antigen_labs_igg3[i], ".png")
@@ -230,7 +230,8 @@ vimp_forest_plot_ind_tcells <- assay_antigen_plot_list(vimp_tibble_ind, assay = 
                                                      risk_type = risk_type,
                                                      main_font_size = main_font_size_forest,
                                                      point_size = point_size,
-                                                     x_lim = c(-0.2, 0.3))
+                                                     x_lim = c(-0.2, 0.3),
+                                                     cols = cbbPalette[c(1, 3)])
 ## create the final plots
 for (i in 1:length(antigen_labs_tcells)) {
   file_name <- paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_tcells_", antigen_labs_tcells[i], ".png")

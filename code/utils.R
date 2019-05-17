@@ -315,16 +315,18 @@ get_avg_risk_ci <- function(vimp_lst) {
 
 ## make a plot for a given assay and antigen
 assay_antigen_plot <- function(vimp_tibble, assay, antigen, risk_type,
-                               main_font_size, point_size, x_lim = x_lim) {
+                               main_font_size, point_size, x_lim = x_lim, cols = cols) {
   vimp_tibble %>% 
     filter(assay_group == assay, antigen_group == antigen) %>% 
     ggplot(aes(x = est, y = factor(var_name, levels = var_name[order(est, decreasing = TRUE)], labels = var_name[order(est, decreasing = TRUE)]))) +
     geom_point(size = point_size) +
-    geom_errorbarh(aes(xmin = cil, xmax = ciu), size = point_size/2) +
+    geom_errorbarh(aes(xmin = cil, xmax = ciu, color = greater_zero), size = point_size/2) +
     geom_vline(xintercept = 0, color = "red", linetype = "dotted") + 
+    scale_color_manual(values = cols) +
     xlim(x_lim) +
     ylab("Variable name") +
     xlab(paste0("Variable importance estimate: difference in CV-", ifelse(risk_type == "r_squared", expression(R^2), "AUC"))) +
+    guides(color = FALSE) +
     theme(axis.text.y = element_text(size = main_font_size),
           text = element_text(size = main_font_size),
           axis.title = element_text(size = main_font_size), 
@@ -335,9 +337,9 @@ assay_antigen_plot <- function(vimp_tibble, assay, antigen, risk_type,
 
 ## list of plots for a given assay type, one for each antigen
 assay_antigen_plot_list <- function(vimp_tibble, assay, antigens, risk_type,
-                                    main_font_size, point_size, x_lim = x_lim) {
+                                    main_font_size, point_size, x_lim, cols) {
   plot_lst <- lapply(as.list(antigens), assay_antigen_plot, vimp_tibble = vimp_tibble, assay = assay, risk_type = risk_type,
-                     main_font_size = main_font_size, point_size = point_size, x_lim)
+                     main_font_size = main_font_size, point_size = point_size, x_lim = x_lim, cols = cols)
   return(plot_lst)
 }
 
