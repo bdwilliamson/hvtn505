@@ -231,7 +231,8 @@ vimp_forest_plot_ind_tcells <- assay_antigen_plot_list(vimp_tibble_ind, assay = 
                                                      main_font_size = main_font_size_forest,
                                                      point_size = point_size,
                                                      x_lim = c(-0.2, 0.3),
-                                                     cols = cbbPalette[c(1, 3)])
+                                                     cols = cbbPalette[c(1, 3)],
+                                                     cols2 = cbbPalette[c(1, 4)])
 ## create the final plots
 for (i in 1:length(antigen_labs_tcells)) {
   file_name <- paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline_ind_tcells_", antigen_labs_tcells[i], ".png")
