@@ -8,11 +8,13 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest,
     x_lim <- c(0.4, 1)
     avgs <- avgs %>% 
       mutate(measure = AUC)
+    lgnd_pos <- c(0.63, 0.2)
   } else {
     x_lab <- expression(paste("CV-", R^2))
-    x_lim <- c(-0.6, 0.4)
+    x_lim <- c(-0.6, 0.7)
     avgs <- avgs %>% 
       mutate(measure = R2)
+    lgnd_pos <- c(0.65, 0.15)
   }
   ## get SL and the top individual learner/screen combo from each assay
   top_learners_init <- avgs %>% 
@@ -59,7 +61,7 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest,
                  size = point_size) +
       scale_color_manual(values = colors) +
       labs(color = "Immunoassay set") +
-      theme(legend.position = c(0.63, 0.2), 
+      theme(legend.position = lgnd_pos, 
             axis.text.y = element_blank(),
             text = element_text(size = main_font_size_forest),
             axis.title = element_text(size = main_font_size_forest), 
