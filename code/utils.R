@@ -25,27 +25,27 @@ get_all_aucs <- function(sl_fit) {
 }
 
 ## get all R^2s for SL, discrete SL, and individual algorithms
-one_r2 <- function(preds, Y) {
+one_r2 <- function(preds, Y, weights = rep(1, length(Y))) {
   var_y <- mean((Y - mean(Y))^2)
   mse <- mean((Y - preds)^2)
   ic_mse <- (Y - preds)^2 - mse
   ic_var <-  (Y - mean(Y))^2 - var_y
   grad <- matrix(c(1/mse, -1/var_y), nrow = 1)
-  ic <- cbind(ic_mse, ic_var)
+  ic <- weights*cbind(ic_mse, ic_var)
   se_log_r2 <- sqrt(grad %*% t(ic) %*% ic %*% t(grad))/length(Y)
   est <- 1 - mse/var_y
   ci_low <- 1 - exp(log(mse / var_y) + 1.96 * se_log_r2)
   ci_high <- 1 - exp(log(mse / var_y) - 1.96 * se_log_r2)
   data.frame(r2 = est, cil = ci_low, ciu = ci_high, se = se_log_r2)
 }
-cv_r2 <- function(preds, Y, folds) {
+cv_r2 <- function(preds, Y, folds, weights = rep(1, length(Y))) {
   V <- length(folds)
   fold_row_nums <- as.vector(do.call(cbind, folds))
   folds_init <- rep(as.numeric(names(folds)), each = length(Y)/length(folds))
   folds_mat <- cbind(fold_row_nums, folds_init)
   folds_numeric <- folds_mat[order(folds_mat[, 1]), 2]
   ests_cis <- do.call(rbind.data.frame, lapply(as.list(1:V), function(v) {
-    one_r2(preds = preds[folds_numeric == v], Y[folds_numeric == v])
+    one_r2(preds = preds[folds_numeric == v], Y[folds_numeric == v], weights = weights[folds_numeric == v])
   }))
   est <- colMeans(ests_cis)[1]
   se <- colMeans(ests_cis)[4]
@@ -53,7 +53,7 @@ cv_r2 <- function(preds, Y, folds) {
   ci_high <- 1 - exp(log(1 - est) - 1.96 * se)
   return(list(r2 = est, ci = c(ci_low, ci_high)))
 }
-get_all_r2s <- function(sl_fit) {
+get_all_r2s <- function(sl_fit, weights = rep(1, length(sl_fit$Y))) {
   # get the CV-R^2 of the SuperLearner predictions
   sl_r2 <- cv_r2(preds = sl_fit$SL.predict, Y = sl_fit$Y, folds = sl_fit$folds)
   out <- data.frame(Learner="SL", Screen="All", R2 = sl_r2$r2, ci_ll = sl_r2$ci[1], ci_ul=sl_r2$ci[2])
@@ -63,48 +63,47 @@ get_all_r2s <- function(sl_fit) {
   out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All", R2 = discrete_sl_r2$r2, ci_ll = discrete_sl_r2$ci[1], ci_ul = discrete_sl_r2$ci[2]))
   
   # Get the cvr2 of the individual learners in the library
-  get_individual_r2 <- function(sl_fit, col) {
+  get_individual_r2 <- function(sl_fit, col, weights = rep(1, length(sl_fit$Y))) {
     if(any(is.na(sl_fit$library.predict[, col]))) return(NULL)
-    alg_r2 <- cv_r2(preds = sl_fit$library.predict[, col], Y = sl_fit$Y, folds = sl_fit$folds)
+    alg_r2 <- cv_r2(preds = sl_fit$library.predict[, col], Y = sl_fit$Y, folds = sl_fit$folds, weights = weights)
     ## get the regexp object
     alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_", fixed = TRUE)[[1]]
     alg <- tail(alg_screen_string[grepl(".", alg_screen_string, fixed = TRUE)], n = 1)
     screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, fixed = TRUE)], collapse = "_")
     data.frame(Learner = alg, Screen = screen, R2 = alg_r2$r2, ci_ll = alg_r2$ci[1], ci_ul = alg_r2$ci[2])
   }
-  other_r2s <- plyr::ldply(1:ncol(sl_fit$library.predict), function(x) get_individual_r2(sl_fit, x))
+  other_r2s <- plyr::ldply(1:ncol(sl_fit$library.predict), function(x) get_individual_r2(sl_fit, x, weights))
   rbind(out, other_r2s)
 }
 
-get_all_r2s_lst <- function(sl_fit_lst) {
+get_all_r2s_lst <- function(sl_fit_lst, weights = rep(1, length(sl_fit_lst[[1]]$fit$Y))) {
   # get the CV-R^2 of the SuperLearner predictions
   if (is.null(sl_fit_lst)) {
     return(NA)
   } else {
-    sl_r2 <- cv_r2(preds = sl_fit_lst$fit$SL.predict, Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds)
+    sl_r2 <- cv_r2(preds = sl_fit_lst$fit$SL.predict, Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds, weights = weights)
     out <- data.frame(Learner="SL", Screen="All", R2 = sl_r2$r2, ci_ll = sl_r2$ci[1], ci_ul=sl_r2$ci[2])
     
     # Get the CV-R2 of the Discrete SuperLearner predictions
-    discrete_sl_r2 <- cv_r2(preds = sl_fit_lst$fit$discreteSL.predict, Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds)
+    discrete_sl_r2 <- cv_r2(preds = sl_fit_lst$fit$discreteSL.predict, Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds, weights = weights)
     out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All", R2 = discrete_sl_r2$r2, ci_ll = discrete_sl_r2$ci[1], ci_ul = discrete_sl_r2$ci[2]))
     
     # Get the cvr2 of the individual learners in the library
-    get_individual_r2 <- function(sl_fit, col) {
+    get_individual_r2 <- function(sl_fit, col, weights) {
       if(any(is.na(sl_fit$library.predict[, col]))) return(NULL)
-      alg_r2 <- cv_r2(preds = sl_fit$library.predict[, col], Y = sl_fit$Y, folds = sl_fit$folds)
+      alg_r2 <- cv_r2(preds = sl_fit$library.predict[, col], Y = sl_fit$Y, folds = sl_fit$folds, weights = weights)
       ## get the regexp object
       alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_", fixed = TRUE)[[1]]
       alg <- tail(alg_screen_string[grepl(".", alg_screen_string, fixed = TRUE)], n = 1)
       screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, fixed = TRUE)], collapse = "_")
       data.frame(Learner = alg, Screen = screen, R2 = alg_r2$r2, ci_ll = alg_r2$ci[1], ci_ul = alg_r2$ci[2])
     }
-    other_r2s <- plyr::ldply(1:ncol(sl_fit_lst$fit$library.predict), function(x) get_individual_r2(sl_fit_lst$fit, x))
+    other_r2s <- plyr::ldply(1:ncol(sl_fit_lst$fit$library.predict), function(x) get_individual_r2(sl_fit_lst$fit, x, weights))
     rbind(out, other_r2s)  
   }
 }
 
-## get the SL and top-performing model for a given Learner + Screen combination
-
+## do the same for AUC
 
 ## run CV.SuperLearner for one given random seed
 run_cv_sl_once <- function(seed, Y, X_mat, family, obsWeights, sl_lib, method, cvControl, innerCvControl, vimp = FALSE) {

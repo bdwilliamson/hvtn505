@@ -38,9 +38,11 @@ for (i in 1:length(var_set_names)) {
 
 ## check the discrete SL for each fold (baseline exposure only)
 lapply(sl_fits_varset_1_baseline_exposure, function(x) x$fit$whichDiscreteSL)
+lapply(sl_fits_varset_11_all, function(x) x$fit$whichDiscreteSL)
 
 ## check the weights
 lapply(sl_fits_varset_1_baseline_exposure, function(x) sort(colMeans(x$fit$coef), decreasing=TRUE))
+lapply(sl_fits_varset_11_all, function(x) sort(colMeans(x$fit$coef), decreasing=TRUE))
 
 ## average the AUCs over the 10 folds, for each
 var_set_labels <- c("No markers", "IgG + IgA", "IgG3", "T Cells", "Fx Ab", "IgG + IgA + IgG3",
