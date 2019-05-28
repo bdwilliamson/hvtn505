@@ -17,6 +17,7 @@ library("kyotil")
 method <- "method.CC_nloglik" # since SuperLearner relies on this to be in GlobalEnv
 source("code/plot_assays.R")
 source("code/utils.R")
+source("code/sl_screens.R")
 
 results_dir <- "results/"
 plots_dir <- "plots/"
@@ -30,7 +31,7 @@ data("dat.505", package = "HVTN505")
 ## read in the super learner variables
 data("var.super", package = "HVTN505") # even if there is a warning message, it still exists
 
-weights <- dat.505$wt[dat.505$trt == 1]
+weights_vaccine <- dat.505$wt[dat.505$trt == 1]
 ## --------------------------------------------------------------------------------------------------------------------------------------
 ## load results objects:
 ## --------------------------------------------------------------------------------------------------------------------------------------
@@ -58,7 +59,7 @@ var_set_labels <- c("No markers", "IgG + IgA", "IgG3", "T Cells", "Fx Ab", "IgG 
 for (i in 1:(length(var_set_names))) { 
   this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
   # eval(parse(text = paste0("all_aucs_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) x$aucs)))")))
-  eval(parse(text = paste0("all_aucs_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) get_all_aucs_lst(x, weights = weights))))")))
+  eval(parse(text = paste0("all_aucs_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) get_all_aucs_lst(x, weights = weights_vaccine))))")))
   all_aucs_i <- all_aucs_i %>% 
     filter(!is.na(all_aucs_i$Learner))
   eval(parse(text = paste0("avg_aucs_", var_set_names[i]," <- all_aucs_i %>% 
@@ -128,7 +129,7 @@ dev.off()
 ## get the R-squareds
 for (i in 1:length(var_set_names)) {
   this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
-  eval(parse(text = paste0("all_r2s_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) get_all_r2s_lst(x, weights = weights))))")))
+  eval(parse(text = paste0("all_r2s_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) get_all_r2s_lst(x, weights = weights_vaccine))))")))
   all_r2s_i <- all_r2s_i %>% 
     filter(!is.na(all_r2s_i$Learner))
   eval(parse(text = paste0("avg_r2s_", var_set_names[i]," <- all_r2s_i %>% 
@@ -390,3 +391,20 @@ vimp_forest_plot <- vimp_tibble %>%
 png(paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
 vimp_forest_plot
 dev.off()
+
+## ----------------------------------------------------------------------------------------------
+## Look at one high-performing logistic regression model to see ORs, CIs
+## first, screen based on a high-performing screen
+## these are taken from the full SL, looking over folds; choose
+## stepwise with interactions, high-correlation screen
+## ----------------------------------------------------------------------------------------------
+single_logistic_screen_highcor_x <- screen_highcor_plus_exposure(Y_vaccine, X_vaccine, family = "binomial", obsWeights = weights_vaccine)
+X_highcor_single_logistic <- X_vaccine %>% 
+  select(names(X_vaccine)[single_logistic_screen_highcor_x])
+single_logistic_mod <- SL.step.interaction(Y_vaccine, X_highcor_single_logistic, family = "binomial", obsWeights = weights_vaccine)
+single_logistic_mod_summ <- summary(single_logistic_mod$fit$object)
+single_logistic_ors <- exp(single_logistic_mod_summ$coefficients[, 1])
+single_logistic_ses <- exp(single_logistic_mod_summ$coefficients[, 2])
+single_logistic_cis <- exp(cbind(single_logistic_mod_summ$coefficients[, 1] - 1.96*single_logistic_mod_summ$coefficients[, 2],
+                                 single_logistic_mod_summ$coefficients[, 1] + 1.96*single_logistic_mod_summ$coefficients[, 2]))
+cbind(single_logistic_ors, single_logistic_cis)
