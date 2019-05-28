@@ -11,7 +11,7 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest,
     lgnd_pos <- c(0.63, 0.2)
   } else {
     x_lab <- expression(paste("CV-", R^2))
-    x_lim <- c(-0.6, 0.7)
+    x_lim <- c(-1, 1)
     avgs <- avgs %>% 
       mutate(measure = R2)
     lgnd_pos <- c(0.65, 0.15)

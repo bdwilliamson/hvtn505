@@ -104,7 +104,80 @@ get_all_r2s_lst <- function(sl_fit_lst, weights = rep(1, length(sl_fit_lst[[1]]$
 }
 
 ## do the same for AUC
+one_auc <- function(preds, Y, weights = rep(1, length(Y))) {
+  est <- vimp::risk_estimator(fitted_values = preds, y = Y, type = "auc")
+  ic <- vimp::risk_update(fitted_values = preds, y = Y, weights = weights, type = "auc")
+  se_auc <- sqrt(mean(ic^2))/length(Y)
+  ci_low <- est - 1.96*se_auc
+  ci_high <- est + 1.96*se_auc
+  data.frame(auc = est, cil = ci_low, ciu = ci_high, se = se_auc)
+}
+cv_auc <- function(preds, Y, folds, weights = rep(1, length(Y))) {
+  V <- length(folds)
+  fold_row_nums <- as.vector(do.call(cbind, folds))
+  folds_init <- rep(as.numeric(names(folds)), each = length(Y)/length(folds))
+  folds_mat <- cbind(fold_row_nums, folds_init)
+  folds_numeric <- folds_mat[order(folds_mat[, 1]), 2]
+  ests_cis <- do.call(rbind.data.frame, lapply(as.list(1:V), function(v) {
+    one_auc(preds = preds[folds_numeric == v], Y[folds_numeric == v], weights = weights[folds_numeric == v])
+  }))
+  est <- colMeans(ests_cis)[1]
+  se <- colMeans(ests_cis)[4]
+  ci_low <- est - 1.96*se
+  ci_high <- est + 1.96*se
+  return(list(auc = est, ci = c(ci_low, ci_high)))
+}
+get_all_aucs <- function(sl_fit, weights = rep(1, length(sl_fit$Y))) {
+  # get the CV-AUC of the SuperLearner predictions
+  sl_auc <- cv_auc(preds = sl_fit$SL.predict, Y = sl_fit$Y, folds = sl_fit$folds)
+  out <- data.frame(Learner="SL", Screen="All", AUC = sl_auc$auc, ci_ll = sl_auc$ci[1], ci_ul=sl_auc$ci[2])
+  
+  # Get the CV-auc of the Discrete SuperLearner predictions
+  discrete_sl_auc <- cv_auc(preds = sl_fit$discreteSL.predict, Y = sl_fit$Y, folds = sl_fit$folds)
+  out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All", AUC = discrete_sl_auc$auc, ci_ll = discrete_sl_auc$ci[1], ci_ul = discrete_sl_auc$ci[2]))
+  
+  # Get the cvauc of the individual learners in the library
+  get_individual_auc <- function(sl_fit, col, weights = rep(1, length(sl_fit$Y))) {
+    if(any(is.na(sl_fit$library.predict[, col]))) return(NULL)
+    alg_auc <- cv_auc(preds = sl_fit$library.predict[, col], Y = sl_fit$Y, folds = sl_fit$folds, weights = weights)
+    ## get the regexp object
+    alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_", fixed = TRUE)[[1]]
+    alg <- tail(alg_screen_string[grepl(".", alg_screen_string, fixed = TRUE)], n = 1)
+    screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, fixed = TRUE)], collapse = "_")
+    data.frame(Learner = alg, Screen = screen, AUC = alg_auc$auc, ci_ll = alg_auc$ci[1], ci_ul = alg_auc$ci[2])
+  }
+  other_aucs <- plyr::ldply(1:ncol(sl_fit$library.predict), function(x) get_individual_auc(sl_fit, x, weights))
+  rbind(out, other_aucs)
+}
 
+get_all_aucs_lst <- function(sl_fit_lst, weights = rep(1, length(sl_fit_lst[[1]]$fit$Y))) {
+  # get the CV-R^2 of the SuperLearner predictions
+  if (is.null(sl_fit_lst)) {
+    return(NA)
+  } else {
+    sl_auc <- cv_auc(preds = sl_fit_lst$fit$SL.predict, Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds, weights = weights)
+    out <- data.frame(Learner="SL", Screen="All", AUC = sl_auc$auc, ci_ll = sl_auc$ci[1], ci_ul=sl_auc$ci[2])
+    
+    # Get the CV-auc of the Discrete SuperLearner predictions
+    discrete_sl_auc <- cv_auc(preds = sl_fit_lst$fit$discreteSL.predict, Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds, weights = weights)
+    out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All", AUC = discrete_sl_auc$auc, ci_ll = discrete_sl_auc$ci[1], ci_ul = discrete_sl_auc$ci[2]))
+    
+    # Get the cvauc of the individual learners in the library
+    get_individual_auc <- function(sl_fit, col, weights) {
+      if(any(is.na(sl_fit$library.predict[, col]))) return(NULL)
+      alg_auc <- cv_auc(preds = sl_fit$library.predict[, col], Y = sl_fit$Y, folds = sl_fit$folds, weights = weights)
+      ## get the regexp object
+      alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_", fixed = TRUE)[[1]]
+      alg <- tail(alg_screen_string[grepl(".", alg_screen_string, fixed = TRUE)], n = 1)
+      screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, fixed = TRUE)], collapse = "_")
+      data.frame(Learner = alg, Screen = screen, AUC = alg_auc$auc, ci_ll = alg_auc$ci[1], ci_ul = alg_auc$ci[2])
+    }
+    other_aucs <- plyr::ldply(1:ncol(sl_fit_lst$fit$library.predict), function(x) get_individual_auc(sl_fit_lst$fit, x, weights))
+    rbind(out, other_aucs)  
+  }
+}
+  
+  
 ## run CV.SuperLearner for one given random seed
 run_cv_sl_once <- function(seed, Y, X_mat, family, obsWeights, sl_lib, method, cvControl, innerCvControl, vimp = FALSE) {
   set.seed(seed)
@@ -232,7 +305,7 @@ make_nice_variable_name <- function(varname, antigen, assay) {
 }
 
 ## get the cv vim for each fold
-get_fold_cv_vim <- function(full_fit, reduced_fit, x, type, vimp = FALSE) {
+get_fold_cv_vim <- function(full_fit, reduced_fit, x, type, weights, vimp = FALSE) {
   ## get the outcome, folds
   if (!vimp) {
     y <- full_fit[[x]]$fit$Y  
@@ -276,16 +349,17 @@ get_fold_cv_vim <- function(full_fit, reduced_fit, x, type, vimp = FALSE) {
                                f2 = redu_fits,
                                folds = folds,
                                type = type,
+                               weights = weights,
                                run_regression = FALSE,
                                alpha = 0.05), error = function(e) NA)
   }
   return(vim_est)
 }
 ## get the CV vim averaged over the 10 folds
-get_cv_vim <- function(full_fit, reduced_fit, type, vimp = FALSE) {
+get_cv_vim <- function(full_fit, reduced_fit, type, weights, vimp = FALSE) {
   ## get the cv vim for each fold
   all_cv_vims <- lapply(as.list(1:length(full_fit)), get_fold_cv_vim, full_fit = full_fit, 
-                        reduced_fit = reduced_fit, type = type, vimp = vimp)
+                        reduced_fit = reduced_fit, type = type, weights = weights, vimp = vimp)
   return(all_cv_vims)
 }
 ## get estimate, CI based on averaging over the 10 random starts

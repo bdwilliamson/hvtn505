@@ -24,6 +24,13 @@ plots_dir <- "plots/"
 # The palette with black:
 cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
+## load in the data to get weights
+## read in the full dataset
+data("dat.505", package = "HVTN505")
+## read in the super learner variables
+data("var.super", package = "HVTN505") # even if there is a warning message, it still exists
+
+weights <- dat.505$wt[dat.505$trt == 1]
 ## --------------------------------------------------------------------------------------------------------------------------------------
 ## load results objects:
 ## --------------------------------------------------------------------------------------------------------------------------------------
@@ -50,7 +57,10 @@ var_set_labels <- c("No markers", "IgG + IgA", "IgG3", "T Cells", "Fx Ab", "IgG 
                     "IgG + IgA + IgG3 + Fx Ab", "T Cells + Fx Ab", "All markers")
 for (i in 1:(length(var_set_names))) { 
   this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
-  eval(parse(text = paste0("all_aucs_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) x$aucs)))")))
+  # eval(parse(text = paste0("all_aucs_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) x$aucs)))")))
+  eval(parse(text = paste0("all_aucs_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) get_all_aucs_lst(x, weights = weights))))")))
+  all_aucs_i <- all_aucs_i %>% 
+    filter(!is.na(all_aucs_i$Learner))
   eval(parse(text = paste0("avg_aucs_", var_set_names[i]," <- all_aucs_i %>% 
     group_by(Learner, Screen) %>% 
     summarize(AUC = mean(AUC), ci_ll = mean(ci_ll), ci_ul = mean(ci_ul)) %>% 
@@ -118,7 +128,7 @@ dev.off()
 ## get the R-squareds
 for (i in 1:length(var_set_names)) {
   this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
-  eval(parse(text = paste0("all_r2s_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) get_all_r2s_lst(x))))")))
+  eval(parse(text = paste0("all_r2s_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) get_all_r2s_lst(x, weights = weights))))")))
   all_r2s_i <- all_r2s_i %>% 
     filter(!is.na(all_r2s_i$Learner))
   eval(parse(text = paste0("avg_r2s_", var_set_names[i]," <- all_r2s_i %>% 
@@ -153,7 +163,7 @@ avg_r2s <- avg_r2s %>%
   mutate(immunoassay_set = get_immunoassay_set(varset_label))
 
 title_font_size <- 22
-main_font_size_forest <- 20
+main_font_size_forest <- 15
 main_font_size_lab <- 8
 fig_width <- fig_height <- 2590
 y_title <- 0.96
@@ -237,61 +247,71 @@ reduced_fit_none <- sl_fits_varset_1_baseline_exposure
 ## (11) all markers
 vimp_all_markers <- get_cv_vim(full_fit = full_fit_11_all,
                                reduced_fit = reduced_fit_none,
-                               type = risk_type)
+                               type = risk_type,
+                               weights = weights_vaccine)
 vimp_all_markers_avg <- get_avg_est_ci(vimp_all_markers)
 
 ## (10) T cells  + Fx Ab
 vimp_tcells_fxab <- get_cv_vim(full_fit = full_fit_10_tcells_fxab,
                                reduced_fit = reduced_fit_none,
-                               type = risk_type)
+                               type = risk_type,
+                               weights = weights_vaccine)
 vimp_tcells_fxab_avg <- get_avg_est_ci(vimp_tcells_fxab)
 
 ## (9) IgG + IgA + IgG3 + Fx Ab
 vimp_igg_iga_igg3_fxab <- get_cv_vim(full_fit = full_fit_9_igg_iga_igg3_fxab,
                                reduced_fit = reduced_fit_none,
-                               type = risk_type)
+                               type = risk_type,
+                               weights = weights_vaccine)
 vimp_igg_iga_igg3_fxab_avg <- get_avg_est_ci(vimp_igg_iga_igg3_fxab)
 
 ## (8) IgG + IgA + IgG3 + T cells
 vimp_igg_iga_igg3_tcells <- get_cv_vim(full_fit = full_fit_8_igg_iga_igg3_tcells,
                                reduced_fit = reduced_fit_none,
-                               type = risk_type)
+                               type = risk_type,
+                               weights = weights_vaccine)
 vimp_igg_iga_igg3_tcells_avg <- get_avg_est_ci(vimp_igg_iga_igg3_tcells)
 
 ## (7) IgG + IgA + T cells
 vimp_igg_iga_tcells <- get_cv_vim(full_fit = full_fit_7_igg_iga_tcells,
                                reduced_fit = reduced_fit_none,
-                               type = risk_type)
+                               type = risk_type,
+                               weights = weights_vaccine)
 vimp_igg_iga_tcells_avg <- get_avg_est_ci(vimp_igg_iga_tcells)
 
 ## (6) IgG + IgA + IgG3
 vimp_igg_iga_igg3 <- get_cv_vim(full_fit = full_fit_6_igg_iga_igg3,
                                reduced_fit = reduced_fit_none,
-                               type = risk_type)
+                               type = risk_type,
+                               weights = weights_vaccine)
 vimp_igg_iga_igg3_avg <- get_avg_est_ci(vimp_igg_iga_igg3)
 
 ## (5) Fx Ab
 vimp_fxab <- get_cv_vim(full_fit = full_fit_5_fxab,
                                reduced_fit = reduced_fit_none,
-                               type = risk_type)
+                               type = risk_type,
+                        weights = weights_vaccine)
 vimp_fxab_avg <- get_avg_est_ci(vimp_fxab)
 
 ## (4) T cells
 vimp_tcells <- get_cv_vim(full_fit = full_fit_4_tcells,
                                reduced_fit = reduced_fit_none,
-                               type = risk_type)
+                               type = risk_type,
+                          weights = weights_vaccine)
 vimp_tcells_avg <- get_avg_est_ci(vimp_tcells)
 
 ## (3) IgG3
 vimp_igg3 <- get_cv_vim(full_fit = full_fit_3_igg3,
                                reduced_fit = reduced_fit_none,
-                               type = risk_type)
+                               type = risk_type,
+                        weights = weights_vaccine)
 vimp_igg3_avg <- get_avg_est_ci(vimp_igg3)
 
 ## (2) IgG + IgA
 vimp_igg_iga <- get_cv_vim(full_fit = full_fit_2_igg_iga,
                                reduced_fit = reduced_fit_none,
-                               type = risk_type)
+                               type = risk_type,
+                           weights = weights_vaccine)
 vimp_igg_iga_avg <- get_avg_est_ci(vimp_igg_iga)
 
 ## combine together
