@@ -50,6 +50,7 @@ for (a in c("age", "BMI", "bhvrisk")) {
 ## set up X, Y for super learning
 X_markers <- dat.505 %>% 
   select(var.super$varname, paste0(var.super$varname, "_bin")) 
+weights_vaccine <- dat.505$wt[dat.505$trt == 1]
 
 ## load all individual vars
 var_names <- names(X_markers)
@@ -78,12 +79,13 @@ cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2"
 risk_type <- "auc"
 for (i in 1:length(var_names)) {
   ## only run if results computation changes
-  # eval(parse(text = paste0("vimp_", i, "<- get_cv_vim(full_fit = sl_fit_var_", i,
-  #                          ", reduced_fit = sl_fits_varset_1_baseline_exposure, type = risk_type,
-  #                          vimp = TRUE)")))
-  # eval(parse(text = paste0("vimp_", i, "_avg <- get_avg_est_ci(vimp_", i, ")")))
-  # eval(parse(text = paste0("saveRDS(vimp_", i, "_avg, paste0(results_dir, 'vimp_", i, "_avg.rds'))")))
-  eval(parse(text = paste0("vimp_", i, "_avg <- readRDS(paste0(results_dir, 'vimp_", i, "_avg.rds'))")))
+  eval(parse(text = paste0("vimp_", i, "<- get_cv_vim(full_fit = sl_fit_var_", i,
+                           ", reduced_fit = sl_fits_varset_1_baseline_exposure, type = risk_type,
+                           weights = weights_vaccine,
+                           vimp = TRUE)")))
+  eval(parse(text = paste0("vimp_", i, "_avg <- get_avg_est_ci(vimp_", i, ")")))
+  eval(parse(text = paste0("saveRDS(vimp_", i, "_avg, paste0(results_dir, 'vimp_", i, "_avg.rds'))")))
+  # eval(parse(text = paste0("vimp_", i, "_avg <- readRDS(paste0(results_dir, 'vimp_", i, "_avg.rds'))")))
 }
 
 ## make groups of marker variables;
