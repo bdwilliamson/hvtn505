@@ -407,7 +407,7 @@ assay_antigen_plot <- function(vimp_tibble, assay, antigen, risk_type,
       ylab("Variable name") +
       xlab(paste0("Variable importance estimate: difference in CV-", ifelse(risk_type == "r_squared", expression(R^2), "AUC"))) +
       labs(color = "T Cell type") +
-      theme(legend.position = c(0.05, 0.15),
+      theme(legend.position = c(0.025, 0.15),
             axis.text.y = element_text(size = main_font_size),
             text = element_text(size = main_font_size),
             axis.title = element_text(size = main_font_size), 
@@ -438,7 +438,7 @@ assay_antigen_plot <- function(vimp_tibble, assay, antigen, risk_type,
 
 ## list of plots for a given assay type, one for each antigen
 assay_antigen_plot_list <- function(vimp_tibble, assay, antigens, risk_type,
-                                    main_font_size, point_size, x_lim, cols, cols2) {
+                                    main_font_size, point_size, x_lim, cols, cols2 = NULL) {
   plot_lst <- lapply(as.list(antigens), assay_antigen_plot, vimp_tibble = vimp_tibble, assay = assay, risk_type = risk_type,
                      main_font_size = main_font_size, point_size = point_size, x_lim = x_lim, cols = cols, cols2 = cols2)
   return(plot_lst)
