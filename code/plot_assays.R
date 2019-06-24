@@ -50,7 +50,7 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest,
           axis.title = element_text(size = main_font_size_forest), 
           axis.text.x = element_text(size = main_font_size_forest),
           axis.title.x = element_text(margin = ggplot2::margin(t = 20, r = 0, b = 0, l = 0), size = main_font_size_forest),
-          plot.margin=unit(c(1,0.5,0,0),"cm")) # top, right, bottom, left
+          plot.margin=unit(c(1.2,0.5,0,0),"cm")) # top, right, bottom, left
   if (immunoassay) {
     ## add on a legend to top_learner_plot, color based on immunoassay set
     top_learner_plot <- top_learner_plot +
@@ -67,7 +67,7 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest,
             axis.title = element_text(size = main_font_size_forest), 
             axis.text.x = element_text(size = main_font_size_forest),
             axis.title.x = element_text(margin = ggplot2::margin(t = 20, r = 0, b = 0, l = 0), size = main_font_size_forest),
-            plot.margin=unit(c(1,0.5,0,0),"cm")) # top, right, bottom, left
+            plot.margin=unit(c(1.2,0.5,0,0),"cm")) # top, right, bottom, left
     ## separate plot with nice names, printed values of measures, based on immunoassays only
     top_learners_labels <- top_learners %>% 
       ungroup() %>% 
