@@ -106,10 +106,10 @@ avg_aucs <- avg_aucs %>%
   mutate(immunoassay_set = get_immunoassay_set(varset_label))
 
 title_font_size <- 26
-main_font_size_forest <- 20
-main_font_size_lab <- 8
+main_font_size_forest <- 31
+main_font_size_lab <- 9.3
 fig_width <- fig_height <- 2590
-y_title <- 0.96
+y_title <- 0.945
 point_size <- 5
 auc_forest_plot <- plot_assays(avg_aucs, type = "auc", main_font_size_forest = main_font_size_forest, 
                                    main_font_size_lab = main_font_size_lab,
@@ -119,12 +119,12 @@ auc_forest_plot <- plot_assays(avg_aucs, type = "auc", main_font_size_forest = m
 png(paste0(plots_dir, "cv_auc_forest_plot_sl.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
 plot_grid(auc_forest_plot$top_learner_nms_plot, 
           auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
-  draw_label("Month 7", size = title_font_size, x = 0.11, y = y_title + 0.04, fontface = "bold") +
-  draw_label("Marker Set", size = title_font_size, x = 0.1, y = y_title, fontface = "bold") +
+  draw_label("Month 7", size = title_font_size, x = 0.14, y = y_title + 0.04, fontface = "bold") +
+  draw_label("Marker Set", size = title_font_size, x = 0.1375, y = y_title, fontface = "bold") +
   # draw_label("Assay combination", size = title_font_size, x = 0.1, y = y_title) +
   # draw_label("CV-AUC [95% CI]", size = title_font_size, x = 0.38, y = y_title)
-  draw_label("CV-AUC", size = title_font_size, x = 0.38, y = y_title + 0.04, fontface = "bold") +
-  draw_label("[95% CI]", size = title_font_size, x = 0.38, y = y_title, fontface = "bold")
+  draw_label("CV-AUC", size = title_font_size, x = 0.4, y = y_title + 0.04, fontface = "bold") +
+  draw_label("[95% CI]", size = title_font_size, x = 0.4, y = y_title, fontface = "bold")
 dev.off()
 
 ## --------------------------------------------------------------------------------------------------------------------------------------

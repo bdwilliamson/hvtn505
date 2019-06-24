@@ -447,7 +447,8 @@ assay_antigen_plot_list <- function(vimp_tibble, assay, antigens, risk_type,
 ## get immunoassay set from character vector: T cells, Ab only, T cells and Ab
 get_immunoassay_set <- function(vec) {
   get_one_immunoassay <- function(x) {
-    ret_vec <- c("T Cell variables", "Ab variables", "T Cell and Ab variables", "No markers")
+    # ret_vec <- c("T Cell variables", "Ab variables", "T Cell and Ab variables", "No markers")
+    ret_vec <- c("T Cell variables", "Ab variables", "T Cell and Ab", "No markers")
     if (grepl("T Cells", x)) {
       ret_init <- ret_vec[c(1, 3)]
       if (grepl("IgG", x) | grepl("IgA", x) | grepl("IgG3", x) | grepl("Fx Ab", x)) {

@@ -8,7 +8,7 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest,
     x_lim <- c(0.4, 1)
     avgs <- avgs %>% 
       mutate(measure = AUC)
-    lgnd_pos <- c(0.63, 0.2)
+    lgnd_pos <- c(0.56, 0.2)
   } else {
     x_lab <- expression(paste("CV-", R^2))
     x_lim <- c(-1, 1)
@@ -49,8 +49,10 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest,
           text = element_text(size = main_font_size_forest),
           axis.title = element_text(size = main_font_size_forest), 
           axis.text.x = element_text(size = main_font_size_forest),
-          axis.title.x = element_text(margin = ggplot2::margin(t = 20, r = 0, b = 0, l = 0), size = main_font_size_forest),
-          plot.margin=unit(c(1.2,0.5,0,0),"cm")) # top, right, bottom, left
+          axis.ticks = element_line(size = 1),
+          axis.ticks.length = unit(0.5, "cm"),
+          axis.title.x = element_text(margin = ggplot2::margin(t = 5, r = 0, b = 0, l = 0), size = main_font_size_forest),
+          plot.margin=unit(c(1.25,0.5,0.5,0),"cm")) # top, right, bottom, left
   if (immunoassay) {
     ## add on a legend to top_learner_plot, color based on immunoassay set
     top_learner_plot <- top_learner_plot +
@@ -60,14 +62,16 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest,
                                                           labels = paste0(varset_label, " ", learner_nm, " ", screen_nm)[order(measure)])),
                  size = point_size) +
       scale_color_manual(values = colors) +
-      labs(color = "Immunoassay set") +
+      # labs(color = "Immunoassay set") +
+      labs(color = "Assay set") +
       theme(legend.position = lgnd_pos, 
             axis.text.y = element_blank(),
             text = element_text(size = main_font_size_forest),
             axis.title = element_text(size = main_font_size_forest), 
             axis.text.x = element_text(size = main_font_size_forest),
-            axis.title.x = element_text(margin = ggplot2::margin(t = 20, r = 0, b = 0, l = 0), size = main_font_size_forest),
-            plot.margin=unit(c(1.2,0.5,0,0),"cm")) # top, right, bottom, left
+            axis.title.x = element_text(margin = ggplot2::margin(t = 5, r = 0, b = 0, l = 0), size = main_font_size_forest),
+            legend.text = element_text(size = main_font_size_forest),
+            plot.margin=unit(c(1.25,0.5,0.5,0),"cm")) # top, right, bottom, left
     ## separate plot with nice names, printed values of measures, based on immunoassays only
     top_learners_labels <- top_learners %>% 
       ungroup() %>% 
