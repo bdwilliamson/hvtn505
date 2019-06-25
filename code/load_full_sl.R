@@ -123,7 +123,25 @@ ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl.png"),
          draw_label("Marker Set", size = title_font_size, x = 0.1375, y = y_title, fontface = "bold") +
          draw_label("CV-AUC", size = title_font_size, x = 0.4, y = y_title + 0.04, fontface = "bold") +
          draw_label("[95% CI]", size = title_font_size, x = 0.4, y = y_title, fontface = "bold"),
-       )
+       width = 50, height = 25, units = "cm")
+
+ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl.tiff"),
+       plot = plot_grid(auc_forest_plot$top_learner_nms_plot, 
+                        auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
+         draw_label("Month 7", size = title_font_size, x = 0.14, y = y_title + 0.04, fontface = "bold") +
+         draw_label("Marker Set", size = title_font_size, x = 0.1375, y = y_title, fontface = "bold") +
+         draw_label("CV-AUC", size = title_font_size, x = 0.4, y = y_title + 0.04, fontface = "bold") +
+         draw_label("[95% CI]", size = title_font_size, x = 0.4, y = y_title, fontface = "bold"),
+       width = 50, height = 25, units = "cm")
+
+ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl.pdf"),
+       plot = plot_grid(auc_forest_plot$top_learner_nms_plot, 
+                        auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
+         draw_label("Month 7", size = title_font_size, x = 0.14, y = y_title + 0.04, fontface = "bold") +
+         draw_label("Marker Set", size = title_font_size, x = 0.1375, y = y_title, fontface = "bold") +
+         draw_label("CV-AUC", size = title_font_size, x = 0.4, y = y_title + 0.04, fontface = "bold") +
+         draw_label("[95% CI]", size = title_font_size, x = 0.4, y = y_title, fontface = "bold"),
+       width = 50, height = 25, units = "cm")
 
 ## --------------------------------------------------------------------------------------------------------------------------------------
 ## FIGURE 2: forest plot of CV-R^2 for the top learner and SL for each assay combination
