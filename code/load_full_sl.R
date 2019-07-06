@@ -269,7 +269,8 @@ reduced_fit_none <- sl_fits_varset_1_baseline_exposure
 vimp_all_markers <- get_cv_vim(full_fit = full_fit_11_all,
                                reduced_fit = reduced_fit_none,
                                type = risk_type,
-                               weights = weights_vaccine)
+                               weights = weights_vaccine,
+                               scale = "identity")
 vimp_all_markers_avg <- get_avg_est_ci(vimp_all_markers)
 
 ## (10) T cells  + Fx Ab
@@ -381,16 +382,15 @@ vimp_tibble <- tibble::add_column(vimp_tibble, immunoassay_set = get_immunoassay
 saveRDS(vimp_tibble, paste0(results_dir, "vimp_tibble_", risk_type))
 vimp_tibble <- readRDS(paste0(results_dir, "vimp_tibble_", risk_type))
 
-title_font_size <- 22
-main_font_size_forest <- 20
-main_font_size_lab <- 8
-fig_width <- fig_height <- 2590
-y_title <- 0.96
+title_font_size <- 26
+main_font_size_forest <- 31
+main_font_size_lab <- 9.3
+y_title <- 0.945
 point_size <- 5
 if (risk_type == "r_squared") {
-  lgnd_pos <- c(0, 0.1)
+  lgnd_pos <- c(0, 0.8)
 } else {
-  lgnd_pos <- c(0.1, 0.2)
+  lgnd_pos <- c(0.75, 0.1)
 }
 ## forest plot of vimp, with labels for the groups
 vimp_forest_plot <- vimp_tibble %>% 
@@ -398,8 +398,8 @@ vimp_forest_plot <- vimp_tibble %>%
   geom_errorbarh(aes(xmin = cil, xmax = ciu, color = immunoassay_set), size = point_size/2) +
   geom_point(size = point_size) +
   scale_color_manual(values = cbbPalette[-2]) + # make sure that colors match with other forest plot
-  ylab("Assay group") +
-  labs(color = "Immunoassay set") +
+  ylab("Month 7 Marker Set") +
+  labs(color = "Assay set") +
   xlab(paste0("Variable importance estimate: difference in CV-", ifelse(risk_type == "r_squared", expression(R^2), "AUC"))) +
   theme(legend.position = lgnd_pos, 
         axis.text.y = element_text(size = main_font_size_forest),
@@ -408,9 +408,9 @@ vimp_forest_plot <- vimp_tibble %>%
         axis.text.x = element_text(size = main_font_size_forest),
         axis.title.x = element_text(margin = ggplot2::margin(t = 20, r = 0, b = 0, l = 0), size = main_font_size_forest),
         plot.margin=unit(c(1,0.5,0,0),"cm")) # top, right, bottom, left
-png(paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
-vimp_forest_plot
-dev.off()
+ggsave(filename = paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline.png"), 
+       plot = vimp_forest_plot,
+       width = 50, height = 25, units = "cm")
 
 ## ----------------------------------------------------------------------------------------------
 ## Look at one high-performing logistic regression model to see ORs, CIs

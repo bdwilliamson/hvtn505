@@ -105,8 +105,9 @@ get_all_r2s_lst <- function(sl_fit_lst, weights = rep(1, length(sl_fit_lst[[1]]$
 
 ## do the same for AUC
 one_auc <- function(preds, Y, weights = rep(1, length(Y))) {
-  est <- vimp::risk_estimator(fitted_values = preds, y = Y, type = "auc")
-  ic <- vimp::risk_update(fitted_values = preds, y = Y, weights = weights, type = "auc")
+  auc_lst <- vimp::measure_auc(fitted_values = preds, y = Y)
+  est <- auc_lst$point_est
+  ic <- auc_lst$ic
   se_auc <- sqrt(mean(ic^2))/length(Y)
   ci_low <- est - 1.96*se_auc
   ci_high <- est + 1.96*se_auc
@@ -305,7 +306,7 @@ make_nice_variable_name <- function(varname, antigen, assay) {
 }
 
 ## get the cv vim for each fold
-get_fold_cv_vim <- function(full_fit, reduced_fit, x, type, weights, vimp = FALSE) {
+get_fold_cv_vim <- function(full_fit, reduced_fit, x, type, weights, scale = "identity", vimp = FALSE) {
   ## get the outcome, folds
   if (!vimp) {
     y <- full_fit[[x]]$fit$Y  
@@ -351,15 +352,16 @@ get_fold_cv_vim <- function(full_fit, reduced_fit, x, type, weights, vimp = FALS
                                type = type,
                                weights = weights,
                                run_regression = FALSE,
-                               alpha = 0.05), error = function(e) NA)
+                               alpha = 0.05,
+                               scale = scale), error = function(e) NA)
   }
   return(vim_est)
 }
 ## get the CV vim averaged over the 10 folds
-get_cv_vim <- function(full_fit, reduced_fit, type, weights, vimp = FALSE) {
+get_cv_vim <- function(full_fit, reduced_fit, type, weights, scale = "identity", vimp = FALSE) {
   ## get the cv vim for each fold
   all_cv_vims <- lapply(as.list(1:length(full_fit)), get_fold_cv_vim, full_fit = full_fit, 
-                        reduced_fit = reduced_fit, type = type, weights = weights, vimp = vimp)
+                        reduced_fit = reduced_fit, type = type, weights = weights, scale = scale, vimp = vimp)
   return(all_cv_vims)
 }
 ## get estimate, CI based on averaging over the 10 random starts
