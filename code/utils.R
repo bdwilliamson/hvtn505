@@ -345,7 +345,7 @@ get_fold_cv_vim <- function(full_fit, reduced_fit, x, type, weights, scale = "id
     ys <- lapply(as.list(1:length(full_fit[[x]]$folds)), function(i) y[folds == i])
     
     ## variable importance
-    vim_est <- tryCatch(cv_vim(Y = y, 
+    vim_est <- tryCatch(vimp::cv_vim(Y = y, 
                                f1 = full_fits,
                                f2 = redu_fits,
                                folds = folds,
