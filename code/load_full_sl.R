@@ -390,7 +390,7 @@ point_size <- 5
 if (risk_type == "r_squared") {
   lgnd_pos <- c(0, 0.8)
 } else {
-  lgnd_pos <- c(0.75, 0.1)
+  lgnd_pos <- c(0.75, 0.8)
 }
 ## forest plot of vimp, with labels for the groups
 vimp_forest_plot <- vimp_tibble %>% 
