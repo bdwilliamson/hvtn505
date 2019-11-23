@@ -411,6 +411,9 @@ vimp_forest_plot <- vimp_tibble %>%
 ggsave(filename = paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline.png"), 
        plot = vimp_forest_plot,
        width = 50, height = 25, units = "cm")
+ggsave(filename = paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline.pdf"), 
+       plot = vimp_forest_plot,
+       width = 50, height = 25, units = "cm")
 
 ## ----------------------------------------------------------------------------------------------
 ## Look at one high-performing logistic regression model to see ORs, CIs
