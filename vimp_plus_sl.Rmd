@@ -1102,7 +1102,7 @@ get_immunoassay_set <- function(vec) {
 
 The following code runs the full Super Learner with a reduced library of candidate learners. This is for illustration only --- we recommend using a large library of candidate learners, as we did in the original analysis. Please note, however, that the following code chunk may take a couple of minutes to run. 
 
-```{r run-full-sl-with-small-lib}
+```{r run-full-sl-with-small-lib, cache = TRUE}
 ## load required libraries and functions
 library("methods")
 library("SuperLearner")
@@ -1206,7 +1206,7 @@ library("vimp")
 
 We next ran multiple Super Learners with reduced sets of covariates. Again, we originally ran this code on an HPC computer, and recommend that any final analyses use the full library of candidate learners. However, in the code below, we use a smaller library for illustration. Please note that this code chunk may take a couple of minutes to run.
 
-```{r run-assays-with-small-lib}
+```{r run-assays-with-small-lib, cache = TRUE}
 ## only include the following variable sets:
 assays <- unique(var.super$assay)
 antigens <- unique(var.super$antigen)
@@ -1496,7 +1496,7 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest,
 
 We ran the Super Learner algorithm for each of the 11 variable sets defined in Section 1 using the procedure defined in Section 2. We present the cross-validated AUC and the cross-validated $R^2$ for the overall Super Learner from each of the variable sets. These are provided in Figures \@ref(fig:sl-forest-plot-auc) and \@ref(fig:sl-forest-plot-r2), respectively. In each figure, the error bars are colored by immunoassay set: antibody (Ab) variables (black), no markers (yellow), T cell variables (green), and T cell and Ab variables (blue).
 
-In Figure \@ref(fig:sl-forest-plot-auc), we see improved performance of the Super Learner when including marker variables compared to baseline risk variables only. Indeed, the Super Learner using only baseline variables and no markers has a cross-validated AUC of `r (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC`. Other variable sets have a smaller estimated cross-validated AUC, but this is likely due to the small candidate library that we used for this analysis. The ordering of predictive performance fits our hypothesis that multiple types of immune response markers improve prediction. Our proposed estimator of HIV-1 infection risk among vaccinees, the cross-validated Super Learner, has an estimated AUC of `r (avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$AUC` based on all markers, with a 95\% confidence interval of `r paste0("[", (avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ll, ", ", (avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ul, "]"`. This is an improvement over the Super Learner based on only the baseline risk variables, with an estimated AUC of `r (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC` `r paste0("[", (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ll, ", ", (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ul, "]"`.
+In Figure \@ref(fig:sl-forest-plot-auc), we see improved performance of the Super Learner when including marker variables compared to baseline risk variables only. Indeed, the Super Learner using only baseline variables and no markers has a cross-validated AUC of `r (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC`. Other variable sets have a smaller estimated cross-validated AUC, but this is likely due to the small candidate library that we used for this analysis. The ordering of predictive performance fits our hypothesis that multiple types of immune response markers improve prediction. Our proposed estimator of HIV-1 infection risk among vaccinees, the cross-validated Super Learner, has an estimated AUC of `r (avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$AUC` based on all markers, with a 95\% confidence interval of `r paste0("[", (avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ll, ", ", (avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ul, "]")`. This is an improvement over the Super Learner based on only the baseline risk variables, with an estimated AUC of `r (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC` `r paste0("[", (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ll, ", ", (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ul, "]")`.
 
 ```{r sl-forest-plot-auc}
 ## -----------------------------------------------------------------------------------
