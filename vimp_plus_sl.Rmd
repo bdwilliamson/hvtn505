@@ -2,7 +2,7 @@
 title: "Investigating HIV-1 correlates of protection in HVTN 505"
 author: "Brian Williamson"
 date: "`r Sys.Date()`"
-output: html_document
+output: bookdown::html_document2
 references:
 - id: williamson2017
   author:
@@ -84,6 +84,24 @@ references:
   issued:
     year: 2008
   URL: 'https://doi.org/10.1198/016214508000000878'
+- id: neidich2019
+  author: 
+    - family: Neidich
+      given: SD
+    - family: Fong
+      given: Y
+    - family: Li
+      given: SS
+    - family: Geraghty
+      given: DE
+    - family: Williamson
+      given: BD
+    - family: et al.
+  publisher: The Journal of Clinical Investigation
+  type: article-journal
+  issued:
+    year: 2019
+  URL: 'https://doi.org/10.1172/JCI126391'
 ---
 
 ```{r setup, include=FALSE}
@@ -261,7 +279,9 @@ screen_univariate_logistic_pval_plus_exposure <- function(Y, X, family, obsWeigh
     # keep only a max of nVar immune markers; rank by univariate p-value in a model adjusting for age, BMI, bhvrisk
     X_initial_screen <- X %>%
       select(names(X)[vars], "age", "BMI", "bhvrisk")
-    ranked_vars <- rank_univariate_logistic_pval_plus_exposure(Y, X_initial_screen, family, obsWeights, id)
+    ranked_vars <- rank(listp[vars], ties = "average")
+    ranked_vars[names(ranked_vars) %in% c("age", "BMI", "bhvrisk")] <- 999
+    # ranked_vars <- rank_univariate_logistic_pval_plus_exposure(Y, X_initial_screen, family, obsWeights, id)
     vars[vars][ranked_vars > nVar] <- FALSE
     vars[names(X) %in% c("age", "BMI", "bhvrisk")] <- TRUE
     return(vars)
@@ -291,6 +311,24 @@ screen_highcor_plus_exposure <- function(Y, X, family, obsWeights, id, nVar = 4,
     select(names(X)[vars], "age", "BMI", "bhvrisk")
   ranked_vars <- rank_univariate_logistic_pval_plus_exposure(Y, X_initial_screen, family, obsWeights, id)
   vars[vars][ranked_vars > nVar] <- FALSE
+  ## make sure that age, BMI, bhvrisk are true
+  vars[names(X) %in% c("age", "BMI", "bhvrisk")] <- TRUE
+  return(vars)
+}
+screen_highcor_random_plus_exposure <- function(Y, X, family, obsWeights, id, nVar = 4, ...) {
+  # set all vars to FALSE
+  vars <- rep(FALSE, ncol(X))
+  # compute pairwise correlations between all marker vars
+  cors <- cor(X, method = "spearman")
+  diag(cors) <- NA
+  cor_less_0.9 <- (cors <= 0.9)
+  # screen out those with r > 0.9
+  vars <- apply(cor_less_0.9, 1, function(x) all(x, na.rm = TRUE))
+  # also keep the first three columns of X (correspond to age, BMI, bhvrisk)
+  vars[names(X) %in% c("age", "BMI", "bhvrisk")] <- TRUE
+  # keep only a max of nVar immune markers; select randomly
+  samp <- sample(1:sum(vars, na.rm = TRUE), nVar)
+  vars[vars][-samp] <- FALSE
   ## make sure that age, BMI, bhvrisk are true
   vars[names(X) %in% c("age", "BMI", "bhvrisk")] <- TRUE
   return(vars)
@@ -353,7 +391,7 @@ screens_with_assay_groups <- c("screen_glmnet_plus_exposure", paste0("screen_uni
              "screen_highcor_plus_exposure")
 screens <- c("screen_glmnet_plus_exposure", paste0("screen_univariate_logistic_pval_plus_exposure_", c(0.01, 0.05, 0.1)),
                   "screen_dynamic_range_plus_exposure", "screen_dynamic_range_score_plus_exposure",
-                  "screen_highcor_plus_exposure")
+                  "screen_highcor_plus_exposure", "screen_highcor_random_plus_exposure")
 ## -------------------------------------------------------------------------------------
 ## SL algorithms
 ## -------------------------------------------------------------------------------------
@@ -1062,9 +1100,9 @@ get_immunoassay_set <- function(vec) {
 
 ```
 
-The following code runs the full Super Learner with a reduced library of candidate learners. This is for illustration only --- we recommend using a large library of candidate learners, as we did in the original analysis. The code to reproduce the results of the original analysis is provided in the Appendix, and was designed to run on a high-performance cluster (HPC) computer (it takes multiple hours to run).
+The following code runs the full Super Learner with a reduced library of candidate learners. This is for illustration only --- we recommend using a large library of candidate learners, as we did in the original analysis. Please note, however, that the following code chunk may take a couple of minutes to run. 
 
-```{r run-full-sl-with-small-lib, eval = FALSE}
+```{r run-full-sl-with-small-lib}
 ## load required libraries and functions
 library("methods")
 library("SuperLearner")
@@ -1143,14 +1181,17 @@ set.seed(4747)
 seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
 fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X_vaccine, family = "binomial",
               obsWeights = weights_vaccine,
-              sl_lib = SL_library_with_assay_groups[2], 
+              sl_lib = SL_library[8], 
               method = "method.CC_nloglik",
               cvControl = list(V = V_outer, stratifyCV = TRUE),
               innerCvControl = list(list(V = V_inner)),
               vimp = FALSE,
               mc.cores = num_cores
 )
+sl_fits_varset_11_all <- fits
 ```
+
+The code to reproduce the results of the original analysis is provided in the Appendix, and was designed to run on a high-performance cluster (HPC) computer (it takes multiple hours to run).
 
 ### Variable Importance
 
@@ -1163,9 +1204,9 @@ We use the `vimp` package to compute variable importance estimates and confidenc
 library("vimp")
 ```
 
-We next ran multiple Super Learners with reduced sets of covariates. Again, we originally ran this code on an HPC computer, and recommend that any final analyses use the full library of candidate learners. However, in the code below, we use a smaller library for illustration.
+We next ran multiple Super Learners with reduced sets of covariates. Again, we originally ran this code on an HPC computer, and recommend that any final analyses use the full library of candidate learners. However, in the code below, we use a smaller library for illustration. Please note that this code chunk may take a couple of minutes to run.
 
-```{r run-assays-with-small-lib, eval = FALSE}
+```{r run-assays-with-small-lib}
 ## only include the following variable sets:
 assays <- unique(var.super$assay)
 antigens <- unique(var.super$antigen)
@@ -1208,54 +1249,55 @@ var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_igg3, var_set_tce
                         var_set_igg_iga_igg3_fxab, var_set_tcells_fxab,
                         var_set_all,
                         var_set_igg3_fxab, var_set_igg_iga_tcells_fxab, var_set_igg3_tcells_fxab)
-for (i in 1:14) {
+for (i in (1:14)[-11]) {
   job_id <- i
   this_var_set <- var_set_matrix[job_id, ]
-cat("\n Running ", var_set_names[job_id], "\n")
-
-X_markers_varset <- X_markers %>% 
-  select(names(X_markers)[this_var_set])
-
-X_exposure <- dat.505 %>% 
-  select(age, BMI, bhvrisk)
-X <- data.frame(trt = dat.505$trt, X_exposure, X_markers_varset)
-weights <- dat.505$wt
-Y <- dat.505$case
-vaccinees <- cbind.data.frame(Y, weights, X) %>% 
-  filter(trt == 1) %>% 
-  select(-trt)
-Y_vaccine <- vaccinees$Y
-weights_vaccine <- vaccinees$weights
-X_vaccine <- vaccinees %>% 
-  select(-Y, -weights)
-
-V_outer <- 5
-V_inner <- length(Y_vaccine) - 1 
-
-## get the SL library
-## if var_set_none, then don't need screens; otherwise do
-if (job_id == 1) {
-  sl_lib <- methods
-} else {
-  sl_lib <- SL_library
-}
-## ---------------------------------------------------------------------------------
-## run super learner, with leave-one-out cross-validation and all screens
-## do 10 random starts, average over these
-## ---------------------------------------------------------------------------------
-## ensure reproducibility
-set.seed(4747)
-seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
-fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X_vaccine, family = "binomial",
-                           obsWeights = weights_vaccine,
-                           sl_lib = sl_lib, # this comes from sl_screens.R
-                           method = "method.CC_nloglik",
-                           cvControl = list(V = V_outer, stratifyCV = TRUE),
-                           innerCvControl = list(list(V = V_inner)),
-                           vimp = FALSE,
-                           mc.cores = num_cores
-)
-## name the object so that we can refer to it later
+  cat("\n Running ", var_set_names[job_id], "\n")
+  
+  X_markers_varset <- X_markers %>% 
+    select(names(X_markers)[this_var_set])
+  
+  X_exposure <- dat.505 %>% 
+    select(age, BMI, bhvrisk)
+  X <- data.frame(trt = dat.505$trt, X_exposure, X_markers_varset)
+  weights <- dat.505$wt
+  Y <- dat.505$case
+  vaccinees <- cbind.data.frame(Y, weights, X) %>% 
+    filter(trt == 1) %>% 
+    select(-trt)
+  Y_vaccine <- vaccinees$Y
+  weights_vaccine <- vaccinees$weights
+  X_vaccine <- vaccinees %>% 
+    select(-Y, -weights)
+  
+  V_outer <- 5
+  V_inner <- length(Y_vaccine) - 1 
+  
+  ## get the SL library
+  ## if var_set_none, then don't need screens; otherwise do
+  if (job_id == 1) {
+    sl_lib <- methods[1]
+  } else {
+    sl_lib <- SL_library[8]
+  }
+  ## ---------------------------------------------------------------------------------
+  ## run super learner, with leave-one-out cross-validation and all screens
+  ## do 10 random starts, average over these
+  ## ---------------------------------------------------------------------------------
+  ## ensure reproducibility
+  set.seed(4747)
+  seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
+  fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X_vaccine,
+                             family = "binomial", obsWeights = weights_vaccine,
+                             sl_lib = sl_lib, 
+                             method = "method.CC_nloglik",
+                             cvControl = list(V = V_outer, stratifyCV = TRUE),
+                             innerCvControl = list(list(V = V_inner)),
+                             vimp = FALSE,
+                             mc.cores = num_cores
+  )
+  ## name the object so that we can refer to it later
+  eval(parse(text = paste0("sl_fits_varset_", var_set_names[job_id], " <- fits")))
 }
 ```
 
@@ -1265,7 +1307,7 @@ fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X
 
 The following code compiles results and creates plots, and must be run after all Super Learner fits have been obtained.
 
-```{r compile-results, eval = FALSE}
+```{r compile-results-small-lib}
 ## results from full SL analysis
 ## includes CV-AUC plots
 
@@ -1296,17 +1338,6 @@ var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_igg3","4_tcells", "5_f
                    "9_igg_iga_igg3_fxab", "10_tcells_fxab",
                    "11_all")
 ## objects are created above
-for (i in 1:length(var_set_names)) {
-  eval(parse(text = paste0("sl_fits_varset_", var_set_names[i], " <- readRDS(paste0(results_dir, 'sl_fits_varset_', var_set_names[i], '.rds'))")))
-}
-
-## check the discrete SL for each fold (baseline exposure only)
-lapply(sl_fits_varset_1_baseline_exposure, function(x) x$fit$whichDiscreteSL)
-lapply(sl_fits_varset_11_all, function(x) x$fit$whichDiscreteSL)
-
-## check the weights
-lapply(sl_fits_varset_1_baseline_exposure, function(x) sort(colMeans(x$fit$coef), decreasing=TRUE))
-lapply(sl_fits_varset_11_all, function(x) sort(colMeans(x$fit$coef), decreasing=TRUE))
 
 ## average the AUCs over the 10 folds, for each
 var_set_labels <- c("No markers", "IgG + IgA", "IgG3", "T Cells", "Fx Ab", "IgG + IgA + IgG3",
@@ -1331,31 +1362,156 @@ avg_aucs <- bind_rows(avg_aucs_1_baseline_exposure, avg_aucs_2_igg_iga, avg_aucs
                       avg_aucs_7_igg_iga_tcells, avg_aucs_8_igg_iga_igg3_tcells,
                       avg_aucs_9_igg_iga_igg3_fxab, avg_aucs_10_tcells_fxab, 
                       avg_aucs_11_all)
+```
 
-## forest plot of AUCs; this one is super nasty, but shows that it works
-full_forest_plot_auc <- avg_aucs %>% 
-  ggplot(aes(x = AUC, y = factor(paste0(Screen, "_", Learner, "_", assay), levels = paste0(Screen, "_", Learner, "_", assay)[order(AUC)]))) + 
-  geom_errorbarh(aes(xmin = ci_ll, xmax = ci_ul)) +
-  geom_point() +
-  xlab("CV-AUC") +
-  ylab("Learner")
+The following code chunk creates a function that makes plots:
+```{r plot-assays}
+# create the forest plot of the specified measure for each of the top learner and SL from each assay combination
+plot_assays <- function(avgs, type = "auc", main_font_size_forest, 
+                        main_font_size_lab, sl_only = TRUE, immunoassay = TRUE, colors = NULL,
+                        point_size = 3) {
+  ## if type is AUC, make correct labels
+  if (type == "auc") {
+    x_lab <- "CV-AUC"
+    x_lim <- c(0.4, 1)
+    avgs <- avgs %>% 
+      mutate(measure = AUC)
+    lgnd_pos <- c(0.56, 0.2)
+  } else {
+    x_lab <- expression(paste("CV-", R^2))
+    x_lim <- c(-1, 1)
+    avgs <- avgs %>% 
+      mutate(measure = R2)
+    lgnd_pos <- c(0.65, 0.15)
+  }
+  ## get SL and the top individual learner/screen combo from each assay
+  top_learners_init <- avgs %>% 
+    group_by(assay) %>% 
+    arrange(desc(measure), .by_group = TRUE) %>% # arrange in descending order by assay group
+    filter((Learner == "SL" & Screen == "All") | row_number() == 1) %>%  # select only the SL row and the top performing learner 
+    mutate(learner_nm = make_nice_learner_name(Learner), screen_nm = make_nice_screen_name(Screen)) %>% 
+    ungroup() %>% 
+    arrange(desc(measure))
+  
+  ## if sl_only, only use the SL algorithm for each assay
+  if (sl_only) {
+    top_learners <- top_learners_init %>% 
+      filter(Learner == "SL")
+  } else {
+    top_learners <- top_learners_init
+  }
+  
+  ## forest plot with the groups/learners from the analysis plan
+  top_learner_plot <- top_learners %>% 
+    ggplot(aes(x = measure, y = factor(paste0(Screen, "_", Learner, "_", assay), levels = paste0(Screen, "_", Learner, "_", assay)[order(measure)],
+                                   labels = paste0(varset_label, " ", learner_nm, " ", screen_nm)[order(measure)]))) + 
+    geom_errorbarh(aes(xmin = ci_ll, xmax = ci_ul), size = point_size/2) +
+    geom_point(size = point_size) +
+    xlab(x_lab) +
+    ylab("") + 
+    scale_x_continuous(breaks = round(seq(x_lim[1], x_lim[2], 0.1), 1),
+                       labels = as.character(round(seq(x_lim[1], x_lim[2], 0.1), 1)),
+                       limits = x_lim) +
+    theme(legend.position = "", 
+          axis.text.y = element_blank(),
+          text = element_text(size = main_font_size_forest),
+          axis.title = element_text(size = main_font_size_forest), 
+          axis.text.x = element_text(size = main_font_size_forest),
+          axis.ticks = element_line(size = 1),
+          axis.ticks.length = unit(0.5, "cm"),
+          axis.title.x = element_text(margin = ggplot2::margin(t = 5, r = 0, b = 0, l = 0), size = main_font_size_forest),
+          plot.margin=unit(c(1.25,0.5,0.5,0),"cm")) # top, right, bottom, left
+  if (immunoassay) {
+    ## add on a legend to top_learner_plot, color based on immunoassay set
+    top_learner_plot <- top_learner_plot +
+      geom_errorbarh(aes(xmin = top_learners$ci_ll, xmax = top_learners$ci_ul, color = top_learners$immunoassay_set),
+                     size = point_size/2) +
+      geom_point(aes(x = top_learners$measure, y = factor(paste0(Screen, "_", Learner, "_", assay), levels = paste0(Screen, "_", Learner, "_", assay)[order(measure)],
+                                                          labels = paste0(varset_label, " ", learner_nm, " ", screen_nm)[order(measure)])),
+                 size = point_size) +
+      scale_color_manual(values = colors) +
+      # labs(color = "Immunoassay set") +
+      labs(color = "Assay set") +
+      theme(legend.position = lgnd_pos, 
+            axis.text.y = element_blank(),
+            text = element_text(size = main_font_size_forest),
+            axis.title = element_text(size = main_font_size_forest), 
+            axis.text.x = element_text(size = main_font_size_forest),
+            axis.title.x = element_text(margin = ggplot2::margin(t = 5, r = 0, b = 0, l = 0), size = main_font_size_forest),
+            legend.text = element_text(size = main_font_size_forest),
+            plot.margin=unit(c(1.25,0.5,0.5,0),"cm")) # top, right, bottom, left
+    ## separate plot with nice names, printed values of measures, based on immunoassays only
+    top_learners_labels <- top_learners %>% 
+      ungroup() %>% 
+      mutate(lab_measure = paste0(format(round(measure, 3), nsmall = 3), " [", 
+                              format(round(ci_ll, 3), nsmall = 3), ", ", 
+                              format(round(ci_ul, 3), nsmall = 3), "]")) %>%
+      select(varset_label, lab_measure)
+    ## melt to make a single "value" column
+    top_learners_labels$var <- 1
+    top_learners_labs <- melt(top_learners_labels, id.var = "var")
+    ## tack on x, y coordinates
+    top_learners_labs$x_coord <- apply(matrix(top_learners_labs$variable), 1, function(x) which(grepl(x, c("varset_label", "lab_measure"))) - 1 + c(0.2, 0.5)[which(grepl(x, c("varset_label", "lab_measure")))])
+    top_learners_labs$y_coord <- rep(rev(as.numeric(rownames(top_learners))), dim(top_learners_labs)[1]/length(as.numeric(rownames(top_learners))))
+  } else {
+    ## separate plot with nice names, printed values of the measures
+    top_learners_labels <- top_learners %>% 
+      ungroup() %>% 
+      mutate(lab_measure = paste0(format(round(measure, 3), nsmall = 3), " [", 
+                              format(round(ci_ll, 3), nsmall = 3), ", ", 
+                              format(round(ci_ul, 3), nsmall = 3), "]")) %>%
+      select(varset_label, learner_nm, screen_nm, lab_measure)
+    ## melt to make a single "value" column
+    top_learners_labels$var <- 1
+    top_learners_labs <- melt(top_learners_labels, id.var = "var")
+    ## tack on x, y coordinates
+    top_learners_labs$x_coord <- apply(matrix(top_learners_labs$variable), 1, function(x) which(grepl(x, c("varset_label", "learner_nm", "screen_nm", "lab_measure"))) - 1 + c(0, 0.3, -0.3, 0.2)[which(grepl(x, c("varset_label", "learner_nm", "screen_nm", "lab_measure")))])
+    top_learners_labs$y_coord <- rep(rev(as.numeric(rownames(top_learners))), dim(top_learners_labs)[1]/length(as.numeric(rownames(top_learners))))
+  }
+  ## make the plot
+  top_learner_nms_plot <- top_learners_labs %>% 
+    ggplot(aes(x = x_coord, y = y_coord, label = value)) +
+    geom_text(size = main_font_size_lab, hjust = 0, vjust = 0.5) +
+    xlim(c(min(top_learners_labs$x_coord), max(top_learners_labs$x_coord) + 0.75)) +
+    ylim(c(1, max(top_learners_labs$y_coord))) +
+    theme(legend.position="", 
+          axis.line=element_blank(),
+          axis.text=element_blank(),
+          text = element_text(size = main_font_size_lab),
+          axis.title = element_blank(), 
+          axis.ticks = element_blank(),
+          plot.margin=unit(c(0,0,0,0),"cm"),
+          panel.background=element_blank(),
+          panel.border=element_blank(),
+          panel.grid.major=element_blank(),
+          panel.grid.minor=element_blank(),
+          plot.background=element_blank())
+  
+  
+  return(list(top_learner_plot = top_learner_plot, top_learner_nms_plot = top_learner_nms_plot))
+}
+```
 
+### Super Learning Analysis
 
-## --------------------------------------------------------------------------------------------------------------------------------------
+We ran the Super Learner algorithm for each of the 11 variable sets defined in Section 1 using the procedure defined in Section 2. We present the cross-validated AUC and the cross-validated $R^2$ for the overall Super Learner from each of the variable sets. These are provided in Figures \@ref(fig:sl-forest-plot-auc) and \@ref(fig:sl-forest-plot-r2), respectively. In each figure, the error bars are colored by immunoassay set: antibody (Ab) variables (black), no markers (yellow), T cell variables (green), and T cell and Ab variables (blue).
+
+In Figure \@ref(fig:sl-forest-plot-auc), we see improved performance of the Super Learner when including marker variables compared to baseline risk variables only. Indeed, the Super Learner using only baseline variables and no markers has a cross-validated AUC of `r (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC`. Other variable sets have a smaller estimated cross-validated AUC, but this is likely due to the small candidate library that we used for this analysis. The ordering of predictive performance fits our hypothesis that multiple types of immune response markers improve prediction. Our proposed estimator of HIV-1 infection risk among vaccinees, the cross-validated Super Learner, has an estimated AUC of `r (avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$AUC` based on all markers, with a 95\% confidence interval of `r paste0("[", (avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ll, ", ", (avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ul, "]"`. This is an improvement over the Super Learner based on only the baseline risk variables, with an estimated AUC of `r (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC` `r paste0("[", (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ll, ", ", (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ul, "]"`.
+
+```{r sl-forest-plot-auc}
+## -----------------------------------------------------------------------------------
 ## FIGURE 1: forest plot of CV-AUC for the top learner and SL for each assay combination
-## --------------------------------------------------------------------------------------------------------------------------------------
+## -----------------------------------------------------------------------------------
 title_font_size <- 18
 main_font_size <- 5
 fig_width <- fig_height <- 2590
 y_title <- 0.96
 auc_forest_plot <- plot_assays(avg_aucs, type = "auc", main_font_size, main_font_size, sl_only = FALSE, immunoassay = FALSE)
-png(paste0(plots_dir, "cv_auc_forest_plot_sl_plus_top_learner.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
-plot_grid(auc_forest_plot$top_learner_nms_plot, auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
+cv_auc_forest_plot_top_learner <- plot_grid(auc_forest_plot$top_learner_nms_plot, auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
   draw_label("Assay combination", size = title_font_size, x = 0.075, y = y_title) +
   draw_label("Algorithm", size = title_font_size, x = 0.175, y = y_title) +
   draw_label("Screen", size = title_font_size, x = 0.25, y = y_title) +
   draw_label("CV-AUC [95% CI]", size = title_font_size, x = 0.43, y = y_title)
-dev.off()
 
 ## add on immunoassay set
 avg_aucs <- avg_aucs %>% 
@@ -1372,36 +1528,21 @@ auc_forest_plot <- plot_assays(avg_aucs, type = "auc", main_font_size_forest = m
                                    sl_only = TRUE, immunoassay = TRUE,
                                    colors = cbbPalette,
                                point_size = point_size)
-ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl.png"),
-       plot = plot_grid(auc_forest_plot$top_learner_nms_plot, 
+
+plot_grid(auc_forest_plot$top_learner_nms_plot, 
                         auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
          draw_label("Month 7", size = title_font_size, x = 0.14, y = y_title + 0.04, fontface = "bold") +
          draw_label("Marker Set", size = title_font_size, x = 0.1375, y = y_title, fontface = "bold") +
          draw_label("CV-AUC", size = title_font_size, x = 0.4, y = y_title + 0.04, fontface = "bold") +
-         draw_label("[95% CI]", size = title_font_size, x = 0.4, y = y_title, fontface = "bold"),
-       width = 50, height = 25, units = "cm")
+         draw_label("[95% CI]", size = title_font_size, x = 0.4, y = y_title, fontface = "bold")
+```
 
-ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl.tiff"),
-       plot = plot_grid(auc_forest_plot$top_learner_nms_plot, 
-                        auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
-         draw_label("Month 7", size = title_font_size, x = 0.14, y = y_title + 0.04, fontface = "bold") +
-         draw_label("Marker Set", size = title_font_size, x = 0.1375, y = y_title, fontface = "bold") +
-         draw_label("CV-AUC", size = title_font_size, x = 0.4, y = y_title + 0.04, fontface = "bold") +
-         draw_label("[95% CI]", size = title_font_size, x = 0.4, y = y_title, fontface = "bold"),
-       width = 50, height = 25, units = "cm")
+In Figure \@ref(fig:sl-forest-plot-r2), we see that there is substantial estimated variability in the cross-validated $R^2$ values: this is due to the small variance of the outcome in these data, resulting in efficient influence function-based standard errors that are large relative to the point estimates. We see that, in general, the cross-validated $R^2$ is not large for any variable set.
 
-ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl.pdf"),
-       plot = plot_grid(auc_forest_plot$top_learner_nms_plot, 
-                        auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
-         draw_label("Month 7", size = title_font_size, x = 0.14, y = y_title + 0.04, fontface = "bold") +
-         draw_label("Marker Set", size = title_font_size, x = 0.1375, y = y_title, fontface = "bold") +
-         draw_label("CV-AUC", size = title_font_size, x = 0.4, y = y_title + 0.04, fontface = "bold") +
-         draw_label("[95% CI]", size = title_font_size, x = 0.4, y = y_title, fontface = "bold"),
-       width = 50, height = 25, units = "cm")
-
-## --------------------------------------------------------------------------------------------------------------------------------------
+```{r sl-forest-plot-r2}
+## -----------------------------------------------------------------------------------
 ## FIGURE 2: forest plot of CV-R^2 for the top learner and SL for each assay combination
-## --------------------------------------------------------------------------------------------------------------------------------------
+## -----------------------------------------------------------------------------------
 ## get the R-squareds
 for (i in 1:length(var_set_names)) {
   this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
@@ -1427,13 +1568,11 @@ fig_width <- fig_height <- 2590
 y_title <- 0.96
 r2_forest_plot <- plot_assays(avg_r2s, type = "r2", main_font_size, main_font_size,
                               sl_only = FALSE, immunoassay = FALSE)
-png(paste0(plots_dir, "cv_r2_forest_plot_sl_plus_top_learner.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
-plot_grid(r2_forest_plot$top_learner_nms_plot, r2_forest_plot$top_learner_plot, nrow = 1, align = "h", rel_widths = c(1, 0.55)) +
+r2_forest_plot_top_learner <- plot_grid(r2_forest_plot$top_learner_nms_plot, r2_forest_plot$top_learner_plot, nrow = 1, align = "h", rel_widths = c(1, 0.55)) +
   draw_label("Assay combination", size = title_font_size, x = 0.075, y = y_title) +
   draw_label("Algorithm", size = title_font_size, x = 0.25, y = y_title) +
   draw_label("Screen", size = title_font_size, x = 0.34, y = y_title) +
   draw_label(expression(paste("CV-", R^2, " [95% CI]", sep = "")), size = title_font_size, x = 0.55, y = y_title)
-dev.off()
 
 ## add on immunoassay set
 avg_r2s <- avg_r2s %>% 
@@ -1448,13 +1587,20 @@ r2_forest_plot <- plot_assays(avg_r2s, type = "r2", main_font_size_forest = main
                                    main_font_size_lab = main_font_size_lab,
                                    sl_only = TRUE, immunoassay = TRUE,
                                    colors = cbbPalette)
-png(paste0(plots_dir, "cv_r2_forest_plot_sl.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
 plot_grid(r2_forest_plot$top_learner_nms_plot, 
           r2_forest_plot$top_learner_plot, nrow = 1, align = "h") +
   draw_label("Assay combination", size = title_font_size, x = 0.1, y = y_title) +
   draw_label(expression(paste("CV-", R^2, " [95% CI]", sep = "")), size = title_font_size, x = 0.38, y = y_title)
-dev.off()
-## --------------------------------------------------------------------------------------------------------------------------------------
+```
+
+### Variable Importance Analysis
+
+We estimated the variable importance for 10 groups: all marker variables, IgG + IgA, IgG3, T cells, functional antibodies, IgG + IgA and IgG3, IgG + IgA and T cells, IgG + IgA and IgG3 and T cells, IgG + IgA and IgG3 and functional antibodies, and T cells and functional antibodies. In each case, we used the cross-validated Super Learner predictions from the analysis based on using the appropriate set of marker variables and baseline risk variables as our estimate of the full regression function; we then used the cross-validated Super Learner based on the baseline risk variables only to define the reduced regression function. This defines variable importance as the improvement in prediction performance from including a group of marker variables relative to including baseline variables only. 
+
+The results based on cross-validated AUC are presented in Figure \@ref(fig:vimp-plot-auc). Here, we see that using the group of all marker variables results in an estimated increase in cross-validated AUC of nearly `r (vimp_tibble %>% filter(assay_grp == "All markers"))$est` over using the baseline risk variables only. Interestingly, the groups of IgG, IgA, IgG3, and T cell markers; IgG, IgA, and T cell markers; and T cell markers and those markers measured in functional antibody assays have estimated equivalent prediction performance. The next most important group appears to be those markers measured in functional antibody assays, with an estimated increase in cross-validated AUC of approximately `r (vimp_tibble %>% filter(assay_grp == "Fx Ab"))$est` compared to using baseline risk variables only. Adding all of the distinct antibody variable groups improves prediction performance compared to leaving any of the antibody groups out of the prediction algorithm. 
+
+```{r vimp-plot-auc}
+## ---------------------------------------------------------------------------------
 ## Variable importance plot for the different assay combinations:
 ## All markers yields the full regression fit
 ## Variable set 1 gives reduced for importance of all markers (group 8)
@@ -1464,7 +1610,7 @@ dev.off()
 ## Variable set 5 gives reduced for importance of Fx Ab (group 4)
 ## Variable set 6 gives reduced for importance of T cells (group 3)
 ## Variable set 7 gives reduced for importance of IgG + IgA (group 2)
-## --------------------------------------------------------------------------------------------------------------------------------------
+## ---------------------------------------------------------------------------------
 ## load the data
 ## read in the full dataset
 data("dat.505", package = "HVTN505")
@@ -1635,8 +1781,6 @@ vimp_tibble <- tibble(assay_grp = c("All markers",
                               vimp_igg_iga_avg$ci[2]))
 vimp_tibble <- tibble::add_column(vimp_tibble, immunoassay_set = get_immunoassay_set(vimp_tibble$assay_grp))
 ## save this object for easy loading
-saveRDS(vimp_tibble, paste0(results_dir, "vimp_tibble_", risk_type))
-vimp_tibble <- readRDS(paste0(results_dir, "vimp_tibble_", risk_type))
 
 title_font_size <- 26
 main_font_size_forest <- 31
@@ -1664,62 +1808,19 @@ vimp_forest_plot <- vimp_tibble %>%
         axis.text.x = element_text(size = main_font_size_forest),
         axis.title.x = element_text(margin = ggplot2::margin(t = 20, r = 0, b = 0, l = 0), size = main_font_size_forest),
         plot.margin=unit(c(1,0.5,0,0),"cm")) # top, right, bottom, left
-ggsave(filename = paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline.png"), 
-       plot = vimp_forest_plot,
-       width = 50, height = 25, units = "cm")
-ggsave(filename = paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline.pdf"), 
-       plot = vimp_forest_plot,
-       width = 50, height = 25, units = "cm")
-
-## ----------------------------------------------------------------------------------------------
-## Look at one high-performing logistic regression model to see ORs, CIs
-## first, screen based on a high-performing screen
-## these are taken from the full SL, looking over folds; choose
-## stepwise with interactions, high-correlation screen
-## ----------------------------------------------------------------------------------------------
-single_logistic_screen_highcor_x <- screen_highcor_plus_exposure(Y_vaccine, X_vaccine, family = "binomial", obsWeights = weights_vaccine)
-X_highcor_single_logistic <- X_vaccine %>% 
-  select(names(X_vaccine)[single_logistic_screen_highcor_x])
-single_logistic_mod <- SL.step.interaction(Y_vaccine, X_highcor_single_logistic, family = "binomial", obsWeights = weights_vaccine)
-single_logistic_mod_summ <- summary(single_logistic_mod$fit$object)
-single_logistic_ors <- exp(single_logistic_mod_summ$coefficients[, 1])
-single_logistic_ses <- exp(single_logistic_mod_summ$coefficients[, 2])
-single_logistic_cis <- exp(cbind(single_logistic_mod_summ$coefficients[, 1] - 1.96*single_logistic_mod_summ$coefficients[, 2],
-                                 single_logistic_mod_summ$coefficients[, 1] + 1.96*single_logistic_mod_summ$coefficients[, 2]))
-cbind(single_logistic_ors, single_logistic_cis)
+vimp_forest_plot
 ```
-
-### Super Learning Analysis
-
-We ran the Super Learner algorithm for each of the 11 variable sets defined in Section \ref{sec:intro} using the procedure defined in Section \ref{sec:sl}. We present the cross-validated AUC and the cross-validated $R^2$ for the overall Super Learner from each of the variable sets. These are provided in Figures \ref{fig:cv_auc} and \ref{fig:cv_r2}, respectively. In each figure, the error bars are colored by immunoassay set: antibody (Ab) variables (black), no markers (yellow), T cell variables (green), and T cell and Ab variables (blue).
-
-In Figure \ref{fig:cv_auc}, we see improved performance of the Super Learner when including marker variables compared to baseline risk variables only. Indeed, the Super Learner using only baseline variables and no markers has a cross-validated AUC of 0.58, and is the second-lowest cross-validated AUC: this confirms our hypothesis that using vaccine response marker variables improves prediction performance. The ordering of predictive performance fits our hypothesis that multiple types of immune response markers improve prediction: using no markers results in the poorest prediction performance (though the group of functional antibodies does not appear to result in any improvement), while using larger sets of markers tends to result in improved prediction performance. Our proposed estimator of HIV-1 infection risk among vaccinees, the cross-validated Super Learner, has an estimated AUC of 0.748 based on all markers, with a 95\% confidence interval of [0.697, 0.799]. This is a marked improvement over the Super Learner based on only the baseline risk variables, with an estimated AUC of 0.58 [0.517, 0.643].
-
-AUC FIGURE HERE
-
-In Figure \ref{fig:cv_r2}, we see that there is substantial estimated variability in the cross-validated $R^2$ values: this is due to the small variance of the outcome in these data, resulting in efficient influence function-based standard errors that are large relative to the point estimates. We see that, in general, the cross-validated $R^2$ is not large for any variable set, with the largest cross-validated $R^2$ estimated to be 0.11 when only all markers are considered.
-
-R-SQUARED FIGURE HERE
-
-
-### Variable Importance Analysis
-
-We estimated the variable importance for 10 groups: all marker variables, IgG + IgA, IgG3, T cells, functional antibodies, IgG + IgA and IgG3, IgG + IgA and T cells, IgG + IgA and IgG3 and T cells, IgG + IgA and IgG3 and functional antibodies, and T cells and functional antibodies. In each case, we used the cross-validated Super Learner predictions from the analysis based on using the appropriate set of marker variables and baseline risk variables as our estimate of the full regression function; we then used the cross-validated Super Learner based on the baseline risk variables only to define the reduced regression function. This defines variable importance as the improvement in prediction performance from including a group of marker variables relative to including baseline variables only. 
-
-The results based on cross-validated AUC are presented in Figure \ref{fig:vimp_auc}. Here, we see that using the group of all marker variables results in an estimated increase in cross-validated AUC of nearly 0.2 over using the baseline risk variables only. Interestingly, the groups of IgG, IgA, IgG3, and T cell markers; IgG, IgA, and T cell markers; and all marker variables have estimated equivalent prediction performance. The next most important group appears to be those markers measured in T cells and functional antibody assays, with an estimated increase in cross-validated AUC of approximately 0.15 compared to using baseline risk variables only. Marker variables measured by T cell assays may be the most important individual group of markers, judging from the large importance of the T cells group alone and the fact that any group containing T cells has large estimated importance relative to the baseline risk variables. The analysis also shows that both antibodies and T cells are needed to optimize predictions: performance substantially improves adding binding antibodies (IgG, IgA, IgG3) to T cells. Adding all of the distinct antibody variable groups improves prediction performance compared to leaving any of the antibody groups out of the prediction algorithm. 
-
-AUC FIGURE HERE
 
 We additionally measured the importance of each individual variable within the assay and antigen groups: these results are presented in the Appendix.
 
 
 ## Conclusions
 
-In this analysis, we developed a model that predicts HIV-1 infection in vaccinees from month 7 marker variables and baseline risk variables. This model employs nested cross-validation to combine a flexible library of individual learners into a prediction algorithm that admits desirable asymptotic properties: namely, that the resulting cross-validated estimator is asymptotically guaranteed to have the same risk as the oracle estimator. We saw that the cross-validated AUC for this estimator using all marker variables was 0.748 [0.697, 0.799]. 
+In this analysis, we developed a model that predicts HIV-1 infection in vaccinees from month 7 marker variables and baseline risk variables. This model employs nested cross-validation to combine a flexible library of individual learners into a prediction algorithm that admits desirable asymptotic properties: namely, that the resulting cross-validated estimator is asymptotically guaranteed to have the same risk as the oracle estimator. 
 
-Based on a variable importance analysis using the difference in cross-validated AUCs, we see that: (i) adding IgG and IgA variables only to baseline variables results in improved prediction performance; (ii) adding functional antibody variables and IgG3 variables to IgG and IgA variables and baseline variables results in improved prediction performance over adding IgG and IgA variables alone to baseline variables; (iii) adding IgG3 variables only to baseline variables results in even more improved prediction performance; (iv) adding T cell variables only results in the largest increase in prediction performance among all individual groups; and (v) that combining T cell and antibody variables together results in a further incremental improvement over T cells alone, but only if all antibody classes are present.
+Based on a variable importance analysis using the difference in cross-validated AUCs, we see that: (i) adding IgG and IgA variables only to baseline variables results in improved prediction performance; (ii) adding functional antibody variables and IgG3 variables to IgG and IgA variables and baseline variables results in improved prediction performance over adding IgG and IgA variables alone to baseline variables; (iii) adding T cell variables or functional antibody variables only results in the largest increase in prediction performance among all individual groups; and (iv) that combining T cell and antibody variables together results in a further incremental improvement over T cells alone, but only if all antibody classes are present.
 
-The main limitation of this analysis is that, due to the small number of events, cross-validated $R^2$ appears to be a poor estimator both of prediction performance and of variable importance. This is in line with previous work suggesting that $R^2$ may not always be appropriate for rare binary endpoints. We suspect that with a larger number of events the behavior of the $R^2$ estimators, and the conclusions drawn from using cross-validated $R^2$ to define both prediction performance and variable importance, would be more in line with the conclusions drawn from using cross-validated AUC.
+The main limitation of this analysis is that, to save computation time in this vignette, we used a small library of candidate learning algorithms. The Appendix contains code that may be used to fully replicate the analysis in [@neidich2019]. Additionally, due to the small number of events, cross-validated $R^2$ appears to be a poor estimator both of prediction performance and of variable importance. This is in line with previous work suggesting that $R^2$ may not always be appropriate for rare binary endpoints. We suspect that with a larger number of events the behavior of the $R^2$ estimators, and the conclusions drawn from using cross-validated $R^2$ to define both prediction performance and variable importance, would be more in line with the conclusions drawn from using cross-validated AUC.
 
 ## Appendix
 
