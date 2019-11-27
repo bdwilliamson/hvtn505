@@ -2,7 +2,10 @@
 title: "Investigating HIV-1 correlates of protection in HVTN 505"
 author: "Brian Williamson"
 date: "`r Sys.Date()`"
-output: bookdown::html_document2
+output: 
+  bookdown::html_document2:
+    toc: true
+  
 references:
 - id: williamson2017
   author:
@@ -108,7 +111,7 @@ references:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Introduction
+# Introduction
 
 We still do not have a broadly efficacious vaccine against HIV-1. [HVTN 505](https://clinicaltrials.gov/ct2/show/NCT00865566) was a randomized, placebo-controlled trial designed to assess the efficacy of a candidate vaccine regimen in adults. Using data from this trial, we aim to 
 
@@ -117,7 +120,7 @@ We still do not have a broadly efficacious vaccine against HIV-1. [HVTN 505](htt
 
 We use the Super Learner to address aim 1, and perform a variable importance analysis to address aim 2. Together, these aims constitute a correlates of risk (CoR) analysis using these data.
 
-## Dataset
+# Dataset
 
 The month 7 immune markers are cross-classified by the following factors into interpretable sets:
 
@@ -144,11 +147,11 @@ The data are included in the R package HVTN505. Install the package from `HVTN50
 
 The object `dat.505` contains 189 rows, clinical covariates, and both continuous and dichotomized immune response biomarkers. The object `var.505` contains metadata on the individual immune response biomarkers. The object `score.505` contains metadata on the summary immune response biomarkers.    
 
-## Correlates of Risk Analysis
+# Correlates of Risk Analysis
 
 All models adjust for the same baseline exposure covariates adjusted for by [@janes2017], except race (white, black, Hispanic) is excluded to help avoid sparsity issues: age (years old at enrollment), BMI at enrollment (quantitative value in kg/m$^2$), and baseline behavioral risk (a weighted average of two binary risk factors identified by [@hammer2013]). All analyses use the same empirical inverse probability sampling weights used by [@janes2017] and [@fong2018].  These participant weights are included in the data file (`wt` column in `dat.505` in the R HVTN505 package).
 
-### Candidate Variable Sets
+## Candidate Variable Sets
 
 We consider 11 candidate variable sets in this analysis, defined by assay combination:
 
@@ -166,7 +169,7 @@ We consider 11 candidate variable sets in this analysis, defined by assay combin
 
 In all analyses, as we mentioned above, we adjust for three baseline variables: age, BMI, and behavioral risk.
 
-### Super Learning Analysis
+## Super Learning Analysis
 
 We use the implementation of the Super Learner provided in the `SuperLearner` R package. In a Super Learning task, cross-validation is used to determine the optimal convex combination of a set of candidate learners chosen to minimize a cross-validated risk. This process results in an estimated risk for each of the candidate learners, along with an estimated risk fo the traditional cross-validated selector and the optimal convex combination of the individual algorithms. This convex combination is called the Super Learner.
 
@@ -1193,7 +1196,7 @@ sl_fits_varset_11_all <- fits
 
 The code to reproduce the results of the original analysis is provided in the Appendix, and was designed to run on a high-performance cluster (HPC) computer (it takes multiple hours to run).
 
-### Variable Importance
+## Variable Importance
 
 We use the `vimp` package to compute variable importance estimates and confidence intervals. In all cases, we consider variable importance as a summary of the true data-generating distribution. Since our outcome is binary, we estimate variable importance in two ways: using the population difference in R-squared [@williamson2017], and using the population difference in area under the receiver operating characteristic curve (AUC). We interpret the R-squared-based importance as the proportion of the variability in the outcome explained by including a group of covariates. We interpret the AUC-based importance as the difference in our ability to discriminate between cases and controls based on using a group of covariates. Load the `vimp` package using the following code:
 
@@ -1301,9 +1304,9 @@ for (i in (1:14)[-11]) {
 }
 ```
 
-## Results
+# Results
 
-### Compiling Results and Creating Plots
+## Compiling Results and Creating Plots
 
 The following code compiles results and creates plots, and must be run after all Super Learner fits have been obtained.
 
@@ -1316,7 +1319,10 @@ The following code compiles results and creates plots, and must be run after all
 ## --------------------------------------------------------------------------------------------------------------------------------------
 library("cvAUC")
 library("tidyr")
+library("dplyr")
 library("cowplot")
+library("vimp")
+library("kyotil")
 method <- "method.CC_nloglik" # since SuperLearner relies on this to be in GlobalEnv
 
 # The palette with black:
@@ -1346,7 +1352,7 @@ var_set_labels <- c("No markers", "IgG + IgA", "IgG3", "T Cells", "Fx Ab", "IgG 
 for (i in 1:(length(var_set_names))) { 
   this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
   # eval(parse(text = paste0("all_aucs_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) x$aucs)))")))
-  eval(parse(text = paste0("all_aucs_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) get_all_aucs_lst(x, weights = weights_vaccine))))")))
+  eval(parse(text = paste0("all_aucs_i <- tibble::as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) get_all_aucs_lst(x, weights = weights_vaccine))))")))
   all_aucs_i <- all_aucs_i %>% 
     filter(!is.na(all_aucs_i$Learner))
   eval(parse(text = paste0("avg_aucs_", var_set_names[i]," <- all_aucs_i %>% 
@@ -1366,6 +1372,11 @@ avg_aucs <- bind_rows(avg_aucs_1_baseline_exposure, avg_aucs_2_igg_iga, avg_aucs
 
 The following code chunk creates a function that makes plots:
 ```{r plot-assays}
+library("vimp")
+library("tidyr")
+library("tibble")
+library("dplyr")
+library("cowplot")
 # create the forest plot of the specified measure for each of the top learner and SL from each assay combination
 plot_assays <- function(avgs, type = "auc", main_font_size_forest, 
                         main_font_size_lab, sl_only = TRUE, immunoassay = TRUE, colors = NULL,
@@ -1492,13 +1503,13 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest,
 }
 ```
 
-### Super Learning Analysis
+## Super Learning Analysis
 
 We ran the Super Learner algorithm for each of the 11 variable sets defined in Section 1 using the procedure defined in Section 2. We present the cross-validated AUC and the cross-validated $R^2$ for the overall Super Learner from each of the variable sets. These are provided in Figures \@ref(fig:sl-forest-plot-auc) and \@ref(fig:sl-forest-plot-r2), respectively. In each figure, the error bars are colored by immunoassay set: antibody (Ab) variables (black), no markers (yellow), T cell variables (green), and T cell and Ab variables (blue).
 
 In Figure \@ref(fig:sl-forest-plot-auc), we see improved performance of the Super Learner when including marker variables compared to baseline risk variables only. Indeed, the Super Learner using only baseline variables and no markers has a cross-validated AUC of `r (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC`. Other variable sets have a smaller estimated cross-validated AUC, but this is likely due to the small candidate library that we used for this analysis. The ordering of predictive performance fits our hypothesis that multiple types of immune response markers improve prediction. Our proposed estimator of HIV-1 infection risk among vaccinees, the cross-validated Super Learner, has an estimated AUC of `r (avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$AUC` based on all markers, with a 95\% confidence interval of `r paste0("[", (avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ll, ", ", (avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ul, "]")`. This is an improvement over the Super Learner based on only the baseline risk variables, with an estimated AUC of `r (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC` `r paste0("[", (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ll, ", ", (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ul, "]")`.
 
-```{r sl-forest-plot-auc}
+```{r sl-forest-plot-auc, fig.cap = "Forest plot of cross-validated AUC for the Super Learner and the top individual learner for each assay combination.", fig.width = 20, fig.height = 8}
 ## -----------------------------------------------------------------------------------
 ## FIGURE 1: forest plot of CV-AUC for the top learner and SL for each assay combination
 ## -----------------------------------------------------------------------------------
@@ -1539,14 +1550,14 @@ plot_grid(auc_forest_plot$top_learner_nms_plot,
 
 In Figure \@ref(fig:sl-forest-plot-r2), we see that there is substantial estimated variability in the cross-validated $R^2$ values: this is due to the small variance of the outcome in these data, resulting in efficient influence function-based standard errors that are large relative to the point estimates. We see that, in general, the cross-validated $R^2$ is not large for any variable set.
 
-```{r sl-forest-plot-r2}
+```{r sl-forest-plot-r2, fig.cap = "Forest plot of cross-validated R-squared for the Super Learner and the top individual learner for each assay combination.", fig.width = 20, fig.height = 8}
 ## -----------------------------------------------------------------------------------
 ## FIGURE 2: forest plot of CV-R^2 for the top learner and SL for each assay combination
 ## -----------------------------------------------------------------------------------
 ## get the R-squareds
 for (i in 1:length(var_set_names)) {
   this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
-  eval(parse(text = paste0("all_r2s_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) get_all_r2s_lst(x, weights = weights_vaccine))))")))
+  eval(parse(text = paste0("all_r2s_i <- tibble::as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) get_all_r2s_lst(x, weights = weights_vaccine))))")))
   all_r2s_i <- all_r2s_i %>% 
     filter(!is.na(all_r2s_i$Learner))
   eval(parse(text = paste0("avg_r2s_", var_set_names[i]," <- all_r2s_i %>% 
@@ -1593,13 +1604,11 @@ plot_grid(r2_forest_plot$top_learner_nms_plot,
   draw_label(expression(paste("CV-", R^2, " [95% CI]", sep = "")), size = title_font_size, x = 0.38, y = y_title)
 ```
 
-### Variable Importance Analysis
+## Variable Importance Analysis
 
-We estimated the variable importance for 10 groups: all marker variables, IgG + IgA, IgG3, T cells, functional antibodies, IgG + IgA and IgG3, IgG + IgA and T cells, IgG + IgA and IgG3 and T cells, IgG + IgA and IgG3 and functional antibodies, and T cells and functional antibodies. In each case, we used the cross-validated Super Learner predictions from the analysis based on using the appropriate set of marker variables and baseline risk variables as our estimate of the full regression function; we then used the cross-validated Super Learner based on the baseline risk variables only to define the reduced regression function. This defines variable importance as the improvement in prediction performance from including a group of marker variables relative to including baseline variables only. 
+We estimated the variable importance for 10 groups: all marker variables, IgG + IgA, IgG3, T cells, functional antibodies, IgG + IgA and IgG3, IgG + IgA and T cells, IgG + IgA and IgG3 and T cells, IgG + IgA and IgG3 and functional antibodies, and T cells and functional antibodies. In each case, we used the cross-validated Super Learner predictions from the analysis based on using the appropriate set of marker variables and baseline risk variables as our estimate of the full regression function; we then used the cross-validated Super Learner based on the baseline risk variables only to define the reduced regression function. This defines variable importance as the improvement in prediction performance from including a group of marker variables relative to including baseline variables only. The following code compiles the variable importance results for easy plotting:
 
-The results based on cross-validated AUC are presented in Figure \@ref(fig:vimp-plot-auc). Here, we see that using the group of all marker variables results in an estimated increase in cross-validated AUC of nearly `r (vimp_tibble %>% filter(assay_grp == "All markers"))$est` over using the baseline risk variables only. Interestingly, the groups of IgG, IgA, IgG3, and T cell markers; IgG, IgA, and T cell markers; and T cell markers and those markers measured in functional antibody assays have estimated equivalent prediction performance. The next most important group appears to be those markers measured in functional antibody assays, with an estimated increase in cross-validated AUC of approximately `r (vimp_tibble %>% filter(assay_grp == "Fx Ab"))$est` compared to using baseline risk variables only. Adding all of the distinct antibody variable groups improves prediction performance compared to leaving any of the antibody groups out of the prediction algorithm. 
-
-```{r vimp-plot-auc}
+```{r compile-vimp-results}
 ## ---------------------------------------------------------------------------------
 ## Variable importance plot for the different assay combinations:
 ## All markers yields the full regression fit
@@ -1781,7 +1790,11 @@ vimp_tibble <- tibble(assay_grp = c("All markers",
                               vimp_igg_iga_avg$ci[2]))
 vimp_tibble <- tibble::add_column(vimp_tibble, immunoassay_set = get_immunoassay_set(vimp_tibble$assay_grp))
 ## save this object for easy loading
+```
 
+The results based on cross-validated AUC are presented in Figure \@ref(fig:vimp-plot-auc). Here, we see that using the group of all marker variables results in an estimated increase in cross-validated AUC of nearly `r (vimp_tibble %>% filter(assay_grp == "All markers"))$est` over using the baseline risk variables only. Interestingly, the groups of IgG, IgA, IgG3, and T cell markers; IgG, IgA, and T cell markers; and T cell markers and those markers measured in functional antibody assays have estimated equivalent prediction performance. The next most important group appears to be those markers measured in functional antibody assays, with an estimated increase in cross-validated AUC of approximately `r (vimp_tibble %>% filter(assay_grp == "Fx Ab"))$est` compared to using baseline risk variables only. Adding all of the distinct antibody variable groups improves prediction performance compared to leaving any of the antibody groups out of the prediction algorithm. 
+
+```{r vimp-plot-auc, fig.cap = "Estimated variable importance (based on the difference in AUCs relative to a model with baseline exposure variables only) for each assay combination.", fig.height = 8, fig.width = 20}
 title_font_size <- 26
 main_font_size_forest <- 31
 main_font_size_lab <- 9.3
@@ -1814,7 +1827,7 @@ vimp_forest_plot
 We additionally measured the importance of each individual variable within the assay and antigen groups: these results are presented in the Appendix.
 
 
-## Conclusions
+# Conclusions
 
 In this analysis, we developed a model that predicts HIV-1 infection in vaccinees from month 7 marker variables and baseline risk variables. This model employs nested cross-validation to combine a flexible library of individual learners into a prediction algorithm that admits desirable asymptotic properties: namely, that the resulting cross-validated estimator is asymptotically guaranteed to have the same risk as the oracle estimator. 
 
@@ -1822,7 +1835,7 @@ Based on a variable importance analysis using the difference in cross-validated 
 
 The main limitation of this analysis is that, to save computation time in this vignette, we used a small library of candidate learning algorithms. The Appendix contains code that may be used to fully replicate the analysis in [@neidich2019]. Additionally, due to the small number of events, cross-validated $R^2$ appears to be a poor estimator both of prediction performance and of variable importance. This is in line with previous work suggesting that $R^2$ may not always be appropriate for rare binary endpoints. We suspect that with a larger number of events the behavior of the $R^2$ estimators, and the conclusions drawn from using cross-validated $R^2$ to define both prediction performance and variable importance, would be more in line with the conclusions drawn from using cross-validated AUC.
 
-## Appendix
+# Appendix
 
 Code to reproduce the full Super Learning analysis:
 ```{r run-full-sl, eval = FALSE}
@@ -2059,3 +2072,5 @@ fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X
 )
 saveRDS(fits, paste0("sl_fits_varset_", var_set_names[job_id], ".rds"))
 ```
+
+# References
