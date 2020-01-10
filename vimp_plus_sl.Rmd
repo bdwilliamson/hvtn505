@@ -7,6 +7,19 @@ output:
     toc: true
   
 references:
+- id: vanderlaan2007
+  author: 
+  - family: van der Laan
+    given: Mark J
+  - family: Polley
+    given: Eric C
+  - family: Hubbard
+    given: Alan E
+  publisher: Statistical Applications in Genetics and Molecular Biology
+  type: article-journal
+  issued:
+    year: 2007
+  URL: 'https://doi.org/10.2202/1544-6115.1309'
 - id: williamson2017
   author:
   - family: Williamson
@@ -113,27 +126,27 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Introduction
 
-We still do not have a broadly efficacious vaccine against HIV-1. [HVTN 505](https://clinicaltrials.gov/ct2/show/NCT00865566) was a randomized, placebo-controlled trial designed to assess the efficacy of a candidate vaccine regimen in adults. Using data from this trial, we aim to 
+We still do not have a broadly efficacious vaccine against HIV-1. [HVTN 505](https://clinicaltrials.gov/ct2/show/NCT00865566) was a randomized, placebo-controlled trial designed to assess the efficacy of a candidate vaccine regimen in adults. Using data from this trial, we aim to: 
 
 1. Build an *estimated optimal surrogate*, a model that best predicts HIV-1 infection risk from immune response marker variables measured at month 7 and a few baseline variables; and
 2. Identify the sets of immune response markers that best predict infection and how these sets work together.
 
-We use the Super Learner to address aim 1, and perform a variable importance analysis to address aim 2. Together, these aims constitute a correlates of risk (CoR) analysis using these data.
+We use the Super Learner [@vanderlaan2007] to address aim 1, and perform a variable importance analysis to address aim 2. Taken together, these aims constitute a correlates of risk (CoR) analysis using these data.
 
 # Dataset
 
 The month 7 immune markers are cross-classified by the following factors into interpretable sets:
 
-1. Assay type: CD4 T Cell, CD8 T Cell, IgG, IgA, functional (phago, fcrR2a, fcrR3a, nAb tier 1)
+1. Assay type: CD4 T Cell, CD8 T Cell, IgG, IgA, functional (antibody-dependent cellular phagocytosis [ADCP; referred to as \code{phago}], Fc$\gamma$ receptors [referred to as fcrR2a and fcrR3a], and neutralizing antibody [nAb] tier 1)
 2. Antigen: any vaccine-matched HIV peptide pool ("Any HIV"), protein-specific vaccine-matched peptide pools ("Any VRC ENV", "Any VRC GAG", "Any VRC NEF", and "Any VRC POL"), Empty Ad5 VRC, CMV, gp120, gp140, V1V2, V3, p24, gp41, C1, C4
 
-A few of the month 7 immune markers had missing values. Single imputation was used to fill in these values. We ignore uncertainty in the imputations in this analysis (given the very small amount of missing data). 
+A few of the month 7 immune markers had missing values. Single imputation was used to fill in these values. We ignore uncertainty in the imputations in this analysis given the very small amount of missing data. 
 
 We performed some data cleaning and a dimension reduction step prior to the statistical analysis. Within each interpretable variable set:
 
 * include quantitative variables and binary "high" vs. "low" variables, defined by above vs. below the median of vaccine recipients. The median is calculated for the cohort of vaccine recipients at risk of HIV-1 infection at month 7; thus, inverse sampling probability weights are used in the calculations.
 * each BAMA variable (IgG, IgG3, IgA) is baseline subtracted. For IgG3 the variables are log fold-rise in immune response, whereas IgG and IgA are the log of the difference (month 7 - month 0) on the original scale. In addition, for each BAMA variable month 7 readouts without baseline subtraction are included.
-* For ICS variables (CD4, CD8 T cell), magnitude measures are: percent of cells expressing IL2, TNFa, CD154, and/or IFNg; percent of cells expressing IL2 and/or IFNg; percent of cells expressing IL2 and/or TNFa; and percent of cells expressing each of the individual cytokines (TNFa, CD154, IFNg, IL2, IL4).  All of the magnitudes are log10 net responses, i.e., background-subtracted and then log10-transformed.  Polyfunctionality as measured by the COMPASS polyfunctionality score (proportion of antigen-specific cell subsets detected, weighted by their degree of functionality, where antigen-specific cell subsets are those with a statistically-significant difference in the percent of cytokine-expressing cells in unstimulated vs. stimulated samples). The following cytokines are considered in calculating the polyfunctionality score: TNFa, CD154, IFNg, IL2, IL4, and Granzyme B; however cells expressing Granzyme B only are not counted as "functional".  Note functionality scores are not included because they are highly correlated and mostly redundant conceptually with polyfunctionality scores.  Both magnitude and polyfunctional score variables are included for study, as the correlations are not uniformly high; they range from ~0.5--0.8 across antigens and T cell subsets -- and may capture different aspects of T cell response.
+* For ICS variables (CD4, CD8 T cell), magnitude measures are: percent of cells expressing IL2, TNFa, CD154, and/or IFNg; percent of cells expressing IL2 and/or IFNg; percent of cells expressing IL2 and/or TNFa; and percent of cells expressing each of the individual cytokines (TNFa, CD154, IFNg, IL2, IL4).  All of the magnitudes are log10 net responses, i.e., background-subtracted and then log10-transformed.  Polyfunctionality as measured by the COMPASS polyfunctionality score (proportion of antigen-specific cell subsets detected, weighted by their degree of functionality, where antigen-specific cell subsets are those with a statistically-significant difference in the percent of cytokine-expressing cells in unstimulated vs. stimulated samples). The following cytokines are considered in calculating the polyfunctionality score: TNFa, CD154, IFNg, IL2, IL4, and Granzyme B; however cells expressing Granzyme B only are not counted as "functional".  Note functionality scores are not included because they are highly correlated and mostly redundant conceptually with polyfunctionality scores.  Both magnitude and polyfunctional score variables are included for study, as the correlations are not uniformly high; they range from ~0.5--0.8 across antigens and T cell subsets and may capture different aspects of T cell response.
 * For ICS responses to vaccine-mismatched antigens (Empty Ad5 VRC and CMV antigens), measure responses using the percent of cells expressing IL2, TNFa, CD154, and/or IFNg.
 * For variables with a positive response call (IgG, IgG3, IgA, R2a, R3a, phago, Tier 1 nAb) require $>$ 20% vaccine group positive response.  For all variables, require a significantly greater response in the vaccine group than the placebo group to include in the analysis (Wilcoxon rank sum test 2-sided p $<$ 0.01).  Note that no Tier 1 nAb variables are included because none met the $>$ 20% vaccine group response criterion.
 * For all variables in an interpretable variable set (defined by assay and antigen) that are for vaccine-mismatched antigens, aggregate the variables into two scores to be kept for CoR analysis: PC1 and the maximal diversity weighted score (MDWS).  
@@ -141,7 +154,8 @@ We performed some data cleaning and a dimension reduction step prior to the stat
 The data are included in the R package HVTN505. Install the package from `HVTN505_2019-4-25.tar.gz` using the following code:
 
 ```{r}
-# only run this line if the package isn't already installed
+# only run this line if the package isn't already installed; edit the file path
+# to point to the directory where the .tar.gz file is located
 # install.packages("HVTN505_2019-4-25.tar.gz", type = "source", repos = NULL)
 ```
 
@@ -171,7 +185,7 @@ In all analyses, as we mentioned above, we adjust for three baseline variables: 
 
 ## Super Learning Analysis
 
-We use the implementation of the Super Learner provided in the `SuperLearner` R package. In a Super Learning task, cross-validation is used to determine the optimal convex combination of a set of candidate learners chosen to minimize a cross-validated risk. This process results in an estimated risk for each of the candidate learners, along with an estimated risk fo the traditional cross-validated selector and the optimal convex combination of the individual algorithms. This convex combination is called the Super Learner.
+We use the implementation of the Super Learner provided in the `SuperLearner` R package. In a Super Learning task, cross-validation is used to determine the optimal convex combination of a set of candidate learners chosen to minimize a cross-validated risk. This process results in an estimated risk for each of the candidate learners, along with an estimated risk for the traditional cross-validated selector and the optimal convex combination of the individual algorithms. This convex combination is called the Super Learner.
 
 Specifying the set of candidate learners involves two steps: (1) specifying variable screens that reduce the number of variables passed to each algorithm, and (2) specifying a set of algorithms. The screens and algorithms are then combined, and each unique combination of screen and algorithm is applied to the regression problem.
 
@@ -623,7 +637,7 @@ SL_library_with_assay_groups <- c(apply(screen_method_frame_with_assay_groups, 1
 SL_library <- c(apply(screen_method_frame, 1, paste0, collapse = "_"))
 ```
 
-We used two layers of nested cross-validation in this analysis. An outer layer of five-fold cross-validation stratified so that an equal proportion of events fell within each fold was used to obtain cross-validated estimates of risk. An inner layer of leave-one-out cross-validation was used to obtain estimates of the regression functions within each fold. We used the cross-validated negative log likelihood to determine our optimal convex combination of learners. Since the results may depend on the random number seed used to generate the folds for the outer layer of five-fold cross-validation, we used ten random seeds, and for each seed ran the full nested cross-validation.
+We used two layers of nested cross-validation in this analysis. To obtain cross-validated estimates of risk, we used an outer layer of five-fold cross-validation stratified so that an equal proportion of events fell within each fold. To obtain estimates of the regression functions within each outer fold, we used an inner layer of leave-one-out cross-validation. We used the cross-validated negative log likelihood to determine our optimal convex combination of learners. Since the results may depend on the random number seed used to generate the folds for the outer layer of five-fold cross-validation, we used ten random seeds, and for each seed ran the full nested cross-validation procedure.
 
 Our resulting proposed estimator for objective (1) above is the cross-validated Super Learner averaged over the ten random seeds, where each prediction is based on a leave-one-out cross-validated Super Learner when the particular observation was in the outer validation fold.
 
@@ -1103,36 +1117,23 @@ get_immunoassay_set <- function(vec) {
 
 ```
 
-The following code runs the full Super Learner with a reduced library of candidate learners. This is for illustration only --- we recommend using a large library of candidate learners, as we did in the original analysis. Please note, however, that the following code chunk may take a couple of minutes to run. 
+The following code runs the full Super Learner with a reduced library of candidate learners. This is for illustration only --- we recommend using a large library of candidate learners, as we did in the original analysis. Please note, however, that the following code chunk may take a couple of minutes to run. Also, if the code chunk does not run, please first make sure that you have installed all of the required packages.
 
 ```{r run-full-sl-with-small-lib, cache = TRUE}
 ## load required libraries and functions
 library("methods")
 library("SuperLearner")
-# library("future")
-# library("future.apply")
 library("e1071")
 library("glmnet")
 library("xgboost")
 library("earth")
 library("dplyr")
-## only run this if necessary
-# devtools::install_github("benkeser/cvma")
-# library("cvma")
 ## only run this if something has changed
 # install.packages("HVTN505_2019-4-9.tar.gz", type = "source", repos = NULL)
 library("HVTN505")
 library("kyotil")
 library("argparse")
 
-## set up code directory
-if (!is.na(Sys.getenv("RSTUDIO", unset = NA))) { # if running locally
-  code_dir <- "code/"
-  # plan("sequential")
-} else {
-  code_dir <- ""
-  # plan("multicore")
-}
 num_cores <- parallel::detectCores()
 print(num_cores)
 
@@ -1201,9 +1202,10 @@ The code to reproduce the results of the original analysis is provided in the Ap
 We use the `vimp` package to compute variable importance estimates and confidence intervals. In all cases, we consider variable importance as a summary of the true data-generating distribution. Since our outcome is binary, we estimate variable importance in two ways: using the population difference in R-squared [@williamson2017], and using the population difference in area under the receiver operating characteristic curve (AUC). We interpret the R-squared-based importance as the proportion of the variability in the outcome explained by including a group of covariates. We interpret the AUC-based importance as the difference in our ability to discriminate between cases and controls based on using a group of covariates. Load the `vimp` package using the following code:
 
 ```{r load-vimp}
-# only run the next two lines if you haven't installed vimp already
-# install.packages("devtools")
-# devtools::install_github("vimp")  # installing from GitHub to get latest release
+## only run the next line if you haven't already installed the dev version of vimp
+## note that you will have to change the path to where the .tar.gz file is located
+## on your computer
+# install.packages("~/Software/vimp_2.0.0.tar.gz", type = "source", repos = NULL)
 library("vimp")
 ```
 
@@ -1842,30 +1844,17 @@ Code to reproduce the full Super Learning analysis:
 ## load required libraries and functions
 library("methods")
 library("SuperLearner")
-# library("future")
-# library("future.apply")
 library("e1071")
 library("glmnet")
 library("xgboost")
 library("earth")
 library("dplyr")
-## only run this if necessary
-# devtools::install_github("benkeser/cvma")
-# library("cvma")
 ## only run this if something has changed
 # install.packages("HVTN505_2019-4-9.tar.gz", type = "source", repos = NULL)
 library("HVTN505")
 library("kyotil")
 library("argparse")
 
-## set up code directory
-if (!is.na(Sys.getenv("RSTUDIO", unset = NA))) { # if running locally
-  code_dir <- "code/"
-  # plan("sequential")
-} else {
-  code_dir <- ""
-  # plan("multicore")
-}
 num_cores <- parallel::detectCores()
 print(num_cores)
 
@@ -1932,28 +1921,17 @@ Code to reproduce the full variable importance analysis:
 ## load required libraries and functions
 library("methods")
 library("SuperLearner")
-# library("future")
-# library("future.apply")
 library("e1071")
 library("glmnet")
 library("xgboost")
 library("earth")
 library("dplyr")
-## only run this if necessary
-# devtools::install_github("benkeser/cvma")
-# library("cvma")
 ## only run this if something has changed
 # install.packages("HVTN505_2019-4-25.tar.gz", type = "source", repos = NULL)
 library("HVTN505")
 library("kyotil")
 library("argparse")
 
-## set up code directory
-if (!is.na(Sys.getenv("RSTUDIO", unset = NA))) { # if running locally
-  code_dir <- "code/"
-} else {
-  code_dir <- ""
-}
 num_cores <- parallel::detectCores()
 print(num_cores)
 
