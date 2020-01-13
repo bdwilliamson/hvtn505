@@ -1,5 +1,5 @@
 ---
-title: "Investigating HIV-1 correlates of protection in HVTN 505"
+title: "Super Learner + vimp: Investigating HIV-1 correlates of protection in HVTN 505"
 author: "Brian Williamson"
 date: "`r Sys.Date()`"
 output: 
@@ -38,7 +38,7 @@ references:
 - id: fong2018
   author:
   - family: Fong
-    given: Y
+    given: Youyi
   - family: Shen
     given: X
   - family: Ashley
@@ -137,7 +137,7 @@ We use the Super Learner [@vanderlaan2007] to address aim 1, and perform a varia
 
 The month 7 immune markers are cross-classified by the following factors into interpretable sets:
 
-1. Assay type: CD4 T Cell, CD8 T Cell, IgG, IgA, functional (antibody-dependent cellular phagocytosis [ADCP; referred to as \code{phago}], Fc$\gamma$ receptors [referred to as fcrR2a and fcrR3a], and neutralizing antibody [nAb] tier 1)
+1. Assay type: CD4 T Cell, CD8 T Cell, IgG, IgA, functional (antibody-dependent cellular phagocytosis [ADCP; referred to as `phago`], Fc$\gamma$ receptors [referred to as `fcrR2a` and `fcrR3a`], and neutralizing antibody [nAb] tier 1)
 2. Antigen: any vaccine-matched HIV peptide pool ("Any HIV"), protein-specific vaccine-matched peptide pools ("Any VRC ENV", "Any VRC GAG", "Any VRC NEF", and "Any VRC POL"), Empty Ad5 VRC, CMV, gp120, gp140, V1V2, V3, p24, gp41, C1, C4
 
 A few of the month 7 immune markers had missing values. Single imputation was used to fill in these values. We ignore uncertainty in the imputations in this analysis given the very small amount of missing data. 
@@ -156,14 +156,14 @@ The data are included in the R package HVTN505. Install the package from `HVTN50
 ```{r}
 # only run this line if the package isn't already installed; edit the file path
 # to point to the directory where the .tar.gz file is located
-# install.packages("HVTN505_2019-4-25.tar.gz", type = "source", repos = NULL)
+# devtools::install_local("HVTN505_2019-4-25.tar.gz")
 ```
 
 The object `dat.505` contains 189 rows, clinical covariates, and both continuous and dichotomized immune response biomarkers. The object `var.505` contains metadata on the individual immune response biomarkers. The object `score.505` contains metadata on the summary immune response biomarkers.    
 
 # Correlates of Risk Analysis
 
-All models adjust for the same baseline exposure covariates adjusted for by [@janes2017], except race (white, black, Hispanic) is excluded to help avoid sparsity issues: age (years old at enrollment), BMI at enrollment (quantitative value in kg/m$^2$), and baseline behavioral risk (a weighted average of two binary risk factors identified by [@hammer2013]). All analyses use the same empirical inverse probability sampling weights used by [@janes2017] and [@fong2018].  These participant weights are included in the data file (`wt` column in `dat.505` in the R HVTN505 package).
+All models adjust for the same baseline exposure covariates adjusted for by @janes2017, except race (white, black, Hispanic) is excluded to help avoid sparsity issues: age (years old at enrollment), BMI at enrollment (quantitative value in kg/m$^2$), and baseline behavioral risk (a weighted average of two binary risk factors identified by @hammer2013). All analyses use the same empirical inverse probability sampling weights used by @janes2017 and @fong2018.  These participant weights are included in the data file (`wt` column in `dat.505` in the `HVTN505` R package).
 
 ## Candidate Variable Sets
 
@@ -189,7 +189,7 @@ We use the implementation of the Super Learner provided in the `SuperLearner` R 
 
 Specifying the set of candidate learners involves two steps: (1) specifying variable screens that reduce the number of variables passed to each algorithm, and (2) specifying a set of algorithms. The screens and algorithms are then combined, and each unique combination of screen and algorithm is applied to the regression problem.
 
-Since we have only 25 events, we constructed aggressive variable screens that allowed a maximum of four marker variables into each candidate learner. In each case, the screen also included age, BMI, and baseline behavioral risk. The specific screens used are:
+Since we have only 25 events, we constructed aggressive variable screens that allowed a maximum of four marker variables into each candidate learner. In each case, the screen also forced age, BMI, and baseline behavioral risk to be adjusted for in the algorithm. The specific screens used are:
 
 * dynamic range: exclude variables with 20th percentile equal to the 80th percentile
 * dynamic range score: exclude all variables with standard deviation in the vaccinees divided by standard deviation in placebo recipients in the lower half of all participants
@@ -202,7 +202,7 @@ The specific Super Learner algorithms we considered were:
 * generalized linear models with pairwise interactions;
 * forward stepwise regression with pairwise interactions;
 * boosted decision stumps: boosted trees with maximum depth of one node; and
-* the `earth` algorithm of [@doksum2008].
+* the `earth` algorithm of @doksum2008.
 
 In each case, we used a logit link function to relate the predictor variables to the risk of HIV-1 infection.
 
@@ -950,23 +950,28 @@ make_nice_variable_name <- function(varname, antigen, assay) {
 }
 
 ## get the cv vim for each fold
-get_fold_cv_vim <- function(full_fit, reduced_fit, x, type, weights, scale = "identity", vimp = FALSE) {
+get_fold_cv_vim <- function(y, full_fit, reduced_fit, x, outer_folds, type, weights, scale = "identity", vimp = FALSE) {
   ## get the outcome, folds
-  if (!vimp) {
-    y <- full_fit[[x]]$fit$Y  
-  } else {
-    y <- reduced_fit[[x]]$fit$Y
-  }
+  # if (!vimp) {
+  #   y <- full_fit[[x]]$fit$Y  
+  # } else {
+  #   y <- reduced_fit[[x]]$fit$Y
+  # }
   if (is.null(full_fit[[x]]$folds)) {
     vim_est <- NA
   } else {
-    fold_row_nums <- as.vector(do.call(cbind, full_fit[[x]]$folds))
-    folds_init <- rep(as.numeric(names(full_fit[[x]]$folds)), each = length(y)/length(full_fit[[x]]$folds))
-    folds_mat <- cbind(fold_row_nums, folds_init)
-    folds <- folds_mat[order(folds_mat[, 1]), 2]
+    full_fold_row_nums <- as.vector(do.call(cbind, full_fit[[x]]$folds))
+    full_folds_init <- rep(as.numeric(names(full_fit[[x]]$folds)), each = length(y[outer_folds == 1])/length(full_fit[[x]]$folds))
+    full_folds_mat <- cbind(full_fold_row_nums, full_folds_init)
+    full_folds <- full_folds_mat[order(full_folds_mat[, 1]), 2]
+    
+    redu_fold_row_nums <- as.vector(do.call(cbind, reduced_fit[[x]]$folds))
+    redu_folds_init <- rep(as.numeric(names(reduced_fit[[x]]$folds)), each = length(y[outer_folds == 2])/length(reduced_fit[[x]]$folds))
+    redu_folds_mat <- cbind(redu_fold_row_nums, redu_folds_init)
+    redu_folds <- redu_folds_mat[order(redu_folds_mat[, 1]), 2]
     
     ## get the full, reduced predictions from the two CV objects
-    get_reduced_fit <- function(i) {
+    get_reduced_fit <- function(i, folds) {
       if (type == "r_squared" & is.null(reduced_fit[[x]]$fit$Y)) {
         tryCatch(reduced_fit[[x]]$fit[folds == i], error = function(e) rep(NA, sum(folds == i)))
       } else {
@@ -979,33 +984,34 @@ get_fold_cv_vim <- function(full_fit, reduced_fit, x, type, weights, scale = "id
     }
     full_fits <- lapply(as.list(1:length(full_fit[[x]]$folds)), function(i) {
       if (is.list(full_fit[[x]]$fit)) {
-        full_fit[[x]]$fit$SL.predict[folds == i]  
+        full_fit[[x]]$fit$SL.predict[full_folds == i]  
       } else {
         full_fit[[x]]$fit[folds == i]
       }
       
     })
-    redu_fits <- lapply(as.list(1:length(full_fit[[x]]$folds)), function(i) get_reduced_fit(i))
-    ys <- lapply(as.list(1:length(full_fit[[x]]$folds)), function(i) y[folds == i])
+    redu_fits <- lapply(as.list(1:length(full_fit[[x]]$folds)), function(i) get_reduced_fit(i, redu_folds))
+    # ys <- lapply(as.list(1:length(full_fit[[x]]$folds)), function(i) y[folds == i])
     
     ## variable importance
     vim_est <- tryCatch(vimp::cv_vim(Y = y, 
-                               f1 = full_fits,
-                               f2 = redu_fits,
-                               folds = folds,
-                               type = type,
-                               weights = weights,
-                               run_regression = FALSE,
-                               alpha = 0.05,
-                               scale = scale), error = function(e) NA)
+                                     f1 = full_fits,
+                                     f2 = redu_fits,
+                                     V = 5,
+                                     folds = list(outer_folds, list(full_folds, redu_folds)),
+                                     type = type,
+                                     weights = weights,
+                                     run_regression = FALSE,
+                                     alpha = 0.05,
+                                     scale = scale), error = function(e) NA)
   }
   return(vim_est)
 }
 ## get the CV vim averaged over the 10 folds
-get_cv_vim <- function(full_fit, reduced_fit, type, weights, scale = "identity", vimp = FALSE) {
+get_cv_vim <- function(y, full_fit, reduced_fit, folds, type, weights, scale = "identity", vimp = FALSE) {
   ## get the cv vim for each fold
-  all_cv_vims <- lapply(as.list(1:length(full_fit)), get_fold_cv_vim, full_fit = full_fit, 
-                        reduced_fit = reduced_fit, type = type, weights = weights, scale = scale, vimp = vimp)
+  all_cv_vims <- lapply(as.list(1:length(full_fit)), get_fold_cv_vim, y = y, full_fit = full_fit, 
+                        reduced_fit = reduced_fit, outer_folds = folds, type = type, weights = weights, scale = scale, vimp = vimp)
   return(all_cv_vims)
 }
 ## get estimate, CI based on averaging over the 10 random starts
@@ -1119,7 +1125,7 @@ get_immunoassay_set <- function(vec) {
 
 The following code runs the full Super Learner with a reduced library of candidate learners. This is for illustration only --- we recommend using a large library of candidate learners, as we did in the original analysis. Please note, however, that the following code chunk may take a couple of minutes to run. Also, if the code chunk does not run, please first make sure that you have installed all of the required packages.
 
-```{r run-full-sl-with-small-lib, cache = TRUE}
+```{r run-full-sl-with-small-lib}
 ## load required libraries and functions
 library("methods")
 library("SuperLearner")
@@ -1143,7 +1149,7 @@ print(num_cores)
 ## read in the full dataset
 data("dat.505", package = "HVTN505")
 ## read in the super learner variables
-data("var.super", package = "HVTN505") # even if there is a warning message, it still exists
+suppressWarnings(data("var.super", package = "HVTN505")) # even if there is a warning message, it still exists
 ## note that "var.super" contains individual vars for vaccine-matched antigens,
 ## and for vaccine-mismatched antigens, has either individual var (if only one)
 ## or PC1 and/or MDW (only PC1 if cor(PC1, MDW) > 0.9)
@@ -1163,11 +1169,15 @@ X_markers <- dat.505 %>%
 X_exposure <- dat.505 %>% 
   select(age, BMI, bhvrisk)
 X <- data.frame(trt = dat.505$trt, X_exposure, X_markers)
+X_full_none <- data.frame(trt = dat.505$trt, X_exposure)
 weights <- dat.505$wt
 Y <- dat.505$case
 vaccinees <- cbind.data.frame(Y, weights, X) %>% 
   filter(trt == 1) %>% 
   select(-trt)
+X_none <- cbind.data.frame(Y, weights, X_full_none) %>% 
+  filter(trt == 1) %>% 
+  select(-trt, -Y, -weights)
 Y_vaccine <- vaccinees$Y
 weights_vaccine <- vaccinees$weights
 X_vaccine <- vaccinees %>% 
@@ -1175,6 +1185,9 @@ X_vaccine <- vaccinees %>%
 
 V_outer <- 5
 V_inner <- length(Y_vaccine) - 1 
+## set up outer folds for cv variable importance
+set.seed(4747)
+folds <- sample(rep(seq_len(2), length = length(Y_vaccine)))
 ## ---------------------------------------------------------------------------------
 ## run super learner, with leave-one-out cross-validation and all screens
 ## do 10 random starts, average over these
@@ -1183,8 +1196,8 @@ V_inner <- length(Y_vaccine) - 1
 ## ensure reproducibility
 set.seed(4747)
 seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
-fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X_vaccine, family = "binomial",
-              obsWeights = weights_vaccine,
+fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine[folds == 1], X_mat = X_vaccine[folds == 1, ], family = "binomial",
+              obsWeights = weights_vaccine[folds == 1],
               sl_lib = SL_library[8], 
               method = "method.CC_nloglik",
               cvControl = list(V = V_outer, stratifyCV = TRUE),
@@ -1192,7 +1205,18 @@ fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X
               vimp = FALSE,
               mc.cores = num_cores
 )
-sl_fits_varset_11_all <- fits
+sl_fits_varset_11_all_1 <- fits
+## do the same thing for confounders only
+fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine[folds == 1], X_mat = X_none[folds == 1, ], family = "binomial",
+              obsWeights = weights_vaccine[folds == 1],
+              sl_lib = methods[1], 
+              method = "method.CC_nloglik",
+              cvControl = list(V = V_outer, stratifyCV = TRUE),
+              innerCvControl = list(list(V = V_inner)),
+              vimp = FALSE,
+              mc.cores = num_cores
+)
+sl_fits_varset_1_baseline_exposure_1 <- fits
 ```
 
 The code to reproduce the results of the original analysis is provided in the Appendix, and was designed to run on a high-performance cluster (HPC) computer (it takes multiple hours to run).
@@ -1205,13 +1229,13 @@ We use the `vimp` package to compute variable importance estimates and confidenc
 ## only run the next line if you haven't already installed the dev version of vimp
 ## note that you will have to change the path to where the .tar.gz file is located
 ## on your computer
-# install.packages("~/Software/vimp_2.0.0.tar.gz", type = "source", repos = NULL)
+# devtools::install_local("~/Software/vimp_2.0.0.tar.gz")
 library("vimp")
 ```
 
 We next ran multiple Super Learners with reduced sets of covariates. Again, we originally ran this code on an HPC computer, and recommend that any final analyses use the full library of candidate learners. However, in the code below, we use a smaller library for illustration. Please note that this code chunk may take a couple of minutes to run.
 
-```{r run-assays-with-small-lib, cache = TRUE}
+```{r run-assays-with-small-lib}
 ## only include the following variable sets:
 assays <- unique(var.super$assay)
 antigens <- unique(var.super$antigen)
@@ -1292,8 +1316,8 @@ for (i in (1:14)[-11]) {
   ## ensure reproducibility
   set.seed(4747)
   seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
-  fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X_vaccine,
-                             family = "binomial", obsWeights = weights_vaccine,
+  fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine[folds == 2], X_mat = X_vaccine[folds == 2, ],
+                             family = "binomial", obsWeights = weights_vaccine[folds == 2],
                              sl_lib = sl_lib, 
                              method = "method.CC_nloglik",
                              cvControl = list(V = V_outer, stratifyCV = TRUE),
@@ -1302,7 +1326,7 @@ for (i in (1:14)[-11]) {
                              mc.cores = num_cores
   )
   ## name the object so that we can refer to it later
-  eval(parse(text = paste0("sl_fits_varset_", var_set_names[job_id], " <- fits")))
+  eval(parse(text = paste0("sl_fits_varset_", var_set_names[job_id], "_2 <- fits")))
 }
 ```
 
@@ -1323,10 +1347,11 @@ library("cvAUC")
 library("tidyr")
 library("dplyr")
 library("cowplot")
+library("ggplot2")
 library("vimp")
 library("kyotil")
 method <- "method.CC_nloglik" # since SuperLearner relies on this to be in GlobalEnv
-
+ggplot2::theme_set(theme_cowplot())
 # The palette with black:
 cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
@@ -1334,7 +1359,7 @@ cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2"
 ## read in the full dataset
 data("dat.505", package = "HVTN505")
 ## read in the super learner variables
-data("var.super", package = "HVTN505") # even if there is a warning message, it still exists
+suppressWarnings(data("var.super", package = "HVTN505")) # even if there is a warning message, it still exists
 
 weights_vaccine <- dat.505$wt[dat.505$trt == 1]
 ## --------------------------------------------------------------------------------------------------------------------------------------
@@ -1354,7 +1379,7 @@ var_set_labels <- c("No markers", "IgG + IgA", "IgG3", "T Cells", "Fx Ab", "IgG 
 for (i in 1:(length(var_set_names))) { 
   this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
   # eval(parse(text = paste0("all_aucs_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) x$aucs)))")))
-  eval(parse(text = paste0("all_aucs_i <- tibble::as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) get_all_aucs_lst(x, weights = weights_vaccine))))")))
+  eval(parse(text = paste0("all_aucs_i <- tibble::as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], "_", ifelse(i == 11, "1", "2"), ", function(x) get_all_aucs_lst(x, weights = weights_vaccine))))")))
   all_aucs_i <- all_aucs_i %>% 
     filter(!is.na(all_aucs_i$Learner))
   eval(parse(text = paste0("avg_aucs_", var_set_names[i]," <- all_aucs_i %>% 
@@ -1512,6 +1537,8 @@ We ran the Super Learner algorithm for each of the 11 variable sets defined in S
 In Figure \@ref(fig:sl-forest-plot-auc), we see improved performance of the Super Learner when including marker variables compared to baseline risk variables only. Indeed, the Super Learner using only baseline variables and no markers has a cross-validated AUC of `r (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC`. Other variable sets have a smaller estimated cross-validated AUC, but this is likely due to the small candidate library that we used for this analysis. The ordering of predictive performance fits our hypothesis that multiple types of immune response markers improve prediction. Our proposed estimator of HIV-1 infection risk among vaccinees, the cross-validated Super Learner, has an estimated AUC of `r (avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$AUC` based on all markers, with a 95\% confidence interval of `r paste0("[", (avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ll, ", ", (avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ul, "]")`. This is an improvement over the Super Learner based on only the baseline risk variables, with an estimated AUC of `r (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC` `r paste0("[", (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ll, ", ", (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ul, "]")`.
 
 ```{r sl-forest-plot-auc, fig.cap = "Forest plot of cross-validated AUC for the Super Learner and the top individual learner for each assay combination.", fig.width = 20, fig.height = 8}
+# The palette with black:
+cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 ## -----------------------------------------------------------------------------------
 ## FIGURE 1: forest plot of CV-AUC for the top learner and SL for each assay combination
 ## -----------------------------------------------------------------------------------
@@ -1532,7 +1559,7 @@ avg_aucs <- avg_aucs %>%
 
 title_font_size <- 26
 main_font_size_forest <- 31
-main_font_size_lab <- 9.3
+main_font_size_lab <- 10
 fig_width <- fig_height <- 2590
 y_title <- 0.945
 point_size <- 5
@@ -1559,7 +1586,7 @@ In Figure \@ref(fig:sl-forest-plot-r2), we see that there is substantial estimat
 ## get the R-squareds
 for (i in 1:length(var_set_names)) {
   this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
-  eval(parse(text = paste0("all_r2s_i <- tibble::as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) get_all_r2s_lst(x, weights = weights_vaccine))))")))
+  eval(parse(text = paste0("all_r2s_i <- tibble::as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ifelse(i == 11, "_1", "_2"), ", function(x) get_all_r2s_lst(x, weights = weights_vaccine))))")))
   all_r2s_i <- all_r2s_i %>% 
     filter(!is.na(all_r2s_i$Learner))
   eval(parse(text = paste0("avg_r2s_", var_set_names[i]," <- all_r2s_i %>% 
@@ -1593,7 +1620,7 @@ avg_r2s <- avg_r2s %>%
 
 title_font_size <- 22
 main_font_size_forest <- 15
-main_font_size_lab <- 8
+main_font_size_lab <- 10
 fig_width <- fig_height <- 2590
 y_title <- 0.96
 r2_forest_plot <- plot_assays(avg_r2s, type = "r2", main_font_size_forest = main_font_size_forest, 
@@ -1626,7 +1653,7 @@ We estimated the variable importance for 10 groups: all marker variables, IgG + 
 ## read in the full dataset
 data("dat.505", package = "HVTN505")
 ## read in the super learner variables
-data("var.super", package = "HVTN505") # even if there is a warning message, it still exists
+suppressWarnings(data("var.super", package = "HVTN505")) # even if there is a warning message, it still exists
 ## note that "var.super" contains individual vars for vaccine-matched antigens,
 ## and for vaccine-mismatched antigens, has either individual var (if only one)
 ## or PC1 and/or MDW (only PC1 if cor(PC1, MDW) > 0.9)
@@ -1664,89 +1691,110 @@ X_vaccine <- vaccinees %>%
 risk_type <- "auc"
 
 ## set up the full fits
-full_fit_11_all <- sl_fits_varset_11_all
-full_fit_10_tcells_fxab <- sl_fits_varset_10_tcells_fxab
-full_fit_9_igg_iga_igg3_fxab <- sl_fits_varset_9_igg_iga_igg3_fxab
-full_fit_8_igg_iga_igg3_tcells <- sl_fits_varset_8_igg_iga_igg3_tcells
-full_fit_7_igg_iga_tcells <- sl_fits_varset_7_igg_iga_tcells
-full_fit_6_igg_iga_igg3 <- sl_fits_varset_6_igg_iga_igg3
-full_fit_5_fxab <- sl_fits_varset_5_fxab
-full_fit_4_tcells <- sl_fits_varset_4_tcells
-full_fit_3_igg3 <- sl_fits_varset_3_igg3
-full_fit_2_igg_iga <- sl_fits_varset_2_igg_iga
+full_fit_11_all <- sl_fits_varset_11_all_1
+full_fit_10_tcells_fxab <- sl_fits_varset_10_tcells_fxab_2
+full_fit_9_igg_iga_igg3_fxab <- sl_fits_varset_9_igg_iga_igg3_fxab_2
+full_fit_8_igg_iga_igg3_tcells <- sl_fits_varset_8_igg_iga_igg3_tcells_2
+full_fit_7_igg_iga_tcells <- sl_fits_varset_7_igg_iga_tcells_2
+full_fit_6_igg_iga_igg3 <- sl_fits_varset_6_igg_iga_igg3_2
+full_fit_5_fxab <- sl_fits_varset_5_fxab_2
+full_fit_4_tcells <- sl_fits_varset_4_tcells_2
+full_fit_3_igg3 <- sl_fits_varset_3_igg3_2
+full_fit_2_igg_iga <- sl_fits_varset_2_igg_iga_2
 
-## reduced fit for all
-reduced_fit_none <- sl_fits_varset_1_baseline_exposure
+## reduced fits
+reduced_fit_none <- sl_fits_varset_1_baseline_exposure_2 # for importance of all markers
+reduced_fit_none_1 <- sl_fits_varset_1_baseline_exposure_1 # for importance of marker set vs confounders only
 
 ## (11) all markers
-vimp_all_markers <- get_cv_vim(full_fit = full_fit_11_all,
+vimp_all_markers <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_11_all,
                                reduced_fit = reduced_fit_none,
                                type = risk_type,
                                weights = weights_vaccine,
+                               folds = folds,
                                scale = "identity")
 vimp_all_markers_avg <- get_avg_est_ci(vimp_all_markers)
 
+## for the rest of the vims, reverse the folds (to pretend as if the marker set had folds == 1)
 ## (10) T cells  + Fx Ab
-vimp_tcells_fxab <- get_cv_vim(full_fit = full_fit_10_tcells_fxab,
-                               reduced_fit = reduced_fit_none,
+vimp_tcells_fxab <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_10_tcells_fxab,
+                               reduced_fit = reduced_fit_none_1,
                                type = risk_type,
-                               weights = weights_vaccine)
+                               weights = weights_vaccine, 
+                               folds = (-1) * (folds - 2) + 1,
+                               scale = "identity")
 vimp_tcells_fxab_avg <- get_avg_est_ci(vimp_tcells_fxab)
 
 ## (9) IgG + IgA + IgG3 + Fx Ab
-vimp_igg_iga_igg3_fxab <- get_cv_vim(full_fit = full_fit_9_igg_iga_igg3_fxab,
-                               reduced_fit = reduced_fit_none,
+vimp_igg_iga_igg3_fxab <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_9_igg_iga_igg3_fxab,
+                               reduced_fit = reduced_fit_none_1,
                                type = risk_type,
-                               weights = weights_vaccine)
+                               weights = weights_vaccine, 
+                               folds = (-1) * (folds - 2) + 1,
+                               scale = "identity")
 vimp_igg_iga_igg3_fxab_avg <- get_avg_est_ci(vimp_igg_iga_igg3_fxab)
 
 ## (8) IgG + IgA + IgG3 + T cells
-vimp_igg_iga_igg3_tcells <- get_cv_vim(full_fit = full_fit_8_igg_iga_igg3_tcells,
-                               reduced_fit = reduced_fit_none,
+vimp_igg_iga_igg3_tcells <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_8_igg_iga_igg3_tcells,
+                               reduced_fit = reduced_fit_none_1,
                                type = risk_type,
-                               weights = weights_vaccine)
+                               weights = weights_vaccine, 
+                               folds = (-1) * (folds - 2) + 1,
+                               scale = "identity")
 vimp_igg_iga_igg3_tcells_avg <- get_avg_est_ci(vimp_igg_iga_igg3_tcells)
 
 ## (7) IgG + IgA + T cells
-vimp_igg_iga_tcells <- get_cv_vim(full_fit = full_fit_7_igg_iga_tcells,
-                               reduced_fit = reduced_fit_none,
+vimp_igg_iga_tcells <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_7_igg_iga_tcells,
+                               reduced_fit = reduced_fit_none_1,
                                type = risk_type,
-                               weights = weights_vaccine)
+                               weights = weights_vaccine, 
+                               folds = (-1) * (folds - 2) + 1,
+                               scale = "identity")
 vimp_igg_iga_tcells_avg <- get_avg_est_ci(vimp_igg_iga_tcells)
 
 ## (6) IgG + IgA + IgG3
-vimp_igg_iga_igg3 <- get_cv_vim(full_fit = full_fit_6_igg_iga_igg3,
-                               reduced_fit = reduced_fit_none,
+vimp_igg_iga_igg3 <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_6_igg_iga_igg3,
+                               reduced_fit = reduced_fit_none_1,
                                type = risk_type,
-                               weights = weights_vaccine)
+                               weights = weights_vaccine, 
+                               folds = (-1) * (folds - 2) + 1,
+                               scale = "identity")
 vimp_igg_iga_igg3_avg <- get_avg_est_ci(vimp_igg_iga_igg3)
 
 ## (5) Fx Ab
-vimp_fxab <- get_cv_vim(full_fit = full_fit_5_fxab,
-                               reduced_fit = reduced_fit_none,
+vimp_fxab <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_5_fxab,
+                               reduced_fit = reduced_fit_none_1,
                                type = risk_type,
-                        weights = weights_vaccine)
+                               weights = weights_vaccine, 
+                               folds = (-1) * (folds - 2) + 1,
+                               scale = "identity")
 vimp_fxab_avg <- get_avg_est_ci(vimp_fxab)
 
 ## (4) T cells
-vimp_tcells <- get_cv_vim(full_fit = full_fit_4_tcells,
-                               reduced_fit = reduced_fit_none,
+vimp_tcells <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_4_tcells,
+                               reduced_fit = reduced_fit_none_1,
                                type = risk_type,
-                          weights = weights_vaccine)
+                               weights = weights_vaccine, 
+                               folds = (-1) * (folds - 2) + 1,
+                               scale = "identity")
 vimp_tcells_avg <- get_avg_est_ci(vimp_tcells)
 
 ## (3) IgG3
-vimp_igg3 <- get_cv_vim(full_fit = full_fit_3_igg3,
-                               reduced_fit = reduced_fit_none,
+vimp_igg3 <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_3_igg3,
+                               reduced_fit = reduced_fit_none_1,
                                type = risk_type,
-                        weights = weights_vaccine)
+                               weights = weights_vaccine, 
+                               folds = (-1) * (folds - 2) + 1,
+                               scale = "identity")
 vimp_igg3_avg <- get_avg_est_ci(vimp_igg3)
 
 ## (2) IgG + IgA
-vimp_igg_iga <- get_cv_vim(full_fit = full_fit_2_igg_iga,
-                               reduced_fit = reduced_fit_none,
+vimp_igg_iga <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_2_igg_iga,
+                               reduced_fit = reduced_fit_none_1,
                                type = risk_type,
-                           weights = weights_vaccine)
+                               weights = weights_vaccine, 
+                               folds = (-1) * (folds - 2) + 1,
+                               scale = "identity")
 vimp_igg_iga_avg <- get_avg_est_ci(vimp_igg_iga)
 
 ## combine together
@@ -1835,11 +1883,12 @@ In this analysis, we developed a model that predicts HIV-1 infection in vaccinee
 
 Based on a variable importance analysis using the difference in cross-validated AUCs, we see that: (i) adding IgG and IgA variables only to baseline variables results in improved prediction performance; (ii) adding functional antibody variables and IgG3 variables to IgG and IgA variables and baseline variables results in improved prediction performance over adding IgG and IgA variables alone to baseline variables; (iii) adding T cell variables or functional antibody variables only results in the largest increase in prediction performance among all individual groups; and (iv) that combining T cell and antibody variables together results in a further incremental improvement over T cells alone, but only if all antibody classes are present.
 
-The main limitation of this analysis is that, to save computation time in this vignette, we used a small library of candidate learning algorithms. The Appendix contains code that may be used to fully replicate the analysis in [@neidich2019]. Additionally, due to the small number of events, cross-validated $R^2$ appears to be a poor estimator both of prediction performance and of variable importance. This is in line with previous work suggesting that $R^2$ may not always be appropriate for rare binary endpoints. We suspect that with a larger number of events the behavior of the $R^2$ estimators, and the conclusions drawn from using cross-validated $R^2$ to define both prediction performance and variable importance, would be more in line with the conclusions drawn from using cross-validated AUC.
+The main limitation of this analysis is that, to save computation time in this vignette, we used a small library of candidate learning algorithms. The Appendix contains code that may be used to fully reproduce the analysis in @neidich2019. Additionally, due to the small number of events, cross-validated $R^2$ appears to be a poor estimator both of prediction performance and of variable importance. This is in line with previous work suggesting that $R^2$ may not always be appropriate for rare binary endpoints. We suspect that with a larger number of events the behavior of the $R^2$ estimators, and the conclusions drawn from using cross-validated $R^2$ to define both prediction performance and variable importance, would be more in line with the conclusions drawn from using cross-validated AUC.
 
 # Appendix
 
-Code to reproduce the full Super Learning analysis:
+Code to reproduce the full Super Learning analysis is provided here. The original analysis of the HVTN 505 data [@neidich2019] used a previous version of the `vimp` package that did not require the two regression functions to be estimated on different splits of the data. That is likely the major difference between the results obtained using the new version of `vimp` (2.0.0) compared to the published analysis.
+
 ```{r run-full-sl, eval = FALSE}
 ## load required libraries and functions
 library("methods")
@@ -1850,7 +1899,7 @@ library("xgboost")
 library("earth")
 library("dplyr")
 ## only run this if something has changed
-# install.packages("HVTN505_2019-4-25.tar.gz", type = "source", repos = NULL)
+# devtools::install_local("HVTN505_2019-4-25.tar.gz")
 library("HVTN505")
 library("kyotil")
 library("argparse")
@@ -1864,7 +1913,7 @@ print(num_cores)
 ## read in the full dataset
 data("dat.505", package = "HVTN505")
 ## read in the super learner variables
-data("var.super", package = "HVTN505") # even if there is a warning message, it still exists
+suppressWarnings(data("var.super", package = "HVTN505")) # even if there is a warning message, it still exists
 ## note that "var.super" contains individual vars for vaccine-matched antigens,
 ## and for vaccine-mismatched antigens, has either individual var (if only one)
 ## or PC1 and/or MDW (only PC1 if cor(PC1, MDW) > 0.9)
@@ -1927,7 +1976,7 @@ library("xgboost")
 library("earth")
 library("dplyr")
 ## only run this if something has changed
-# install.packages("HVTN505_2019-4-25.tar.gz", type = "source", repos = NULL)
+# devtools::install_local("HVTN505_2019-4-25.tar.gz")
 library("HVTN505")
 library("kyotil")
 library("argparse")
@@ -1941,7 +1990,7 @@ print(num_cores)
 ## read in the full dataset
 data("dat.505", package = "HVTN505")
 ## read in the super learner variables
-data("var.super", package = "HVTN505") # even if there is a warning message, it still exists
+suppressWarnings(data("var.super", package = "HVTN505")) # even if there is a warning message, it still exists
 ## note that "var.super" contains individual vars for vaccine-matched antigens,
 ## and for vaccine-mismatched antigens, has either individual var (if only one)
 ## or PC1 and/or MDW (only PC1 if cor(PC1, MDW) > 0.9)
