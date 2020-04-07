@@ -1,14 +1,14 @@
 ---
-title: "Super Learner + vimp: Investigating HIV-1 correlates of protection in HVTN 505"
+title: "Super Learner + `vimp`: Investigating HIV-1 correlates of protection in HVTN 505"
 author: "Brian Williamson"
 date: "`r Sys.Date()`"
-output: 
+output:
   bookdown::html_document2:
     toc: true
-  
+
 references:
 - id: vanderlaan2007
-  author: 
+  author:
   - family: van der Laan
     given: Mark J
   - family: Polley
@@ -88,7 +88,7 @@ references:
     year: 2013
   URL: 'https://doi.org/10.1056/NEJMoa1310566'
 - id: doksum2008
-  author: 
+  author:
     - family: Doksum
       given: K
     - family: Tang
@@ -101,7 +101,7 @@ references:
     year: 2008
   URL: 'https://doi.org/10.1198/016214508000000878'
 - id: neidich2019
-  author: 
+  author:
     - family: Neidich
       given: SD
     - family: Fong
@@ -126,7 +126,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Introduction
 
-We still do not have a broadly efficacious vaccine against HIV-1. [HVTN 505](https://clinicaltrials.gov/ct2/show/NCT00865566) was a randomized, placebo-controlled trial designed to assess the efficacy of a candidate vaccine regimen in adults. Using data from this trial, we aim to: 
+We still do not have a broadly efficacious vaccine against HIV-1. [HVTN 505](https://clinicaltrials.gov/ct2/show/NCT00865566) was a randomized, placebo-controlled trial designed to assess the efficacy of a candidate vaccine regimen in adults. Using data from this trial, we aim to:
 
 1. Build an *estimated optimal surrogate*, a model that best predicts HIV-1 infection risk from immune response marker variables measured at month 7 and a few baseline variables; and
 2. Identify the sets of immune response markers that best predict infection and how these sets work together.
@@ -140,7 +140,7 @@ The month 7 immune markers are cross-classified by the following factors into in
 1. Assay type: CD4 T Cell, CD8 T Cell, IgG, IgA, functional (antibody-dependent cellular phagocytosis [ADCP; referred to as `phago`], Fc$\gamma$ receptors [referred to as `fcrR2a` and `fcrR3a`], and neutralizing antibody [nAb] tier 1)
 2. Antigen: any vaccine-matched HIV peptide pool ("Any HIV"), protein-specific vaccine-matched peptide pools ("Any VRC ENV", "Any VRC GAG", "Any VRC NEF", and "Any VRC POL"), Empty Ad5 VRC, CMV, gp120, gp140, V1V2, V3, p24, gp41, C1, C4
 
-A few of the month 7 immune markers had missing values. Single imputation was used to fill in these values. We ignore uncertainty in the imputations in this analysis given the very small amount of missing data. 
+A few of the month 7 immune markers had missing values. Single imputation was used to fill in these values. We ignore uncertainty in the imputations in this analysis given the very small amount of missing data.
 
 We performed some data cleaning and a dimension reduction step prior to the statistical analysis. Within each interpretable variable set:
 
@@ -149,7 +149,7 @@ We performed some data cleaning and a dimension reduction step prior to the stat
 * For ICS variables (CD4, CD8 T cell), magnitude measures are: percent of cells expressing IL2, TNFa, CD154, and/or IFNg; percent of cells expressing IL2 and/or IFNg; percent of cells expressing IL2 and/or TNFa; and percent of cells expressing each of the individual cytokines (TNFa, CD154, IFNg, IL2, IL4).  All of the magnitudes are log10 net responses, i.e., background-subtracted and then log10-transformed.  Polyfunctionality as measured by the COMPASS polyfunctionality score (proportion of antigen-specific cell subsets detected, weighted by their degree of functionality, where antigen-specific cell subsets are those with a statistically-significant difference in the percent of cytokine-expressing cells in unstimulated vs. stimulated samples). The following cytokines are considered in calculating the polyfunctionality score: TNFa, CD154, IFNg, IL2, IL4, and Granzyme B; however cells expressing Granzyme B only are not counted as "functional".  Note functionality scores are not included because they are highly correlated and mostly redundant conceptually with polyfunctionality scores.  Both magnitude and polyfunctional score variables are included for study, as the correlations are not uniformly high; they range from ~0.5--0.8 across antigens and T cell subsets and may capture different aspects of T cell response.
 * For ICS responses to vaccine-mismatched antigens (Empty Ad5 VRC and CMV antigens), measure responses using the percent of cells expressing IL2, TNFa, CD154, and/or IFNg.
 * For variables with a positive response call (IgG, IgG3, IgA, R2a, R3a, phago, Tier 1 nAb) require $>$ 20% vaccine group positive response.  For all variables, require a significantly greater response in the vaccine group than the placebo group to include in the analysis (Wilcoxon rank sum test 2-sided p $<$ 0.01).  Note that no Tier 1 nAb variables are included because none met the $>$ 20% vaccine group response criterion.
-* For all variables in an interpretable variable set (defined by assay and antigen) that are for vaccine-mismatched antigens, aggregate the variables into two scores to be kept for CoR analysis: PC1 and the maximal diversity weighted score (MDWS).  
+* For all variables in an interpretable variable set (defined by assay and antigen) that are for vaccine-mismatched antigens, aggregate the variables into two scores to be kept for CoR analysis: PC1 and the maximal diversity weighted score (MDWS).
 
 The data are included in the R package HVTN505. Install the package from `HVTN505_2019-4-25.tar.gz` using the following code:
 
@@ -159,7 +159,7 @@ The data are included in the R package HVTN505. Install the package from `HVTN50
 # devtools::install_local("HVTN505_2019-4-25.tar.gz")
 ```
 
-The object `dat.505` contains 189 rows, clinical covariates, and both continuous and dichotomized immune response biomarkers. The object `var.505` contains metadata on the individual immune response biomarkers. The object `score.505` contains metadata on the summary immune response biomarkers.    
+The object `dat.505` contains 189 rows, clinical covariates, and both continuous and dichotomized immune response biomarkers. The object `var.505` contains metadata on the individual immune response biomarkers. The object `score.505` contains metadata on the summary immune response biomarkers.
 
 # Correlates of Risk Analysis
 
@@ -170,8 +170,8 @@ All models adjust for the same baseline exposure covariates adjusted for by @jan
 We consider 11 candidate variable sets in this analysis, defined by assay combination:
 
 1. All markers;
-2. IgG + IgA; 
-3. IgG3; 
+2. IgG + IgA;
+3. IgG3;
 4. T cells (CD4 and CD8);
 5. Functional antibodies (Fx Ab);
 6. IgG + IgA and IgG3;
@@ -230,7 +230,7 @@ rank_univariate_logistic_pval_plus_exposure <- function(Y, X, family, obsWeights
 screen_dynamic_range_plus_exposure <- function(Y, X, family, obsWeights, id, nVar = 4, ...) {
   # set all vars to false
   vars <- rep(FALSE, ncol(X))
-  
+
   # keep only those with dynamic range: 20th percentile != 80th percentile
   x_quantiles <- apply(X, 2, function(x) quantile(x, probs = c(0.2, 0.8)))
   vars <- apply(x_quantiles, 2, function(x) round(x[1], 4) != round(x[2], 4))
@@ -241,7 +241,7 @@ screen_dynamic_range_plus_exposure <- function(Y, X, family, obsWeights, id, nVa
     select(names(X)[vars], "age", "BMI", "bhvrisk")
   ranked_vars <- rank_univariate_logistic_pval_plus_exposure(Y, X_initial_screen, family, obsWeights, id)
   vars[vars][ranked_vars > nVar] <- FALSE
-  
+
   # also keep the first three columns of X (correspond to age, BMI, bhvrisk)
   vars[names(X) %in% c("age", "BMI", "bhvrisk")] <- TRUE
   return(vars)
@@ -265,7 +265,7 @@ screen_dynamic_range_score_plus_exposure <- function(Y, X, family, obsWeights, i
   vars[names(X) %in% c("age", "BMI", "bhvrisk")] <- TRUE
   return(vars)
 }
-## screen based on lasso 
+## screen based on lasso
 screen_glmnet_plus_exposure <- function(Y, X, family, obsWeights, id, alpha = 1, minscreen = 2, nfolds = 10, nlambda = 100, nVar = 4, ...) {
   vars <- screen.glmnet(Y, X, family, obsWeights, id, alpha = 1, minscreen = 2, nfolds = 10, nlambda = 100, ...)
   # also keep the first three columns of X (correspond to age, BMI, bhvrisk)
@@ -464,7 +464,7 @@ SL.glm.interaction.skinny <- function(Y, X, newX, family, obsWeights, ...){
 
 # skinny stepwise with interactions
 SL.step.interaction.skinny <- function(Y, X, newX, family, obsWeights, ...){
-  SL.step.interaction.fit <- SL.step.interaction(Y = Y, X = X, newX = newX, family = family, 
+  SL.step.interaction.fit <- SL.step.interaction(Y = Y, X = X, newX = newX, family = family,
                                                  obsWeights = obsWeights, direction = "forward", ...)
   SL.step.interaction.fit$fit$object$y <- NULL
   SL.step.interaction.fit$fit$object$model <- NULL
@@ -511,7 +511,7 @@ SL.step.skinny <- function(Y, X, newX, family, obsWeights, ...){
 
 # boosted decision stumps
 SL.stumpboost <- function(Y, X, newX, family, obsWeights, ...){
-  fit <- SL.xgboost(Y = Y, X = X, newX = newX, family = family, obsWeights = obsWeights, 
+  fit <- SL.xgboost(Y = Y, X = X, newX = newX, family = family, obsWeights = obsWeights,
                     max_depth = 1, # so it's only a stump
                     ...)
   return(fit)
@@ -550,7 +550,7 @@ methods <- c("SL.glm.skinny", "SL.glm.interaction.skinny", "SL.step.interaction.
 ## -------------------------------------------------------------------------------------
 
 #' This function takes a super learner method wrapper and a super learner
-#' screen wrapper and combines them into a single wrapper and makes that 
+#' screen wrapper and combines them into a single wrapper and makes that
 #' wrapper available in the specified environment. It also makes a predict
 #' method available in the specified environment.
 #' @param method A super learner method wrapper. See ?SuperLearner::listWrappers(what = "method").
@@ -559,7 +559,7 @@ methods <- c("SL.glm.skinny", "SL.glm.interaction.skinny", "SL.step.interaction.
 #' @param verbose Print a message with the function names confirming their assignment?
 assign_combined_function <- function(method, screen, envir = .GlobalEnv,
                                      verbose = TRUE){
-  fn <- eval(parse(text = 
+  fn <- eval(parse(text =
           paste0("function(Y, X, newX, obsWeights, family, ...){ \n",
                     "screen_call <- ", screen, "(Y = Y, X = X, newX = newX, obsWeights = obsWeights, family = family, ...) \n",
                     "method_call <- ", method, "(Y = Y, X = X[,screen_call,drop=FALSE], newX = newX[,screen_call,drop = FALSE], obsWeights = obsWeights, family = family, ...) \n",
@@ -575,14 +575,14 @@ assign_combined_function <- function(method, screen, envir = .GlobalEnv,
     message(paste0("Function ", fn_name, " now available in requested environment."))
   }
   if (method == "SL.glmnet") {
-      pred_fn <- eval(parse(text = 
+      pred_fn <- eval(parse(text =
               paste0("function(object, newdata, ...){ \n",
                         "screen_newdata <- newdata[,object$which_vars,drop = FALSE] \n",
                         "pred <- predict(object$object, type = 'response', newx = as.matrix(screen_newdata), s = 'lambda.min', ...) \n",
                         "return(pred) \n",
                      "}")))
     } else if (method == "SL.stumpboost") {
-      pred_fn <- eval(parse(text = 
+      pred_fn <- eval(parse(text =
               paste0("function(object, newdata, ...){ \n",
                         "screen_newdata <- newdata[,object$which_vars,drop = FALSE] \n",
                         "screen_newdata_2 <- matrix(unlist(lapply(screen_newdata, as.numeric)), nrow=nrow(screen_newdata), ncol=ncol(screen_newdata)) \n",
@@ -590,33 +590,33 @@ assign_combined_function <- function(method, screen, envir = .GlobalEnv,
                         "return(pred) \n",
                      "}")))
     } else if (method == "SL.naivebayes") {
-      pred_fn <- eval(parse(text = 
+      pred_fn <- eval(parse(text =
               paste0("function(object, newdata, ...){ \n",
                         "screen_newdata <- newdata[,object$which_vars,drop = FALSE] \n",
                         'pred <- predict(object$object, newdata = screen_newdata, type = "raw", ...)[,2] \n',
                         "return(pred) \n",
                      "}")))
     } else if (method == "SL.randomForest") {
-      pred_fn <- eval(parse(text = 
+      pred_fn <- eval(parse(text =
               paste0("function(object, newdata, ...){ \n",
               "screen_newdata <- newdata[,object$which_vars,drop = FALSE] \n",
               "if (object$object$type != 'classification') {
                                     pred <- predict(object$object, newdata = screen_newdata, type = 'response')
                                 }else {
-                                    pred <- predict(object$object, newdata = screen_newdata, type = 'vote')[, 
+                                    pred <- predict(object$object, newdata = screen_newdata, type = 'vote')[,
                                         2]
                                 }
                                 pred",
                      "}")))
     }else {
-      pred_fn <- eval(parse(text = 
+      pred_fn <- eval(parse(text =
               paste0("function(object, newdata, ...){ \n",
                         "screen_newdata <- newdata[,object$which_vars,drop = FALSE] \n",
                         "pred <- predict(object$object, type = 'response', newdata = screen_newdata, ...) \n",
                         "return(pred) \n",
                      "}")))
     }
-  
+
   pred_fn_name <- paste0("predict.",screen,"_",method)
   assign(x = pred_fn_name, value = pred_fn, envir = envir)
   if(verbose){
@@ -649,11 +649,11 @@ get_all_aucs <- function(sl_fit) {
   # Get the cvAUC of the SuperLearner predictions
   sl_auc <- cvAUC::ci.cvAUC(predictions=sl_fit$SL.predict, labels=sl_fit$Y, folds=sl_fit$folds)
   out <- data.frame(Learner="SL", Screen="All", AUC=sl_auc$cvAUC, ci_ll=sl_auc$ci[1], ci_ul=sl_auc$ci[2])
-  
+
   # Get the cvAUC of the Discrete SuperLearner predictions
   discrete_sl_auc <- cvAUC::ci.cvAUC(predictions=sl_fit$discreteSL.predict, labels=sl_fit$Y, folds=sl_fit$folds)
   out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All", AUC=discrete_sl_auc$cvAUC, ci_ll=discrete_sl_auc$ci[1], ci_ul=discrete_sl_auc$ci[2]))
-  
+
   # Get the cvAUC of the individual learners in the library
   get_individual_auc <- function(sl_fit, col) {
     if(any(is.na(sl_fit$library.predict[, col]))) return(NULL)
@@ -701,11 +701,11 @@ get_all_r2s <- function(sl_fit, weights = rep(1, length(sl_fit$Y))) {
   # get the CV-R^2 of the SuperLearner predictions
   sl_r2 <- cv_r2(preds = sl_fit$SL.predict, Y = sl_fit$Y, folds = sl_fit$folds)
   out <- data.frame(Learner="SL", Screen="All", R2 = sl_r2$r2, ci_ll = sl_r2$ci[1], ci_ul=sl_r2$ci[2])
-  
+
   # Get the CV-R2 of the Discrete SuperLearner predictions
   discrete_sl_r2 <- cv_r2(preds = sl_fit$discreteSL.predict, Y = sl_fit$Y, folds = sl_fit$folds)
   out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All", R2 = discrete_sl_r2$r2, ci_ll = discrete_sl_r2$ci[1], ci_ul = discrete_sl_r2$ci[2]))
-  
+
   # Get the cvr2 of the individual learners in the library
   get_individual_r2 <- function(sl_fit, col, weights = rep(1, length(sl_fit$Y))) {
     if(any(is.na(sl_fit$library.predict[, col]))) return(NULL)
@@ -727,11 +727,11 @@ get_all_r2s_lst <- function(sl_fit_lst, weights = rep(1, length(sl_fit_lst[[1]]$
   } else {
     sl_r2 <- cv_r2(preds = sl_fit_lst$fit$SL.predict, Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds, weights = weights)
     out <- data.frame(Learner="SL", Screen="All", R2 = sl_r2$r2, ci_ll = sl_r2$ci[1], ci_ul=sl_r2$ci[2])
-    
+
     # Get the CV-R2 of the Discrete SuperLearner predictions
     discrete_sl_r2 <- cv_r2(preds = sl_fit_lst$fit$discreteSL.predict, Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds, weights = weights)
     out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All", R2 = discrete_sl_r2$r2, ci_ll = discrete_sl_r2$ci[1], ci_ul = discrete_sl_r2$ci[2]))
-    
+
     # Get the cvr2 of the individual learners in the library
     get_individual_r2 <- function(sl_fit, col, weights) {
       if(any(is.na(sl_fit$library.predict[, col]))) return(NULL)
@@ -743,7 +743,7 @@ get_all_r2s_lst <- function(sl_fit_lst, weights = rep(1, length(sl_fit_lst[[1]]$
       data.frame(Learner = alg, Screen = screen, R2 = alg_r2$r2, ci_ll = alg_r2$ci[1], ci_ul = alg_r2$ci[2])
     }
     other_r2s <- plyr::ldply(1:ncol(sl_fit_lst$fit$library.predict), function(x) get_individual_r2(sl_fit_lst$fit, x, weights))
-    rbind(out, other_r2s)  
+    rbind(out, other_r2s)
   }
 }
 
@@ -776,11 +776,11 @@ get_all_aucs <- function(sl_fit, weights = rep(1, length(sl_fit$Y))) {
   # get the CV-AUC of the SuperLearner predictions
   sl_auc <- cv_auc(preds = sl_fit$SL.predict, Y = sl_fit$Y, folds = sl_fit$folds)
   out <- data.frame(Learner="SL", Screen="All", AUC = sl_auc$auc, ci_ll = sl_auc$ci[1], ci_ul=sl_auc$ci[2])
-  
+
   # Get the CV-auc of the Discrete SuperLearner predictions
   discrete_sl_auc <- cv_auc(preds = sl_fit$discreteSL.predict, Y = sl_fit$Y, folds = sl_fit$folds)
   out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All", AUC = discrete_sl_auc$auc, ci_ll = discrete_sl_auc$ci[1], ci_ul = discrete_sl_auc$ci[2]))
-  
+
   # Get the cvauc of the individual learners in the library
   get_individual_auc <- function(sl_fit, col, weights = rep(1, length(sl_fit$Y))) {
     if(any(is.na(sl_fit$library.predict[, col]))) return(NULL)
@@ -802,11 +802,11 @@ get_all_aucs_lst <- function(sl_fit_lst, weights = rep(1, length(sl_fit_lst[[1]]
   } else {
     sl_auc <- cv_auc(preds = sl_fit_lst$fit$SL.predict, Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds, weights = weights)
     out <- data.frame(Learner="SL", Screen="All", AUC = sl_auc$auc, ci_ll = sl_auc$ci[1], ci_ul=sl_auc$ci[2])
-    
+
     # Get the CV-auc of the Discrete SuperLearner predictions
     discrete_sl_auc <- cv_auc(preds = sl_fit_lst$fit$discreteSL.predict, Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds, weights = weights)
     out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All", AUC = discrete_sl_auc$auc, ci_ll = discrete_sl_auc$ci[1], ci_ul = discrete_sl_auc$ci[2]))
-    
+
     # Get the cvauc of the individual learners in the library
     get_individual_auc <- function(sl_fit, col, weights) {
       if(any(is.na(sl_fit$library.predict[, col]))) return(NULL)
@@ -818,17 +818,17 @@ get_all_aucs_lst <- function(sl_fit_lst, weights = rep(1, length(sl_fit_lst[[1]]
       data.frame(Learner = alg, Screen = screen, AUC = alg_auc$auc, ci_ll = alg_auc$ci[1], ci_ul = alg_auc$ci[2])
     }
     other_aucs <- plyr::ldply(1:ncol(sl_fit_lst$fit$library.predict), function(x) get_individual_auc(sl_fit_lst$fit, x, weights))
-    rbind(out, other_aucs)  
+    rbind(out, other_aucs)
   }
 }
-  
-  
+
+
 ## run CV.SuperLearner for one given random seed
 run_cv_sl_once <- function(seed, Y, X_mat, family, obsWeights, sl_lib, method, cvControl, innerCvControl, vimp = FALSE) {
   set.seed(seed)
-  fit <- SuperLearner::CV.SuperLearner(Y = Y, X = X_mat, family = family, 
-                                                   obsWeights = obsWeights, SL.library = sl_lib, 
-                                                   method = method, cvControl = cvControl, 
+  fit <- SuperLearner::CV.SuperLearner(Y = Y, X = X_mat, family = family,
+                                                   obsWeights = obsWeights, SL.library = sl_lib,
+                                                   method = method, cvControl = cvControl,
                                                    innerCvControl = innerCvControl)
   aucs <- get_all_aucs(fit)
   ret_lst <- list(fit = fit, folds = fit$folds, aucs = aucs)
@@ -851,7 +851,7 @@ run_reduced_cv_sl_once <- function(seed, Y, X_mat, family, obsWeights, sl_lib, m
   folds_mat <- cbind(fold_row_nums, folds_init)
   folds <- folds_mat[order(folds_mat[, 1]), 2]
   V <- length(unique(folds))
-  
+
   ## set the seed, run the SL
   set.seed(seed)
   preds_lst <- vector("list", length = V)
@@ -863,7 +863,7 @@ run_reduced_cv_sl_once <- function(seed, Y, X_mat, family, obsWeights, sl_lib, m
                                            method = method, cvControl = innerCvControl)
     ## get the predicted values on the vth fold
     preds_lst[[v]] <- inner_sl$SL.predict
-  } 
+  }
   ## make a vector out of the predictions
   preds_mat <- do.call(rbind.data.frame, lapply(preds_lst, function(x) cbind.data.frame(x, row_num = as.numeric(rownames(x)))))
   preds_mat_ordered <- preds_mat[order(preds_mat$row_num), ]
@@ -879,14 +879,14 @@ get_nms_group_all_antigens <- function(X, assays, assays_to_exclude = "") {
   ## may be more than one
   for (i in 1:length(assays)) {
     if (assays_to_exclude != "") {
-      vars[grepl(assays[i], names(X)) & !grepl(assays_to_exclude, names(X))] <- TRUE  
+      vars[grepl(assays[i], names(X)) & !grepl(assays_to_exclude, names(X))] <- TRUE
     } else {
       vars[grepl(assays[i], names(X))] <- TRUE
       if (assays[i] == "phago") {
         vars[grepl("ADCP1", names(X))] <- TRUE
       }
     }
-    
+
   }
   return(vars)
 }
@@ -953,7 +953,7 @@ make_nice_variable_name <- function(varname, antigen, assay) {
 get_fold_cv_vim <- function(y, full_fit, reduced_fit, x, outer_folds, type, weights, scale = "identity", vimp = FALSE) {
   ## get the outcome, folds
   # if (!vimp) {
-  #   y <- full_fit[[x]]$fit$Y  
+  #   y <- full_fit[[x]]$fit$Y
   # } else {
   #   y <- reduced_fit[[x]]$fit$Y
   # }
@@ -964,19 +964,19 @@ get_fold_cv_vim <- function(y, full_fit, reduced_fit, x, outer_folds, type, weig
     full_folds_init <- rep(as.numeric(names(full_fit[[x]]$folds)), each = length(y[outer_folds == 1])/length(full_fit[[x]]$folds))
     full_folds_mat <- cbind(full_fold_row_nums, full_folds_init)
     full_folds <- full_folds_mat[order(full_folds_mat[, 1]), 2]
-    
+
     redu_fold_row_nums <- as.vector(do.call(cbind, reduced_fit[[x]]$folds))
     redu_folds_init <- rep(as.numeric(names(reduced_fit[[x]]$folds)), each = length(y[outer_folds == 2])/length(reduced_fit[[x]]$folds))
     redu_folds_mat <- cbind(redu_fold_row_nums, redu_folds_init)
     redu_folds <- redu_folds_mat[order(redu_folds_mat[, 1]), 2]
-    
+
     ## get the full, reduced predictions from the two CV objects
     get_reduced_fit <- function(i, folds) {
       if (type == "r_squared" & is.null(reduced_fit[[x]]$fit$Y)) {
         tryCatch(reduced_fit[[x]]$fit[folds == i], error = function(e) rep(NA, sum(folds == i)))
       } else {
         if (is.list(reduced_fit[[x]]$fit)) {
-          reduced_fit[[x]]$fit$SL.predict[folds == i]    
+          reduced_fit[[x]]$fit$SL.predict[folds == i]
         } else {
           reduced_fit[[x]]$fit[folds == i]
         }
@@ -984,17 +984,17 @@ get_fold_cv_vim <- function(y, full_fit, reduced_fit, x, outer_folds, type, weig
     }
     full_fits <- lapply(as.list(1:length(full_fit[[x]]$folds)), function(i) {
       if (is.list(full_fit[[x]]$fit)) {
-        full_fit[[x]]$fit$SL.predict[full_folds == i]  
+        full_fit[[x]]$fit$SL.predict[full_folds == i]
       } else {
         full_fit[[x]]$fit[folds == i]
       }
-      
+
     })
     redu_fits <- lapply(as.list(1:length(full_fit[[x]]$folds)), function(i) get_reduced_fit(i, redu_folds))
     # ys <- lapply(as.list(1:length(full_fit[[x]]$folds)), function(i) y[folds == i])
-    
+
     ## variable importance
-    vim_est <- tryCatch(vimp::cv_vim(Y = y, 
+    vim_est <- tryCatch(vimp::cv_vim(Y = y,
                                      f1 = full_fits,
                                      f2 = redu_fits,
                                      V = 5,
@@ -1010,7 +1010,7 @@ get_fold_cv_vim <- function(y, full_fit, reduced_fit, x, outer_folds, type, weig
 ## get the CV vim averaged over the 10 folds
 get_cv_vim <- function(y, full_fit, reduced_fit, folds, type, weights, scale = "identity", vimp = FALSE) {
   ## get the cv vim for each fold
-  all_cv_vims <- lapply(as.list(1:length(full_fit)), get_fold_cv_vim, y = y, full_fit = full_fit, 
+  all_cv_vims <- lapply(as.list(1:length(full_fit)), get_fold_cv_vim, y = y, full_fit = full_fit,
                         reduced_fit = reduced_fit, outer_folds = folds, type = type, weights = weights, scale = scale, vimp = vimp)
   return(all_cv_vims)
 }
@@ -1045,15 +1045,15 @@ assay_antigen_plot <- function(vimp_tibble, assay, antigen, risk_type,
   if (!is.null(cols2)) {
     current_tibble <- (vimp_tibble %>% filter(assay_group == assay, antigen_group == antigen))
     current_tibble$t_cell_type <- apply(matrix(grepl("CD8", current_tibble$var_name)), 1, function(x) ifelse(x, "CD8", "CD4"))
-    vimp_plot <- current_tibble %>% 
-      ggplot(aes(x = est, 
-                 y = factor(var_name, levels = var_name[order(est, decreasing = TRUE)], 
+    vimp_plot <- current_tibble %>%
+      ggplot(aes(x = est,
+                 y = factor(var_name, levels = var_name[order(est, decreasing = TRUE)],
                             labels = var_name[order(est, decreasing = TRUE)]),
                  color = t_cell_type)) +
       geom_errorbarh(aes(xmin = cil, xmax = ciu, color = greater_zero), size = point_size/2,
                      show.legend = FALSE) +
       geom_point(size = point_size) +
-      geom_vline(xintercept = 0, color = "red", linetype = "dotted") + 
+      geom_vline(xintercept = 0, color = "red", linetype = "dotted") +
       scale_color_manual(breaks = c("CD4", "CD8"), values = c(cols2, cols)) +
       xlim(x_lim) +
       ylab("Variable name") +
@@ -1062,17 +1062,17 @@ assay_antigen_plot <- function(vimp_tibble, assay, antigen, risk_type,
       theme(legend.position = c(0.025, 0.15),
             axis.text.y = element_text(size = main_font_size),
             text = element_text(size = main_font_size),
-            axis.title = element_text(size = main_font_size), 
+            axis.title = element_text(size = main_font_size),
             axis.text.x = element_text(size = main_font_size),
             axis.title.x = element_text(margin = ggplot2::margin(t = 20, r = 0, b = 0, l = 0), size = main_font_size),
             plot.margin=unit(c(1,0.5,0,0),"cm")) # top, right, bottom, left
   } else {
-    vimp_plot <- vimp_tibble %>% 
-      filter(assay_group == assay, antigen_group == antigen) %>% 
+    vimp_plot <- vimp_tibble %>%
+      filter(assay_group == assay, antigen_group == antigen) %>%
       ggplot(aes(x = est, y = factor(var_name, levels = var_name[order(est, decreasing = TRUE)], labels = var_name[order(est, decreasing = TRUE)]))) +
       geom_errorbarh(aes(xmin = cil, xmax = ciu, color = greater_zero), size = point_size/2) +
       geom_point(size = point_size) +
-      geom_vline(xintercept = 0, color = "red", linetype = "dotted") + 
+      geom_vline(xintercept = 0, color = "red", linetype = "dotted") +
       scale_color_manual(values = cols) +
       xlim(x_lim) +
       ylab("Variable name") +
@@ -1080,7 +1080,7 @@ assay_antigen_plot <- function(vimp_tibble, assay, antigen, risk_type,
       guides(color = FALSE) +
       theme(axis.text.y = element_text(size = main_font_size),
             text = element_text(size = main_font_size),
-            axis.title = element_text(size = main_font_size), 
+            axis.title = element_text(size = main_font_size),
             axis.text.x = element_text(size = main_font_size),
             axis.title.x = element_text(margin = ggplot2::margin(t = 20, r = 0, b = 0, l = 0), size = main_font_size),
             plot.margin=unit(c(1,0.5,0,0),"cm")) # top, right, bottom, left
@@ -1164,27 +1164,27 @@ for (a in c("age", "BMI", "bhvrisk")) {
 }
 
 ## set up X, Y for super learning
-X_markers <- dat.505 %>% 
+X_markers <- dat.505 %>%
   select(var.super$varname, paste0(var.super$varname, "_bin"))
-X_exposure <- dat.505 %>% 
+X_exposure <- dat.505 %>%
   select(age, BMI, bhvrisk)
 X <- data.frame(trt = dat.505$trt, X_exposure, X_markers)
 X_full_none <- data.frame(trt = dat.505$trt, X_exposure)
 weights <- dat.505$wt
 Y <- dat.505$case
-vaccinees <- cbind.data.frame(Y, weights, X) %>% 
-  filter(trt == 1) %>% 
+vaccinees <- cbind.data.frame(Y, weights, X) %>%
+  filter(trt == 1) %>%
   select(-trt)
-X_none <- cbind.data.frame(Y, weights, X_full_none) %>% 
-  filter(trt == 1) %>% 
+X_none <- cbind.data.frame(Y, weights, X_full_none) %>%
+  filter(trt == 1) %>%
   select(-trt, -Y, -weights)
 Y_vaccine <- vaccinees$Y
 weights_vaccine <- vaccinees$weights
-X_vaccine <- vaccinees %>% 
+X_vaccine <- vaccinees %>%
   select(-Y, -weights)
 
 V_outer <- 5
-V_inner <- length(Y_vaccine) - 1 
+V_inner <- length(Y_vaccine) - 1
 ## set up outer folds for cv variable importance
 set.seed(4747)
 folds <- sample(rep(seq_len(2), length = length(Y_vaccine)))
@@ -1198,7 +1198,7 @@ set.seed(4747)
 seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
 fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine[folds == 1], X_mat = X_vaccine[folds == 1, ], family = "binomial",
               obsWeights = weights_vaccine[folds == 1],
-              sl_lib = SL_library[8], 
+              sl_lib = SL_library[8],
               method = "method.CC_nloglik",
               cvControl = list(V = V_outer, stratifyCV = TRUE),
               innerCvControl = list(list(V = V_inner)),
@@ -1209,7 +1209,7 @@ sl_fits_varset_11_all_1 <- fits
 ## do the same thing for confounders only
 fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine[folds == 1], X_mat = X_none[folds == 1, ], family = "binomial",
               obsWeights = weights_vaccine[folds == 1],
-              sl_lib = methods[1], 
+              sl_lib = methods[1],
               method = "method.CC_nloglik",
               cvControl = list(V = V_outer, stratifyCV = TRUE),
               innerCvControl = list(list(V = V_inner)),
@@ -1227,9 +1227,8 @@ We use the `vimp` package to compute variable importance estimates and confidenc
 
 ```{r load-vimp}
 ## only run the next line if you haven't already installed the dev version of vimp
-## note that you will have to change the path to where the .tar.gz file is located
-## on your computer
-# devtools::install_local("~/Software/vimp_2.0.0.tar.gz")
+## use version 2.0.1 for all analyses
+# devtools::install_github("bdwilliamson/vimp@v2.0.1")
 library("vimp")
 ```
 
@@ -1252,9 +1251,9 @@ var_set_fxab <- get_nms_group_all_antigens(X_markers, assays = c("phago", "R2a",
 # 6. 1+2+3
 var_set_igg_iga_igg3 <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3"))
 # 7. 1+2+4
-var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8"), assays_to_exclude = "IgG3") 
+var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8"), assays_to_exclude = "IgG3")
 # 8. 1+2+3+4
-var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "CD4", "CD8"), assays_to_exclude = "IgG3") 
+var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "CD4", "CD8"), assays_to_exclude = "IgG3")
 # 9. 1+2+3+5
 var_set_igg_iga_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "phago", "R2a", "R3a"))
 # 10. 1+4+5
@@ -1267,12 +1266,12 @@ var_set_igg_iga_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c(
 var_set_igg3_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "CD4", "CD8", "phago", "R2a", "R3a"))
 
 var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_igg3","4_tcells", "5_fxab",
-                   "6_igg_iga_igg3", "7_igg_iga_tcells", "8_igg_iga_igg3_tcells", 
+                   "6_igg_iga_igg3", "7_igg_iga_tcells", "8_igg_iga_igg3_tcells",
                    "9_igg_iga_igg3_fxab", "10_tcells_fxab",
                    "11_all",
                    "12_igg3_fxab", "13_igg_iga_tcells_fxab", "14_igg3_tcells_fxab")
 
-## set up a matrix of all 
+## set up a matrix of all
 var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_igg3, var_set_tcells, var_set_fxab,
                         var_set_igg_iga_igg3, var_set_igg_iga_tcells, var_set_igg_iga_igg3_tcells,
                         var_set_igg_iga_igg3_fxab, var_set_tcells_fxab,
@@ -1282,26 +1281,26 @@ for (i in (1:14)[-11]) {
   job_id <- i
   this_var_set <- var_set_matrix[job_id, ]
   cat("\n Running ", var_set_names[job_id], "\n")
-  
-  X_markers_varset <- X_markers %>% 
+
+  X_markers_varset <- X_markers %>%
     select(names(X_markers)[this_var_set])
-  
-  X_exposure <- dat.505 %>% 
+
+  X_exposure <- dat.505 %>%
     select(age, BMI, bhvrisk)
   X <- data.frame(trt = dat.505$trt, X_exposure, X_markers_varset)
   weights <- dat.505$wt
   Y <- dat.505$case
-  vaccinees <- cbind.data.frame(Y, weights, X) %>% 
-    filter(trt == 1) %>% 
+  vaccinees <- cbind.data.frame(Y, weights, X) %>%
+    filter(trt == 1) %>%
     select(-trt)
   Y_vaccine <- vaccinees$Y
   weights_vaccine <- vaccinees$weights
-  X_vaccine <- vaccinees %>% 
+  X_vaccine <- vaccinees %>%
     select(-Y, -weights)
-  
+
   V_outer <- 5
-  V_inner <- length(Y_vaccine) - 1 
-  
+  V_inner <- length(Y_vaccine) - 1
+
   ## get the SL library
   ## if var_set_none, then don't need screens; otherwise do
   if (job_id == 1) {
@@ -1318,7 +1317,7 @@ for (i in (1:14)[-11]) {
   seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
   fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine[folds == 2], X_mat = X_vaccine[folds == 2, ],
                              family = "binomial", obsWeights = weights_vaccine[folds == 2],
-                             sl_lib = sl_lib, 
+                             sl_lib = sl_lib,
                              method = "method.CC_nloglik",
                              cvControl = list(V = V_outer, stratifyCV = TRUE),
                              innerCvControl = list(list(V = V_inner)),
@@ -1367,7 +1366,7 @@ weights_vaccine <- dat.505$wt[dat.505$trt == 1]
 ## --------------------------------------------------------------------------------------------------------------------------------------
 ## each is a length 10 list (one for each random start)
 var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_igg3","4_tcells", "5_fxab",
-                   "6_igg_iga_igg3", "7_igg_iga_tcells", "8_igg_iga_igg3_tcells", 
+                   "6_igg_iga_igg3", "7_igg_iga_tcells", "8_igg_iga_igg3_tcells",
                    "9_igg_iga_igg3_fxab", "10_tcells_fxab",
                    "11_all")
 ## objects are created above
@@ -1376,16 +1375,16 @@ var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_igg3","4_tcells", "5_f
 var_set_labels <- c("No markers", "IgG + IgA", "IgG3", "T Cells", "Fx Ab", "IgG + IgA + IgG3",
                     "IgG + IgA + T Cells", "IgG + IgA + IgG3 + T Cells",
                     "IgG + IgA + IgG3 + Fx Ab", "T Cells + Fx Ab", "All markers")
-for (i in 1:(length(var_set_names))) { 
+for (i in 1:(length(var_set_names))) {
   this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
   # eval(parse(text = paste0("all_aucs_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) x$aucs)))")))
   eval(parse(text = paste0("all_aucs_i <- tibble::as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], "_", ifelse(i == 11, "1", "2"), ", function(x) get_all_aucs_lst(x, weights = weights_vaccine))))")))
-  all_aucs_i <- all_aucs_i %>% 
+  all_aucs_i <- all_aucs_i %>%
     filter(!is.na(all_aucs_i$Learner))
-  eval(parse(text = paste0("avg_aucs_", var_set_names[i]," <- all_aucs_i %>% 
-    group_by(Learner, Screen) %>% 
-    summarize(AUC = mean(AUC), ci_ll = mean(ci_ll), ci_ul = mean(ci_ul)) %>% 
-    mutate(assay = this_name, varset_label = var_set_labels[i]) %>% 
+  eval(parse(text = paste0("avg_aucs_", var_set_names[i]," <- all_aucs_i %>%
+    group_by(Learner, Screen) %>%
+    summarize(AUC = mean(AUC), ci_ll = mean(ci_ll), ci_ul = mean(ci_ul)) %>%
+    mutate(assay = this_name, varset_label = var_set_labels[i]) %>%
     ungroup()")))
 }
 
@@ -1393,7 +1392,7 @@ for (i in 1:(length(var_set_names))) {
 avg_aucs <- bind_rows(avg_aucs_1_baseline_exposure, avg_aucs_2_igg_iga, avg_aucs_3_igg3,
                       avg_aucs_4_tcells, avg_aucs_5_fxab, avg_aucs_6_igg_iga_igg3,
                       avg_aucs_7_igg_iga_tcells, avg_aucs_8_igg_iga_igg3_tcells,
-                      avg_aucs_9_igg_iga_igg3_fxab, avg_aucs_10_tcells_fxab, 
+                      avg_aucs_9_igg_iga_igg3_fxab, avg_aucs_10_tcells_fxab,
                       avg_aucs_11_all)
 ```
 
@@ -1405,55 +1404,55 @@ library("tibble")
 library("dplyr")
 library("cowplot")
 # create the forest plot of the specified measure for each of the top learner and SL from each assay combination
-plot_assays <- function(avgs, type = "auc", main_font_size_forest, 
+plot_assays <- function(avgs, type = "auc", main_font_size_forest,
                         main_font_size_lab, sl_only = TRUE, immunoassay = TRUE, colors = NULL,
                         point_size = 3) {
   ## if type is AUC, make correct labels
   if (type == "auc") {
     x_lab <- "CV-AUC"
     x_lim <- c(0.4, 1)
-    avgs <- avgs %>% 
+    avgs <- avgs %>%
       mutate(measure = AUC)
     lgnd_pos <- c(0.56, 0.2)
   } else {
     x_lab <- expression(paste("CV-", R^2))
     x_lim <- c(-1, 1)
-    avgs <- avgs %>% 
+    avgs <- avgs %>%
       mutate(measure = R2)
     lgnd_pos <- c(0.65, 0.15)
   }
   ## get SL and the top individual learner/screen combo from each assay
-  top_learners_init <- avgs %>% 
-    group_by(assay) %>% 
+  top_learners_init <- avgs %>%
+    group_by(assay) %>%
     arrange(desc(measure), .by_group = TRUE) %>% # arrange in descending order by assay group
-    filter((Learner == "SL" & Screen == "All") | row_number() == 1) %>%  # select only the SL row and the top performing learner 
-    mutate(learner_nm = make_nice_learner_name(Learner), screen_nm = make_nice_screen_name(Screen)) %>% 
-    ungroup() %>% 
+    filter((Learner == "SL" & Screen == "All") | row_number() == 1) %>%  # select only the SL row and the top performing learner
+    mutate(learner_nm = make_nice_learner_name(Learner), screen_nm = make_nice_screen_name(Screen)) %>%
+    ungroup() %>%
     arrange(desc(measure))
-  
+
   ## if sl_only, only use the SL algorithm for each assay
   if (sl_only) {
-    top_learners <- top_learners_init %>% 
+    top_learners <- top_learners_init %>%
       filter(Learner == "SL")
   } else {
     top_learners <- top_learners_init
   }
-  
+
   ## forest plot with the groups/learners from the analysis plan
-  top_learner_plot <- top_learners %>% 
+  top_learner_plot <- top_learners %>%
     ggplot(aes(x = measure, y = factor(paste0(Screen, "_", Learner, "_", assay), levels = paste0(Screen, "_", Learner, "_", assay)[order(measure)],
-                                   labels = paste0(varset_label, " ", learner_nm, " ", screen_nm)[order(measure)]))) + 
+                                   labels = paste0(varset_label, " ", learner_nm, " ", screen_nm)[order(measure)]))) +
     geom_errorbarh(aes(xmin = ci_ll, xmax = ci_ul), size = point_size/2) +
     geom_point(size = point_size) +
     xlab(x_lab) +
-    ylab("") + 
+    ylab("") +
     scale_x_continuous(breaks = round(seq(x_lim[1], x_lim[2], 0.1), 1),
                        labels = as.character(round(seq(x_lim[1], x_lim[2], 0.1), 1)),
                        limits = x_lim) +
-    theme(legend.position = "", 
+    theme(legend.position = "",
           axis.text.y = element_blank(),
           text = element_text(size = main_font_size_forest),
-          axis.title = element_text(size = main_font_size_forest), 
+          axis.title = element_text(size = main_font_size_forest),
           axis.text.x = element_text(size = main_font_size_forest),
           axis.ticks = element_line(size = 1),
           axis.ticks.length = unit(0.5, "cm"),
@@ -1470,19 +1469,19 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest,
       scale_color_manual(values = colors) +
       # labs(color = "Immunoassay set") +
       labs(color = "Assay set") +
-      theme(legend.position = lgnd_pos, 
+      theme(legend.position = lgnd_pos,
             axis.text.y = element_blank(),
             text = element_text(size = main_font_size_forest),
-            axis.title = element_text(size = main_font_size_forest), 
+            axis.title = element_text(size = main_font_size_forest),
             axis.text.x = element_text(size = main_font_size_forest),
             axis.title.x = element_text(margin = ggplot2::margin(t = 5, r = 0, b = 0, l = 0), size = main_font_size_forest),
             legend.text = element_text(size = main_font_size_forest),
             plot.margin=unit(c(1.25,0.5,0.5,0),"cm")) # top, right, bottom, left
     ## separate plot with nice names, printed values of measures, based on immunoassays only
-    top_learners_labels <- top_learners %>% 
-      ungroup() %>% 
-      mutate(lab_measure = paste0(format(round(measure, 3), nsmall = 3), " [", 
-                              format(round(ci_ll, 3), nsmall = 3), ", ", 
+    top_learners_labels <- top_learners %>%
+      ungroup() %>%
+      mutate(lab_measure = paste0(format(round(measure, 3), nsmall = 3), " [",
+                              format(round(ci_ll, 3), nsmall = 3), ", ",
                               format(round(ci_ul, 3), nsmall = 3), "]")) %>%
       select(varset_label, lab_measure)
     ## melt to make a single "value" column
@@ -1493,10 +1492,10 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest,
     top_learners_labs$y_coord <- rep(rev(as.numeric(rownames(top_learners))), dim(top_learners_labs)[1]/length(as.numeric(rownames(top_learners))))
   } else {
     ## separate plot with nice names, printed values of the measures
-    top_learners_labels <- top_learners %>% 
-      ungroup() %>% 
-      mutate(lab_measure = paste0(format(round(measure, 3), nsmall = 3), " [", 
-                              format(round(ci_ll, 3), nsmall = 3), ", ", 
+    top_learners_labels <- top_learners %>%
+      ungroup() %>%
+      mutate(lab_measure = paste0(format(round(measure, 3), nsmall = 3), " [",
+                              format(round(ci_ll, 3), nsmall = 3), ", ",
                               format(round(ci_ul, 3), nsmall = 3), "]")) %>%
       select(varset_label, learner_nm, screen_nm, lab_measure)
     ## melt to make a single "value" column
@@ -1507,16 +1506,16 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest,
     top_learners_labs$y_coord <- rep(rev(as.numeric(rownames(top_learners))), dim(top_learners_labs)[1]/length(as.numeric(rownames(top_learners))))
   }
   ## make the plot
-  top_learner_nms_plot <- top_learners_labs %>% 
+  top_learner_nms_plot <- top_learners_labs %>%
     ggplot(aes(x = x_coord, y = y_coord, label = value)) +
     geom_text(size = main_font_size_lab, hjust = 0, vjust = 0.5) +
     xlim(c(min(top_learners_labs$x_coord), max(top_learners_labs$x_coord) + 0.75)) +
     ylim(c(1, max(top_learners_labs$y_coord))) +
-    theme(legend.position="", 
+    theme(legend.position="",
           axis.line=element_blank(),
           axis.text=element_blank(),
           text = element_text(size = main_font_size_lab),
-          axis.title = element_blank(), 
+          axis.title = element_blank(),
           axis.ticks = element_blank(),
           plot.margin=unit(c(0,0,0,0),"cm"),
           panel.background=element_blank(),
@@ -1524,8 +1523,8 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest,
           panel.grid.major=element_blank(),
           panel.grid.minor=element_blank(),
           plot.background=element_blank())
-  
-  
+
+
   return(list(top_learner_plot = top_learner_plot, top_learner_nms_plot = top_learner_nms_plot))
 }
 ```
@@ -1554,7 +1553,7 @@ cv_auc_forest_plot_top_learner <- plot_grid(auc_forest_plot$top_learner_nms_plot
   draw_label("CV-AUC [95% CI]", size = title_font_size, x = 0.43, y = y_title)
 
 ## add on immunoassay set
-avg_aucs <- avg_aucs %>% 
+avg_aucs <- avg_aucs %>%
   mutate(immunoassay_set = get_immunoassay_set(varset_label))
 
 title_font_size <- 26
@@ -1563,13 +1562,13 @@ main_font_size_lab <- 10
 fig_width <- fig_height <- 2590
 y_title <- 0.945
 point_size <- 5
-auc_forest_plot <- plot_assays(avg_aucs, type = "auc", main_font_size_forest = main_font_size_forest, 
+auc_forest_plot <- plot_assays(avg_aucs, type = "auc", main_font_size_forest = main_font_size_forest,
                                    main_font_size_lab = main_font_size_lab,
                                    sl_only = TRUE, immunoassay = TRUE,
                                    colors = cbbPalette,
                                point_size = point_size)
 
-plot_grid(auc_forest_plot$top_learner_nms_plot, 
+plot_grid(auc_forest_plot$top_learner_nms_plot,
                         auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
          draw_label("Month 7", size = title_font_size, x = 0.14, y = y_title + 0.04, fontface = "bold") +
          draw_label("Marker Set", size = title_font_size, x = 0.1375, y = y_title, fontface = "bold") +
@@ -1587,12 +1586,12 @@ In Figure \@ref(fig:sl-forest-plot-r2), we see that there is substantial estimat
 for (i in 1:length(var_set_names)) {
   this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
   eval(parse(text = paste0("all_r2s_i <- tibble::as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ifelse(i == 11, "_1", "_2"), ", function(x) get_all_r2s_lst(x, weights = weights_vaccine))))")))
-  all_r2s_i <- all_r2s_i %>% 
+  all_r2s_i <- all_r2s_i %>%
     filter(!is.na(all_r2s_i$Learner))
-  eval(parse(text = paste0("avg_r2s_", var_set_names[i]," <- all_r2s_i %>% 
-    group_by(Learner, Screen) %>% 
-    summarize(R2 = mean(R2), ci_ll = mean(ci_ll), ci_ul = mean(ci_ul)) %>% 
-    mutate(assay = this_name, varset_label = var_set_labels[i]) %>% 
+  eval(parse(text = paste0("avg_r2s_", var_set_names[i]," <- all_r2s_i %>%
+    group_by(Learner, Screen) %>%
+    summarize(R2 = mean(R2), ci_ll = mean(ci_ll), ci_ul = mean(ci_ul)) %>%
+    mutate(assay = this_name, varset_label = var_set_labels[i]) %>%
     ungroup()")))
 }
 ## combine into a full tibble; add a column to each that is the assay
@@ -1615,7 +1614,7 @@ r2_forest_plot_top_learner <- plot_grid(r2_forest_plot$top_learner_nms_plot, r2_
   draw_label(expression(paste("CV-", R^2, " [95% CI]", sep = "")), size = title_font_size, x = 0.55, y = y_title)
 
 ## add on immunoassay set
-avg_r2s <- avg_r2s %>% 
+avg_r2s <- avg_r2s %>%
   mutate(immunoassay_set = get_immunoassay_set(varset_label))
 
 title_font_size <- 22
@@ -1623,11 +1622,11 @@ main_font_size_forest <- 15
 main_font_size_lab <- 10
 fig_width <- fig_height <- 2590
 y_title <- 0.96
-r2_forest_plot <- plot_assays(avg_r2s, type = "r2", main_font_size_forest = main_font_size_forest, 
+r2_forest_plot <- plot_assays(avg_r2s, type = "r2", main_font_size_forest = main_font_size_forest,
                                    main_font_size_lab = main_font_size_lab,
                                    sl_only = TRUE, immunoassay = TRUE,
                                    colors = cbbPalette)
-plot_grid(r2_forest_plot$top_learner_nms_plot, 
+plot_grid(r2_forest_plot$top_learner_nms_plot,
           r2_forest_plot$top_learner_plot, nrow = 1, align = "h") +
   draw_label("Assay combination", size = title_font_size, x = 0.1, y = y_title) +
   draw_label(expression(paste("CV-", R^2, " [95% CI]", sep = "")), size = title_font_size, x = 0.38, y = y_title)
@@ -1661,7 +1660,7 @@ suppressWarnings(data("var.super", package = "HVTN505")) # even if there is a wa
 ## scale vaccine recipients to have mean 0, sd 1 for all vars
 for (a in var.super$varname) {
   dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1]))
-  dat.505[[a%.%"_bin"]] <- scale(dat.505[[a%.%"_bin"]], center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]), 
+  dat.505[[a%.%"_bin"]] <- scale(dat.505[[a%.%"_bin"]], center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]),
                                  scale = sd(dat.505[[a%.%"_bin"]][dat.505$trt == 1]))
 }
 for (a in c("age", "BMI", "bhvrisk")) {
@@ -1669,19 +1668,19 @@ for (a in c("age", "BMI", "bhvrisk")) {
 }
 
 ## set up X, Y for super learning
-X_markers <- dat.505 %>% 
+X_markers <- dat.505 %>%
   select(var.super$varname, paste0(var.super$varname, "_bin"))
-X_exposure <- dat.505 %>% 
+X_exposure <- dat.505 %>%
   select(age, BMI, bhvrisk)
 X <- data.frame(trt = dat.505$trt, X_exposure, X_markers)
 weights <- dat.505$wt
 Y <- dat.505$case
-vaccinees <- cbind.data.frame(Y, weights, X) %>% 
-  filter(trt == 1) %>% 
+vaccinees <- cbind.data.frame(Y, weights, X) %>%
+  filter(trt == 1) %>%
   select(-trt)
 Y_vaccine <- vaccinees$Y
 weights_vaccine <- vaccinees$weights
-X_vaccine <- vaccinees %>% 
+X_vaccine <- vaccinees %>%
   select(-Y, -weights)
 
 ## ----------------------------------------------------------------------------------------------
@@ -1720,7 +1719,7 @@ vimp_all_markers_avg <- get_avg_est_ci(vimp_all_markers)
 vimp_tcells_fxab <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_10_tcells_fxab,
                                reduced_fit = reduced_fit_none_1,
                                type = risk_type,
-                               weights = weights_vaccine, 
+                               weights = weights_vaccine,
                                folds = (-1) * (folds - 2) + 1,
                                scale = "identity")
 vimp_tcells_fxab_avg <- get_avg_est_ci(vimp_tcells_fxab)
@@ -1729,7 +1728,7 @@ vimp_tcells_fxab_avg <- get_avg_est_ci(vimp_tcells_fxab)
 vimp_igg_iga_igg3_fxab <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_9_igg_iga_igg3_fxab,
                                reduced_fit = reduced_fit_none_1,
                                type = risk_type,
-                               weights = weights_vaccine, 
+                               weights = weights_vaccine,
                                folds = (-1) * (folds - 2) + 1,
                                scale = "identity")
 vimp_igg_iga_igg3_fxab_avg <- get_avg_est_ci(vimp_igg_iga_igg3_fxab)
@@ -1738,7 +1737,7 @@ vimp_igg_iga_igg3_fxab_avg <- get_avg_est_ci(vimp_igg_iga_igg3_fxab)
 vimp_igg_iga_igg3_tcells <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_8_igg_iga_igg3_tcells,
                                reduced_fit = reduced_fit_none_1,
                                type = risk_type,
-                               weights = weights_vaccine, 
+                               weights = weights_vaccine,
                                folds = (-1) * (folds - 2) + 1,
                                scale = "identity")
 vimp_igg_iga_igg3_tcells_avg <- get_avg_est_ci(vimp_igg_iga_igg3_tcells)
@@ -1747,7 +1746,7 @@ vimp_igg_iga_igg3_tcells_avg <- get_avg_est_ci(vimp_igg_iga_igg3_tcells)
 vimp_igg_iga_tcells <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_7_igg_iga_tcells,
                                reduced_fit = reduced_fit_none_1,
                                type = risk_type,
-                               weights = weights_vaccine, 
+                               weights = weights_vaccine,
                                folds = (-1) * (folds - 2) + 1,
                                scale = "identity")
 vimp_igg_iga_tcells_avg <- get_avg_est_ci(vimp_igg_iga_tcells)
@@ -1756,7 +1755,7 @@ vimp_igg_iga_tcells_avg <- get_avg_est_ci(vimp_igg_iga_tcells)
 vimp_igg_iga_igg3 <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_6_igg_iga_igg3,
                                reduced_fit = reduced_fit_none_1,
                                type = risk_type,
-                               weights = weights_vaccine, 
+                               weights = weights_vaccine,
                                folds = (-1) * (folds - 2) + 1,
                                scale = "identity")
 vimp_igg_iga_igg3_avg <- get_avg_est_ci(vimp_igg_iga_igg3)
@@ -1765,7 +1764,7 @@ vimp_igg_iga_igg3_avg <- get_avg_est_ci(vimp_igg_iga_igg3)
 vimp_fxab <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_5_fxab,
                                reduced_fit = reduced_fit_none_1,
                                type = risk_type,
-                               weights = weights_vaccine, 
+                               weights = weights_vaccine,
                                folds = (-1) * (folds - 2) + 1,
                                scale = "identity")
 vimp_fxab_avg <- get_avg_est_ci(vimp_fxab)
@@ -1774,7 +1773,7 @@ vimp_fxab_avg <- get_avg_est_ci(vimp_fxab)
 vimp_tcells <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_4_tcells,
                                reduced_fit = reduced_fit_none_1,
                                type = risk_type,
-                               weights = weights_vaccine, 
+                               weights = weights_vaccine,
                                folds = (-1) * (folds - 2) + 1,
                                scale = "identity")
 vimp_tcells_avg <- get_avg_est_ci(vimp_tcells)
@@ -1783,7 +1782,7 @@ vimp_tcells_avg <- get_avg_est_ci(vimp_tcells)
 vimp_igg3 <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_3_igg3,
                                reduced_fit = reduced_fit_none_1,
                                type = risk_type,
-                               weights = weights_vaccine, 
+                               weights = weights_vaccine,
                                folds = (-1) * (folds - 2) + 1,
                                scale = "identity")
 vimp_igg3_avg <- get_avg_est_ci(vimp_igg3)
@@ -1792,49 +1791,49 @@ vimp_igg3_avg <- get_avg_est_ci(vimp_igg3)
 vimp_igg_iga <- get_cv_vim(y = Y_vaccine, full_fit = full_fit_2_igg_iga,
                                reduced_fit = reduced_fit_none_1,
                                type = risk_type,
-                               weights = weights_vaccine, 
+                               weights = weights_vaccine,
                                folds = (-1) * (folds - 2) + 1,
                                scale = "identity")
 vimp_igg_iga_avg <- get_avg_est_ci(vimp_igg_iga)
 
 ## combine together
-vimp_tibble <- tibble(assay_grp = c("All markers", 
-                                    "T Cells + Fx Ab", 
-                                    "IgG + IgA + IgG3 + Fx Ab", 
-                                    "IgG + IgA + IgG3 + T Cells", 
+vimp_tibble <- tibble(assay_grp = c("All markers",
+                                    "T Cells + Fx Ab",
+                                    "IgG + IgA + IgG3 + Fx Ab",
+                                    "IgG + IgA + IgG3 + T Cells",
                                     "IgG + IgA + T Cells",
                                     "IgG + IgA + IgG3",
-                                    "Fx Ab", 
-                                    "T Cells", 
+                                    "Fx Ab",
+                                    "T Cells",
                                     "IgG3",
                                     "IgG + IgA"),
-                      est = c(vimp_all_markers_avg$est, 
-                              vimp_tcells_fxab_avg$est, 
+                      est = c(vimp_all_markers_avg$est,
+                              vimp_tcells_fxab_avg$est,
                               vimp_igg_iga_igg3_fxab_avg$est,
-                              vimp_igg_iga_igg3_tcells_avg$est, 
+                              vimp_igg_iga_igg3_tcells_avg$est,
                               vimp_igg_iga_tcells_avg$est,
                               vimp_igg_iga_igg3_avg$est,
-                              vimp_fxab_avg$est, 
+                              vimp_fxab_avg$est,
                               vimp_tcells_avg$est,
                               vimp_igg3_avg$est,
                               vimp_igg_iga_avg$est),
-                      cil = c(vimp_all_markers_avg$ci[1], 
-                              vimp_tcells_fxab_avg$ci[1], 
+                      cil = c(vimp_all_markers_avg$ci[1],
+                              vimp_tcells_fxab_avg$ci[1],
                               vimp_igg_iga_igg3_fxab_avg$ci[1],
-                              vimp_igg_iga_igg3_tcells_avg$ci[1], 
+                              vimp_igg_iga_igg3_tcells_avg$ci[1],
                               vimp_igg_iga_tcells_avg$ci[1],
                               vimp_igg_iga_igg3_avg$ci[1],
-                              vimp_fxab_avg$ci[1], 
+                              vimp_fxab_avg$ci[1],
                               vimp_tcells_avg$ci[1],
                               vimp_igg3_avg$ci[1],
                               vimp_igg_iga_avg$ci[1]),
-                      ciu = c(vimp_all_markers_avg$ci[2], 
-                              vimp_tcells_fxab_avg$ci[2], 
+                      ciu = c(vimp_all_markers_avg$ci[2],
+                              vimp_tcells_fxab_avg$ci[2],
                               vimp_igg_iga_igg3_fxab_avg$ci[2],
-                              vimp_igg_iga_igg3_tcells_avg$ci[2], 
+                              vimp_igg_iga_igg3_tcells_avg$ci[2],
                               vimp_igg_iga_tcells_avg$ci[2],
                               vimp_igg_iga_igg3_avg$ci[2],
-                              vimp_fxab_avg$ci[2], 
+                              vimp_fxab_avg$ci[2],
                               vimp_tcells_avg$ci[2],
                               vimp_igg3_avg$ci[2],
                               vimp_igg_iga_avg$ci[2]))
@@ -1842,7 +1841,7 @@ vimp_tibble <- tibble::add_column(vimp_tibble, immunoassay_set = get_immunoassay
 ## save this object for easy loading
 ```
 
-The results based on cross-validated AUC are presented in Figure \@ref(fig:vimp-plot-auc). Here, we see that using the group of all marker variables results in an estimated increase in cross-validated AUC of nearly `r (vimp_tibble %>% filter(assay_grp == "All markers"))$est` over using the baseline risk variables only. Interestingly, the groups of IgG, IgA, IgG3, and T cell markers; IgG, IgA, and T cell markers; and T cell markers and those markers measured in functional antibody assays have estimated equivalent prediction performance. The next most important group appears to be those markers measured in functional antibody assays, with an estimated increase in cross-validated AUC of approximately `r (vimp_tibble %>% filter(assay_grp == "Fx Ab"))$est` compared to using baseline risk variables only. Adding all of the distinct antibody variable groups improves prediction performance compared to leaving any of the antibody groups out of the prediction algorithm. 
+The results based on cross-validated AUC are presented in Figure \@ref(fig:vimp-plot-auc). Here, we see that using the group of all marker variables results in an estimated increase in cross-validated AUC of nearly `r (vimp_tibble %>% filter(assay_grp == "All markers"))$est` over using the baseline risk variables only. Interestingly, the groups of IgG, IgA, IgG3, and T cell markers; IgG, IgA, and T cell markers; and T cell markers and those markers measured in functional antibody assays have estimated equivalent prediction performance. The next most important group appears to be those markers measured in functional antibody assays, with an estimated increase in cross-validated AUC of approximately `r (vimp_tibble %>% filter(assay_grp == "Fx Ab"))$est` compared to using baseline risk variables only. Adding all of the distinct antibody variable groups improves prediction performance compared to leaving any of the antibody groups out of the prediction algorithm.
 
 ```{r vimp-plot-auc, fig.cap = "Estimated variable importance (based on the difference in AUCs relative to a model with baseline exposure variables only) for each assay combination.", fig.height = 8, fig.width = 20}
 title_font_size <- 26
@@ -1856,7 +1855,7 @@ if (risk_type == "r_squared") {
   lgnd_pos <- c(0.75, 0.8)
 }
 ## forest plot of vimp, with labels for the groups
-vimp_forest_plot <- vimp_tibble %>% 
+vimp_forest_plot <- vimp_tibble %>%
   ggplot(aes(x = est, y = factor(assay_grp, levels = assay_grp[order(est, decreasing = TRUE)], labels = assay_grp[order(est, decreasing = TRUE)]))) +
   geom_errorbarh(aes(xmin = cil, xmax = ciu, color = immunoassay_set), size = point_size/2) +
   geom_point(size = point_size) +
@@ -1864,10 +1863,10 @@ vimp_forest_plot <- vimp_tibble %>%
   ylab("Month 7 Marker Set") +
   labs(color = "Assay set") +
   xlab(paste0("Variable importance estimate: difference in CV-", ifelse(risk_type == "r_squared", expression(R^2), "AUC"))) +
-  theme(legend.position = lgnd_pos, 
+  theme(legend.position = lgnd_pos,
         axis.text.y = element_text(size = main_font_size_forest),
         text = element_text(size = main_font_size_forest),
-        axis.title = element_text(size = main_font_size_forest), 
+        axis.title = element_text(size = main_font_size_forest),
         axis.text.x = element_text(size = main_font_size_forest),
         axis.title.x = element_text(margin = ggplot2::margin(t = 20, r = 0, b = 0, l = 0), size = main_font_size_forest),
         plot.margin=unit(c(1,0.5,0,0),"cm")) # top, right, bottom, left
@@ -1879,7 +1878,7 @@ We additionally measured the importance of each individual variable within the a
 
 # Conclusions
 
-In this analysis, we developed a model that predicts HIV-1 infection in vaccinees from month 7 marker variables and baseline risk variables. This model employs nested cross-validation to combine a flexible library of individual learners into a prediction algorithm that admits desirable asymptotic properties: namely, that the resulting cross-validated estimator is asymptotically guaranteed to have the same risk as the oracle estimator. 
+In this analysis, we developed a model that predicts HIV-1 infection in vaccinees from month 7 marker variables and baseline risk variables. This model employs nested cross-validation to combine a flexible library of individual learners into a prediction algorithm that admits desirable asymptotic properties: namely, that the resulting cross-validated estimator is asymptotically guaranteed to have the same risk as the oracle estimator.
 
 Based on a variable importance analysis using the difference in cross-validated AUCs, we see that: (i) adding IgG and IgA variables only to baseline variables results in improved prediction performance; (ii) adding functional antibody variables and IgG3 variables to IgG and IgA variables and baseline variables results in improved prediction performance over adding IgG and IgA variables alone to baseline variables; (iii) adding T cell variables or functional antibody variables only results in the largest increase in prediction performance among all individual groups; and (iv) that combining T cell and antibody variables together results in a further incremental improvement over T cells alone, but only if all antibody classes are present.
 
@@ -1887,7 +1886,7 @@ The main limitation of this analysis is that, to save computation time in this v
 
 # Appendix
 
-Code to reproduce the full Super Learning analysis is provided here. The original analysis of the HVTN 505 data [@neidich2019] used a previous version of the `vimp` package that did not require the two regression functions to be estimated on different splits of the data. That is likely the major difference between the results obtained using the new version of `vimp` (2.0.0) compared to the published analysis.
+Code to reproduce the full Super Learning analysis is provided here. The original analysis of the HVTN 505 data [@neidich2019] used a previous version of the `vimp` package that did not require the two regression functions to be estimated on different splits of the data. That is likely the major difference between the results obtained using the new version of `vimp` (2.0.1) compared to the published analysis.
 
 ```{r run-full-sl, eval = FALSE}
 ## load required libraries and functions
@@ -1928,23 +1927,23 @@ for (a in c("age", "BMI", "bhvrisk")) {
 }
 
 ## set up X, Y for super learning
-X_markers <- dat.505 %>% 
+X_markers <- dat.505 %>%
   select(var.super$varname, paste0(var.super$varname, "_bin"))
-X_exposure <- dat.505 %>% 
+X_exposure <- dat.505 %>%
   select(age, BMI, bhvrisk)
 X <- data.frame(trt = dat.505$trt, X_exposure, X_markers)
 weights <- dat.505$wt
 Y <- dat.505$case
-vaccinees <- cbind.data.frame(Y, weights, X) %>% 
-  filter(trt == 1) %>% 
+vaccinees <- cbind.data.frame(Y, weights, X) %>%
+  filter(trt == 1) %>%
   select(-trt)
 Y_vaccine <- vaccinees$Y
 weights_vaccine <- vaccinees$weights
-X_vaccine <- vaccinees %>% 
+X_vaccine <- vaccinees %>%
   select(-Y, -weights)
 
 V_outer <- 5
-V_inner <- length(Y_vaccine) - 1 
+V_inner <- length(Y_vaccine) - 1
 ## ---------------------------------------------------------------------------------
 ## run super learner, with leave-one-out cross-validation and all screens
 ## do 10 random starts, average over these
@@ -2005,7 +2004,7 @@ for (a in c("age", "BMI", "bhvrisk")) {
 }
 
 ## set up X, Y for super learning
-X_markers <- dat.505 %>% 
+X_markers <- dat.505 %>%
   select(var.super$varname, paste0(var.super$varname, "_bin"))
 
 ## only include the following variable sets:
@@ -2024,9 +2023,9 @@ var_set_fxab <- get_nms_group_all_antigens(X_markers, assays = c("phago", "R2a",
 # 6. 1+2+3
 var_set_igg_iga_igg3 <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3"))
 # 7. 1+2+4
-var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8"), assays_to_exclude = "IgG3") 
+var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8"), assays_to_exclude = "IgG3")
 # 8. 1+2+3+4
-var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "CD4", "CD8"), assays_to_exclude = "IgG3") 
+var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "CD4", "CD8"), assays_to_exclude = "IgG3")
 # 9. 1+2+3+5
 var_set_igg_iga_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "phago", "R2a", "R3a"))
 # 10. 1+4+5
@@ -2039,12 +2038,12 @@ var_set_igg_iga_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c(
 var_set_igg3_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "CD4", "CD8", "phago", "R2a", "R3a"))
 
 var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_igg3","4_tcells", "5_fxab",
-                   "6_igg_iga_igg3", "7_igg_iga_tcells", "8_igg_iga_igg3_tcells", 
+                   "6_igg_iga_igg3", "7_igg_iga_tcells", "8_igg_iga_igg3_tcells",
                    "9_igg_iga_igg3_fxab", "10_tcells_fxab",
                    "11_all",
                    "12_igg3_fxab", "13_igg_iga_tcells_fxab", "14_igg3_tcells_fxab")
 
-## set up a matrix of all 
+## set up a matrix of all
 var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_igg3, var_set_tcells, var_set_fxab,
                         var_set_igg_iga_igg3, var_set_igg_iga_tcells, var_set_igg_iga_igg3_tcells,
                         var_set_igg_iga_igg3_fxab, var_set_tcells_fxab,
@@ -2055,24 +2054,24 @@ job_id <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
 this_var_set <- var_set_matrix[job_id, ]
 cat("\n Running ", var_set_names[job_id], "\n")
 
-X_markers_varset <- X_markers %>% 
+X_markers_varset <- X_markers %>%
   select(names(X_markers)[this_var_set])
 
-X_exposure <- dat.505 %>% 
+X_exposure <- dat.505 %>%
   select(age, BMI, bhvrisk)
 X <- data.frame(trt = dat.505$trt, X_exposure, X_markers_varset)
 weights <- dat.505$wt
 Y <- dat.505$case
-vaccinees <- cbind.data.frame(Y, weights, X) %>% 
-  filter(trt == 1) %>% 
+vaccinees <- cbind.data.frame(Y, weights, X) %>%
+  filter(trt == 1) %>%
   select(-trt)
 Y_vaccine <- vaccinees$Y
 weights_vaccine <- vaccinees$weights
-X_vaccine <- vaccinees %>% 
+X_vaccine <- vaccinees %>%
   select(-Y, -weights)
 
 V_outer <- 5
-V_inner <- length(Y_vaccine) - 1 
+V_inner <- length(Y_vaccine) - 1
 
 ## get the SL library
 ## if var_set_none, then don't need screens; otherwise do
