@@ -20,7 +20,23 @@ references:
   issued:
     year: 2007
   URL: 'https://doi.org/10.2202/1544-6115.1309'
-- id: williamson2017
+- id: williamson2020a
+  title: Nonparametric variable importance assessment using machine learning techniques
+  author:
+  - family: Williamson
+    given: Brian D
+  - family: Gilbert
+    given: Peter B
+  - family: Carone
+    given: Marco
+  - family: Simon
+    given: Noah
+  publisher: Biometrics
+  type: article-journal
+  issued:
+   year: 2020
+- id: williamson2020b
+  title: A unified approach for inference on algorithm-agnostic variable importance
   author:
   - family: Williamson
     given: Brian D
@@ -30,11 +46,11 @@ references:
     given: Noah
   - family: Carone
     given: Marco
-  publisher: University of Washington Department of Biostatistics Working Paper Series
+  publisher: arXiv
   type: article-journal
   issued:
-   year: 2017
-  URL: 'http://biostats.bepress.com/uwbiostat/paper422/'
+   year: 2020
+  URL: https://arxiv.org/abs/2004.03683
 - id: fong2018
   author:
   - family: Fong
@@ -153,7 +169,7 @@ We performed some data cleaning and a dimension reduction step prior to the stat
 
 The data are included in the R package HVTN505. Install the package from `HVTN505_2019-4-25.tar.gz` using the following code:
 
-```{r}
+```{r install-hvtn505}
 # only run this line if the package isn't already installed; edit the file path
 # to point to the directory where the .tar.gz file is located
 # devtools::install_local("HVTN505_2019-4-25.tar.gz")
@@ -193,7 +209,7 @@ Since we have only 25 events, we constructed aggressive variable screens that al
 
 * dynamic range: exclude variables with 20th percentile equal to the 80th percentile
 * dynamic range score: exclude all variables with standard deviation in the vaccinees divided by standard deviation in placebo recipients in the lower half of all participants
-* lasso with fixed p-value threshold: exclude all variables for which a lasso (adjusting for age, BMI, and behavioral risk) results a p-value above a threshold. We considered thresholds 0.01, 0.05, and 0.1
+* lasso with fixed p-value threshold: first run a lasso (adjusting for age, BMI, and behavioral risk); then for each variable with nonzero lasso coefficient, run a logistic regression (adjusting for age, BMI, and behavioral risk) and exclude all variables for which the resulting p-value is above a threshold. We considered thresholds 0.01, 0.05, and 0.1
 * high correlation: exclude any pair of variables that has Spearman correlation greater than 0.9.
 
 The specific Super Learner algorithms we considered were:
@@ -644,30 +660,6 @@ Our resulting proposed estimator for objective (1) above is the cross-validated 
 We next define some useful functions that we will use in subsequent analyses:
 
 ```{r utils}
-## get all AUCs for SL, discrete SL, and individual algorithms
-get_all_aucs <- function(sl_fit) {
-  # Get the cvAUC of the SuperLearner predictions
-  sl_auc <- cvAUC::ci.cvAUC(predictions=sl_fit$SL.predict, labels=sl_fit$Y, folds=sl_fit$folds)
-  out <- data.frame(Learner="SL", Screen="All", AUC=sl_auc$cvAUC, ci_ll=sl_auc$ci[1], ci_ul=sl_auc$ci[2])
-
-  # Get the cvAUC of the Discrete SuperLearner predictions
-  discrete_sl_auc <- cvAUC::ci.cvAUC(predictions=sl_fit$discreteSL.predict, labels=sl_fit$Y, folds=sl_fit$folds)
-  out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All", AUC=discrete_sl_auc$cvAUC, ci_ll=discrete_sl_auc$ci[1], ci_ul=discrete_sl_auc$ci[2]))
-
-  # Get the cvAUC of the individual learners in the library
-  get_individual_auc <- function(sl_fit, col) {
-    if(any(is.na(sl_fit$library.predict[, col]))) return(NULL)
-    alg_auc <- cvAUC::ci.cvAUC(predictions = sl_fit$library.predict[, col], labels = sl_fit$Y, folds = sl_fit$folds)
-    ## get the regexp object
-    alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_", fixed = TRUE)[[1]]
-    alg <- tail(alg_screen_string[grepl(".", alg_screen_string, fixed = TRUE)], n = 1)
-    screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, fixed = TRUE)], collapse = "_")
-    data.frame(Learner = alg, Screen = screen, AUC = alg_auc$cvAUC, ci_ll = alg_auc$ci[1], ci_ul = alg_auc$ci[2])
-  }
-  other_aucs <- plyr::ldply(1:ncol(sl_fit$library.predict), function(x) get_individual_auc(sl_fit, x))
-  rbind(out, other_aucs)
-}
-
 ## get all R^2s for SL, discrete SL, and individual algorithms
 one_r2 <- function(preds, Y, weights = rep(1, length(Y))) {
   var_y <- mean((Y - mean(Y))^2)
@@ -684,10 +676,10 @@ one_r2 <- function(preds, Y, weights = rep(1, length(Y))) {
 }
 cv_r2 <- function(preds, Y, folds, weights = rep(1, length(Y))) {
   V <- length(folds)
-  fold_row_nums <- as.vector(do.call(cbind, folds))
-  folds_init <- rep(as.numeric(names(folds)), each = length(Y)/length(folds))
-  folds_mat <- cbind(fold_row_nums, folds_init)
-  folds_numeric <- folds_mat[order(folds_mat[, 1]), 2]
+  fold_vals <- mapply(function(x, y) rep(y, length(x)), x = folds, y = as.numeric(names(folds)))
+  folds_lst <- mapply(function(x, y) cbind(x, y), x = fold_vals, y = folds)
+  folds_mat <- do.call(rbind, folds_lst)
+  folds_numeric <- folds_mat[order(folds_mat[, 2]), 1]
   ests_cis <- do.call(rbind.data.frame, lapply(as.list(1:V), function(v) {
     one_r2(preds = preds[folds_numeric == v], Y[folds_numeric == v], weights = weights[folds_numeric == v])
   }))
@@ -725,11 +717,11 @@ get_all_r2s_lst <- function(sl_fit_lst, weights = rep(1, length(sl_fit_lst[[1]]$
   if (is.null(sl_fit_lst)) {
     return(NA)
   } else {
-    sl_r2 <- cv_r2(preds = sl_fit_lst$fit$SL.predict, Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds, weights = weights)
+    sl_r2 <- cv_r2(preds = sl_fit_lst$fit$SL.predict, Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds)
     out <- data.frame(Learner="SL", Screen="All", R2 = sl_r2$r2, ci_ll = sl_r2$ci[1], ci_ul=sl_r2$ci[2])
 
     # Get the CV-R2 of the Discrete SuperLearner predictions
-    discrete_sl_r2 <- cv_r2(preds = sl_fit_lst$fit$discreteSL.predict, Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds, weights = weights)
+    discrete_sl_r2 <- cv_r2(preds = sl_fit_lst$fit$discreteSL.predict, Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds)
     out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All", R2 = discrete_sl_r2$r2, ci_ll = discrete_sl_r2$ci[1], ci_ul = discrete_sl_r2$ci[2]))
 
     # Get the cvr2 of the individual learners in the library
@@ -759,10 +751,10 @@ one_auc <- function(preds, Y, weights = rep(1, length(Y))) {
 }
 cv_auc <- function(preds, Y, folds, weights = rep(1, length(Y))) {
   V <- length(folds)
-  fold_row_nums <- as.vector(do.call(cbind, folds))
-  folds_init <- rep(as.numeric(names(folds)), each = length(Y)/length(folds))
-  folds_mat <- cbind(fold_row_nums, folds_init)
-  folds_numeric <- folds_mat[order(folds_mat[, 1]), 2]
+  fold_vals <- mapply(function(x, y) rep(y, length(x)), x = folds, y = as.numeric(names(folds)))
+  folds_lst <- mapply(function(x, y) cbind(x, y), x = fold_vals, y = folds)
+  folds_mat <- do.call(rbind, folds_lst)
+  folds_numeric <- folds_mat[order(folds_mat[, 2]), 1]
   ests_cis <- do.call(rbind.data.frame, lapply(as.list(1:V), function(v) {
     one_auc(preds = preds[folds_numeric == v], Y[folds_numeric == v], weights = weights[folds_numeric == v])
   }))
@@ -774,11 +766,11 @@ cv_auc <- function(preds, Y, folds, weights = rep(1, length(Y))) {
 }
 get_all_aucs <- function(sl_fit, weights = rep(1, length(sl_fit$Y))) {
   # get the CV-AUC of the SuperLearner predictions
-  sl_auc <- cv_auc(preds = sl_fit$SL.predict, Y = sl_fit$Y, folds = sl_fit$folds)
+  sl_auc <- cv_auc(preds = sl_fit$SL.predict, Y = sl_fit$Y, folds = sl_fit$folds, weights = weights)
   out <- data.frame(Learner="SL", Screen="All", AUC = sl_auc$auc, ci_ll = sl_auc$ci[1], ci_ul=sl_auc$ci[2])
 
   # Get the CV-auc of the Discrete SuperLearner predictions
-  discrete_sl_auc <- cv_auc(preds = sl_fit$discreteSL.predict, Y = sl_fit$Y, folds = sl_fit$folds)
+  discrete_sl_auc <- cv_auc(preds = sl_fit$discreteSL.predict, Y = sl_fit$Y, folds = sl_fit$folds, weights = weights)
   out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All", AUC = discrete_sl_auc$auc, ci_ll = discrete_sl_auc$ci[1], ci_ul = discrete_sl_auc$ci[2]))
 
   # Get the cvauc of the individual learners in the library
@@ -846,10 +838,10 @@ run_reduced_cv_sl_once <- function(seed, Y, X_mat, family, obsWeights, sl_lib, m
   indx <- which(seed == seeds)
   full_fit <- Y[[indx]]$fit
   ## use the same folds as the CV.SuperLearner
-  fold_row_nums <- as.vector(do.call(cbind, full_fit$folds))
-  folds_init <- rep(as.numeric(names(full_fit$folds)), each = dim(X_mat)[1]/length(full_fit$folds))
-  folds_mat <- cbind(fold_row_nums, folds_init)
-  folds <- folds_mat[order(folds_mat[, 1]), 2]
+  fold_vals <- mapply(function(x, y) rep(y, length(x)), x = folds, y = as.numeric(names(folds)))
+  folds_lst <- mapply(function(x, y) cbind(x, y), x = fold_vals, y = folds)
+  folds_mat <- do.call(rbind, folds_lst)
+  folds <- folds_mat[order(folds_mat[, 2]), 1]
   V <- length(unique(folds))
 
   ## set the seed, run the SL
@@ -960,15 +952,15 @@ get_fold_cv_vim <- function(y, full_fit, reduced_fit, x, outer_folds, type, weig
   if (is.null(full_fit[[x]]$folds)) {
     vim_est <- NA
   } else {
-    full_fold_row_nums <- as.vector(do.call(cbind, full_fit[[x]]$folds))
-    full_folds_init <- rep(as.numeric(names(full_fit[[x]]$folds)), each = length(y[outer_folds == 1])/length(full_fit[[x]]$folds))
-    full_folds_mat <- cbind(full_fold_row_nums, full_folds_init)
-    full_folds <- full_folds_mat[order(full_folds_mat[, 1]), 2]
-
-    redu_fold_row_nums <- as.vector(do.call(cbind, reduced_fit[[x]]$folds))
-    redu_folds_init <- rep(as.numeric(names(reduced_fit[[x]]$folds)), each = length(y[outer_folds == 2])/length(reduced_fit[[x]]$folds))
-    redu_folds_mat <- cbind(redu_fold_row_nums, redu_folds_init)
-    redu_folds <- redu_folds_mat[order(redu_folds_mat[, 1]), 2]
+    full_fold_vals <- mapply(function(x, y) rep(y, length(x)), x = full_fit[[x]]$folds, y = as.numeric(names(full_fit[[x]]$folds)))
+  full_folds_lst <- mapply(function(x, y) cbind(x, y), x = full_fold_vals, y = full_fit[[x]]$folds)
+  full_folds_mat <- do.call(rbind, full_folds_lst)
+  full_folds <- full_folds_mat[order(full_folds_mat[, 2]), 1]
+  
+  redu_fold_vals <- mapply(function(x, y) rep(y, length(x)), x = reduced_fit[[x]]$folds, y = as.numeric(names(reduced_fit[[x]]$folds)))
+  redu_folds_lst <- mapply(function(x, y) cbind(x, y), x = redu_fold_vals, y = reduced_fit[[x]]$folds)
+  redu_folds_mat <- do.call(rbind, redu_folds_lst)
+  redu_folds <- redu_folds_mat[order(redu_folds_mat[, 2]), 1]
 
     ## get the full, reduced predictions from the two CV objects
     get_reduced_fit <- function(i, folds) {
@@ -1123,7 +1115,7 @@ get_immunoassay_set <- function(vec) {
 
 ```
 
-The following code runs the full Super Learner with a reduced library of candidate learners. This is for illustration only --- we recommend using a large library of candidate learners, as we did in the original analysis. Please note, however, that the following code chunk may take a couple of minutes to run. Also, if the code chunk does not run, please first make sure that you have installed all of the required packages.
+The following code runs the full Super Learner with a reduced library of candidate learners. This is for illustration only --- we recommend using a large library of candidate learners, as we did in the original analysis. Please note, however, that the following code chunk may take several minutes to run. If the code chunk does not run, a useful first debugging step is to make sure that you have installed all of the required packages.
 
 ```{r run-full-sl-with-small-lib}
 ## load required libraries and functions
@@ -1185,9 +1177,13 @@ X_vaccine <- vaccinees %>%
 
 V_outer <- 5
 V_inner <- length(Y_vaccine) - 1
-## set up outer folds for cv variable importance
+## set up outer folds for cv variable importance; do stratified sampling
 set.seed(4747)
-folds <- sample(rep(seq_len(2), length = length(Y_vaccine)))
+folds_1 <- sample(rep(seq_len(2), length = sum(Y_vaccine == 1)))
+folds_0 <- sample(rep(seq_len(2), length = sum(Y_vaccine == 0)))
+folds <- vector("numeric", length(Y_vaccine))
+folds[Y_vaccine == 1] <- folds_1
+folds[Y_vaccine == 0] <- folds_0
 ## ---------------------------------------------------------------------------------
 ## run super learner, with leave-one-out cross-validation and all screens
 ## do 10 random starts, average over these
@@ -1223,7 +1219,7 @@ The code to reproduce the results of the original analysis is provided in the Ap
 
 ## Variable Importance
 
-We use the `vimp` package to compute variable importance estimates and confidence intervals. In all cases, we consider variable importance as a summary of the true data-generating distribution. Since our outcome is binary, we estimate variable importance in two ways: using the population difference in R-squared [@williamson2017], and using the population difference in area under the receiver operating characteristic curve (AUC). We interpret the R-squared-based importance as the proportion of the variability in the outcome explained by including a group of covariates. We interpret the AUC-based importance as the difference in our ability to discriminate between cases and controls based on using a group of covariates. Load the `vimp` package using the following code:
+We use the `vimp` package to compute variable importance estimates and confidence intervals. In all cases, we consider variable importance as a summary of the true data-generating distribution. Since our outcome is binary, we estimate variable importance in two ways: using the population difference in R-squared [@williamson2020a], and using the population difference in area under the receiver operating characteristic curve (AUC) [@williamson2020b]. We interpret the R-squared-based importance as the proportion of the variability in the outcome explained by including a group of covariates. We interpret the AUC-based importance as the difference in our ability to discriminate between cases and controls based on using a group of covariates. Load the `vimp` package using the following code:
 
 ```{r load-vimp}
 ## only run the next line if you haven't already installed the dev version of vimp
@@ -1378,7 +1374,7 @@ var_set_labels <- c("No markers", "IgG + IgA", "IgG3", "T Cells", "Fx Ab", "IgG 
 for (i in 1:(length(var_set_names))) {
   this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
   # eval(parse(text = paste0("all_aucs_i <- as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ", function(x) x$aucs)))")))
-  eval(parse(text = paste0("all_aucs_i <- tibble::as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], "_", ifelse(i == 11, "1", "2"), ", function(x) get_all_aucs_lst(x, weights = weights_vaccine))))")))
+  eval(parse(text = paste0("all_aucs_i <- tibble::as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], "_", ifelse(i == 11, "1", "2"), ", function(x) get_all_aucs_lst(x, weights = weights_vaccine[folds == ", ifelse(i == 11, "1", "2"),"]))))")))
   all_aucs_i <- all_aucs_i %>%
     filter(!is.na(all_aucs_i$Learner))
   eval(parse(text = paste0("avg_aucs_", var_set_names[i]," <- all_aucs_i %>%
@@ -1402,7 +1398,9 @@ library("vimp")
 library("tidyr")
 library("tibble")
 library("dplyr")
+library("ggplot2")
 library("cowplot")
+theme_set(theme_cowplot())
 # create the forest plot of the specified measure for each of the top learner and SL from each assay combination
 plot_assays <- function(avgs, type = "auc", main_font_size_forest,
                         main_font_size_lab, sl_only = TRUE, immunoassay = TRUE, colors = NULL,
@@ -1533,7 +1531,7 @@ plot_assays <- function(avgs, type = "auc", main_font_size_forest,
 
 We ran the Super Learner algorithm for each of the 11 variable sets defined in Section 1 using the procedure defined in Section 2. We present the cross-validated AUC and the cross-validated $R^2$ for the overall Super Learner from each of the variable sets. These are provided in Figures \@ref(fig:sl-forest-plot-auc) and \@ref(fig:sl-forest-plot-r2), respectively. In each figure, the error bars are colored by immunoassay set: antibody (Ab) variables (black), no markers (yellow), T cell variables (green), and T cell and Ab variables (blue).
 
-In Figure \@ref(fig:sl-forest-plot-auc), we see improved performance of the Super Learner when including marker variables compared to baseline risk variables only. Indeed, the Super Learner using only baseline variables and no markers has a cross-validated AUC of `r (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC`. Other variable sets have a smaller estimated cross-validated AUC, but this is likely due to the small candidate library that we used for this analysis. The ordering of predictive performance fits our hypothesis that multiple types of immune response markers improve prediction. Our proposed estimator of HIV-1 infection risk among vaccinees, the cross-validated Super Learner, has an estimated AUC of `r (avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$AUC` based on all markers, with a 95\% confidence interval of `r paste0("[", (avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ll, ", ", (avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ul, "]")`. This is an improvement over the Super Learner based on only the baseline risk variables, with an estimated AUC of `r (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC` `r paste0("[", (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ll, ", ", (avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ul, "]")`.
+In Figure \@ref(fig:sl-forest-plot-auc), we see improved performance of the Super Learner when including marker variables compared to baseline risk variables only. Indeed, the Super Learner using only baseline variables and no markers has a cross-validated AUC of `r round((avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC, 3)`. Other variable sets have a smaller estimated cross-validated AUC, but this is likely due to the small candidate library that we used for this analysis. Our proposed estimator of HIV-1 infection risk among vaccinees, the cross-validated Super Learner, has an estimated AUC of `r round((avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$AUC, 3)` based on all markers, with a 95\% confidence interval of `r paste0("[", round((avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ll, 3), ", ", round((avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ul, 3), "]")`. This is not an improvement over the Super Learner based on only the baseline risk variables, with an estimated AUC of `r round((avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC, 3)` `r paste0("[", round((avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ll, 3), ", ", round((avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ul, 3), "]")`. These results must be interpreted with the large caveat that we have used a restricted set of learners in our Super Learner library to reduce computation time. A fuller set of learners is recommended for any publication-ready analysis (indeed, when we used the full library of learners in the full published analysis, the Super Learner based on all markers had an improved AUC over the Super Learner with baseline risk variables only).
 
 ```{r sl-forest-plot-auc, fig.cap = "Forest plot of cross-validated AUC for the Super Learner and the top individual learner for each assay combination.", fig.width = 20, fig.height = 8}
 # The palette with black:
@@ -1585,7 +1583,7 @@ In Figure \@ref(fig:sl-forest-plot-r2), we see that there is substantial estimat
 ## get the R-squareds
 for (i in 1:length(var_set_names)) {
   this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
-  eval(parse(text = paste0("all_r2s_i <- tibble::as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ifelse(i == 11, "_1", "_2"), ", function(x) get_all_r2s_lst(x, weights = weights_vaccine))))")))
+  eval(parse(text = paste0("all_r2s_i <- tibble::as_tibble(do.call(rbind.data.frame, lapply(sl_fits_varset_", var_set_names[i], ifelse(i == 11, "_1", "_2"), ", function(x) get_all_r2s_lst(x, weights = weights_vaccine[folds == ", ifelse(i == 11, "1", "2"),"]))))")))
   all_r2s_i <- all_r2s_i %>%
     filter(!is.na(all_r2s_i$Learner))
   eval(parse(text = paste0("avg_r2s_", var_set_names[i]," <- all_r2s_i %>%
@@ -1841,7 +1839,7 @@ vimp_tibble <- tibble::add_column(vimp_tibble, immunoassay_set = get_immunoassay
 ## save this object for easy loading
 ```
 
-The results based on cross-validated AUC are presented in Figure \@ref(fig:vimp-plot-auc). Here, we see that using the group of all marker variables results in an estimated increase in cross-validated AUC of nearly `r (vimp_tibble %>% filter(assay_grp == "All markers"))$est` over using the baseline risk variables only. Interestingly, the groups of IgG, IgA, IgG3, and T cell markers; IgG, IgA, and T cell markers; and T cell markers and those markers measured in functional antibody assays have estimated equivalent prediction performance. The next most important group appears to be those markers measured in functional antibody assays, with an estimated increase in cross-validated AUC of approximately `r (vimp_tibble %>% filter(assay_grp == "Fx Ab"))$est` compared to using baseline risk variables only. Adding all of the distinct antibody variable groups improves prediction performance compared to leaving any of the antibody groups out of the prediction algorithm.
+The results based on cross-validated AUC are presented in Figure \@ref(fig:vimp-plot-auc). Here, we see that using the group of all marker variables results in an estimated increase in cross-validated AUC of only `r round((vimp_tibble %>% filter(assay_grp == "All markers"))$est, 3)` over using the baseline risk variables only. Interestingly, the groups of IgG, IgA, IgG3, and T cell markers; IgG, IgA, and T cell markers; and T cell markers and those markers measured in functional antibody assays have estimated equivalent prediction performance. The most important group appears to be IgG3 markers, with an estimated increase in cross-validated AUC of approximately `r round((vimp_tibble %>% filter(assay_grp == "IgG3"))$est, 3)` compared to using baseline risk variables only. Again, these results must be interpreted with the large caveat that we have used a restricted set of learners in our Super Learner library to reduce computation time. A fuller set of learners is recommended for any publication-ready analysis.
 
 ```{r vimp-plot-auc, fig.cap = "Estimated variable importance (based on the difference in AUCs relative to a model with baseline exposure variables only) for each assay combination.", fig.height = 8, fig.width = 20}
 title_font_size <- 26
@@ -1886,7 +1884,7 @@ The main limitation of this analysis is that, to save computation time in this v
 
 # Appendix
 
-Code to reproduce the full Super Learning analysis is provided here. The original analysis of the HVTN 505 data [@neidich2019] used a previous version of the `vimp` package that did not require the two regression functions to be estimated on different splits of the data. That is likely the major difference between the results obtained using the new version of `vimp` (2.0.1) compared to the published analysis.
+Code to reproduce the full Super Learning analysis is provided here. The original analysis of the HVTN 505 data [@neidich2019] used a previous version of the `vimp` package that did not require the two regression functions to be estimated on different splits of the data (`vimp` version 2.0.1 now provides valid hypothesis tests). That is likely the major difference between the results obtained using the new version of `vimp` (2.0.1) compared to the published analysis.
 
 ```{r run-full-sl, eval = FALSE}
 ## load required libraries and functions
