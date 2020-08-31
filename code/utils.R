@@ -238,11 +238,10 @@ get_nms_group_all_antigens <- function(X, assays, assays_to_exclude = "") {
       vars[grepl(assays[i], names(X)) & !grepl(assays_to_exclude, names(X))] <- TRUE  
     } else {
       vars[grepl(assays[i], names(X))] <- TRUE
-      if (assays[i] == "phago") {
-        vars[grepl("ADCP1", names(X))] <- TRUE
-      }
     }
-    
+    if (assays[i] == "phago") {
+      vars[grepl("ADCP1", names(X))] <- TRUE
+    }
   }
   return(vars)
 }

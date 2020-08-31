@@ -6,6 +6,10 @@
 *.RData
 *.Rproj
 
+# Compiled stuff
+*.html
+*.pdf
+
 # Everything in the docs directory
 docs/*
 
@@ -14,6 +18,7 @@ data/*
 *.Rdata
 *.RData
 *.rds
+*.csv
 
 ## Everything in the results directory
 results/*
