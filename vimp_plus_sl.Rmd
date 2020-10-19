@@ -4,6 +4,7 @@ author: "Brian Williamson"
 date: "`r Sys.Date()`"
 output:
   bookdown::html_document2:
+  # bookdown::pdf_document2:
     toc: true
 
 references:
@@ -138,6 +139,7 @@ references:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+# knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80), tidy = TRUE)
 ```
 
 # Introduction
@@ -167,7 +169,7 @@ We performed some data cleaning and a dimension reduction step prior to the stat
 * For variables with a positive response call (IgG, IgG3, IgA, R2a, R3a, phago, Tier 1 nAb) require $>$ 20% vaccine group positive response.  For all variables, require a significantly greater response in the vaccine group than the placebo group to include in the analysis (Wilcoxon rank sum test 2-sided p $<$ 0.01).  Note that no Tier 1 nAb variables are included because none met the $>$ 20% vaccine group response criterion.
 * For all variables in an interpretable variable set (defined by assay and antigen) that are for vaccine-mismatched antigens, aggregate the variables into two scores to be kept for CoR analysis: PC1 and the maximal diversity weighted score (MDWS).
 
-The data are included in the R package HVTN505. Install the package from `HVTN505_2019-4-25.tar.gz` using the following code:
+The data are included in the R package HVTN505. The data are available at the [Statistical Center for HIV/AIDS Research and Prevention](https://atlas.scharp.org/cpas/project/HVTN%20Public%20Data/HVTN%20505/begin.view) website. Install the package from `HVTN505_2019-4-25.tar.gz` using the following code:
 
 ```{r install-hvtn505}
 # only run this line if the package isn't already installed; edit the file path

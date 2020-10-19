@@ -17,6 +17,10 @@ data/*
 
 ## Everything in the results directory
 results/*
+reports/*
+test/*
+*.pdf
+plots/*
 
 # Example code in package build process
 *-Ex.R
