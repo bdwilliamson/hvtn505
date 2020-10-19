@@ -75,7 +75,7 @@ var_set_igg_iga_igg3 <- get_nms_group_all_antigens(X_markers, assays = c("IgG", 
 # 7. 1+2+4
 var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8"), assays_to_exclude = "IgG3") 
 # 8. 1+2+3+4
-var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "CD4", "CD8"), assays_to_exclude = "IgG3") 
+var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "CD4", "CD8")) 
 # 9. 1+2+3+5
 var_set_igg_iga_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "phago", "R2a", "R3a"))
 # 10. 1+4+5
