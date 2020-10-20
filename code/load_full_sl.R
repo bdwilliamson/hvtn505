@@ -12,11 +12,14 @@ library("ggplot2")
 library("cowplot")
 theme_set(cowplot::theme_cowplot())
 # install if anything has changed
-#  devtools::install_github("bdwilliamson/vimp@v2.1.1.1", upgrade = "never")
+#  devtools::install_github("bdwilliamson/vimp", upgrade = "never")
+#  devtools::install_github("bdwilliamson/vimp@v2.1.2", upgrade = "never")
 library("vimp")
 library("HVTN505")
 library("kyotil")
 method <- "method.CC_nloglik" # since SuperLearner relies on this to be in GlobalEnv
+library("xgboost")
+library("ranger")
 source("code/plot_assays.R")
 source("code/utils.R")
 source("code/sl_screens.R")
@@ -87,7 +90,7 @@ lapply(sl_fits_varset_1_baseline_exposure, function(x) sort(colMeans(x$fit$coef)
 lapply(sl_fits_varset_11_all, function(x) sort(colMeans(x$fit$coef), decreasing=TRUE))
 
 # set up SL library for IPCW
-sl_lib_ipcw <- c("SL.glm.skinny", "SL.stumpboost", "SL.mean")
+sl_lib_ipcw <- methods
 
 # average the AUCs over the 10 folds, for each
 var_set_labels <- c("No markers", "IgG + IgA", "IgG3", "T Cells", "Fx Ab", "IgG + IgA + IgG3",
@@ -100,7 +103,7 @@ for (i in 1:(length(var_set_names))) {
                            var_set_names[i], 
                            ", function(x) get_all_aucs_lst(sl_fit_lst = x, weights = weights_vaccine, 
                            scale = 'identity', C = C, Z = Z, SL.library = sl_lib_ipcw,
-                           cvControl = list(V = 5)))))")))
+                           cvControl = list(V = 3)))))")))
   all_aucs_i <- all_aucs_i %>% 
     filter(!is.na(all_aucs_i$Learner))
   eval(parse(text = paste0("avg_aucs_", var_set_names[i]," <- all_aucs_i %>% 
