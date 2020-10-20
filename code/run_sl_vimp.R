@@ -59,8 +59,8 @@ for (a in c("age", "BMI", "bhvrisk")) {
 }
 
 ## set up X, Y for super learning
-X_markers <- dat.505 %>% 
-  select(var.super$varname, paste0(var.super$varname, "_bin")) 
+X_markers <- dat.505 %>%
+  select(var.super$varname, paste0(var.super$varname, "_bin"))
 
 ## only include the following variable sets:
 assays <- unique(var.super$assay)
@@ -78,9 +78,9 @@ var_set_fxab <- get_nms_group_all_antigens(X_markers, assays = c("phago", "R2a",
 # 6. 1+2+3
 var_set_igg_iga_igg3 <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3"))
 # 7. 1+2+4
-var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8"), assays_to_exclude = "IgG3") 
+var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8"), assays_to_exclude = "IgG3")
 # 8. 1+2+3+4
-var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "CD4", "CD8"), assays_to_exclude = "IgG3") 
+var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "CD4", "CD8")) 
 # 9. 1+2+3+5
 var_set_igg_iga_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "phago", "R2a", "R3a"))
 # 10. 1+4+5
@@ -93,12 +93,12 @@ var_set_igg_iga_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c(
 var_set_igg3_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "CD4", "CD8", "phago", "R2a", "R3a"))
 
 var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_igg3","4_tcells", "5_fxab",
-                   "6_igg_iga_igg3", "7_igg_iga_tcells", "8_igg_iga_igg3_tcells", 
+                   "6_igg_iga_igg3", "7_igg_iga_tcells", "8_igg_iga_igg3_tcells",
                    "9_igg_iga_igg3_fxab", "10_tcells_fxab",
                    "11_all",
                    "12_igg3_fxab", "13_igg_iga_tcells_fxab", "14_igg3_tcells_fxab")
 
-## set up a matrix of all 
+## set up a matrix of all
 var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_igg3, var_set_tcells, var_set_fxab,
                         var_set_igg_iga_igg3, var_set_igg_iga_tcells, var_set_igg_iga_igg3_tcells,
                         var_set_igg_iga_igg3_fxab, var_set_tcells_fxab,
@@ -116,23 +116,23 @@ job_id <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
 vars_vimp <- all_vars_mat[job_id, ]
 
 ## remove the correct markers for vimp
-X_markers_vimp <- X_markers %>% 
+X_markers_vimp <- X_markers %>%
   select(names(X_markers)[vars_vimp])
-X_exposure <- dat.505 %>% 
+X_exposure <- dat.505 %>%
   select(age, BMI, bhvrisk)
 X <- data.frame(trt = dat.505$trt, X_exposure, X_markers_vimp)
 weights <- dat.505$wt
 Y <- dat.505$case
-vaccinees <- cbind.data.frame(Y, weights, X) %>% 
-  filter(trt == 1) %>% 
+vaccinees <- cbind.data.frame(Y, weights, X) %>%
+  filter(trt == 1) %>%
   select(-trt)
 Y_vaccine <- vaccinees$Y
 weights_vaccine <- vaccinees$weights
-X_vaccine <- vaccinees %>% 
+X_vaccine <- vaccinees %>%
   select(-Y, -weights)
 
 V_outer <- 5
-V_inner <- length(Y_vaccine) - 1 
+V_inner <- length(Y_vaccine) - 1
 
 ## set up SL library; if job_id == 1, then don't need screens
 if (job_id == 1) {
