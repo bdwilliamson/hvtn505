@@ -8,7 +8,9 @@ library("SuperLearner")
 library("cvAUC")
 library("tidyr")
 library("dplyr")
+library("ggplot2")
 library("cowplot")
+theme_set(cowplot::theme_cowplot())
 # install if anything has changed
 #  devtools::install_github("bdwilliamson/vimp@v2.1.1.1", upgrade = "never")
 library("vimp")
@@ -113,7 +115,7 @@ avg_aucs <- bind_rows(avg_aucs_1_baseline_exposure, avg_aucs_2_igg_iga, avg_aucs
                       avg_aucs_7_igg_iga_tcells, avg_aucs_8_igg_iga_igg3_tcells,
                       avg_aucs_9_igg_iga_igg3_fxab, avg_aucs_10_tcells_fxab, 
                       avg_aucs_11_all)
-
+saveRDS(avg_aucs, file = "results/auc_results/avg_aucs.rds")
 # forest plot of AUCs; this one is super nasty, but shows that it works
 full_forest_plot_auc <- avg_aucs %>% 
   ggplot(aes(x = AUC, y = factor(paste0(Screen, "_", Learner, "_", assay), levels = paste0(Screen, "_", Learner, "_", assay)[order(AUC)]))) + 
@@ -130,14 +132,20 @@ title_font_size <- 18
 main_font_size <- 5
 fig_width <- fig_height <- 2590
 y_title <- 0.96
-auc_forest_plot <- plot_assays(avg_aucs, type = "auc", main_font_size, main_font_size, sl_only = FALSE, immunoassay = FALSE)
-png(paste0(plots_dir, "cv_auc_forest_plot_sl_plus_top_learner.png"), width = 2*fig_width, height = fig_height, units = "px", res = 300)
-plot_grid(auc_forest_plot$top_learner_nms_plot, auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
+auc_forest_plot <- plot_assays(avgs = avg_aucs, type = "auc", 
+                               main_font_size_forest = main_font_size * 3, 
+                               main_font_size_lab = main_font_size, 
+                               sl_only = FALSE, immunoassay = FALSE,
+                               point_size = 1.5)
+auc_final_plot <- plot_grid(auc_forest_plot$top_learner_nms_plot, auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
   draw_label("Assay combination", size = title_font_size, x = 0.075, y = y_title) +
   draw_label("Algorithm", size = title_font_size, x = 0.175, y = y_title) +
   draw_label("Screen", size = title_font_size, x = 0.25, y = y_title) +
   draw_label("CV-AUC [95% CI]", size = title_font_size, x = 0.43, y = y_title)
-dev.off()
+ggsave(filename = paste0(plots_dir, "cv_auc_forest_plot_sl_plus_top_learner.png"),
+       plot = auc_final_plot, 
+       width = 45, height = 25, 
+       units = "cm")
 
 # add on immunoassay set
 avg_aucs <- avg_aucs %>% 
@@ -148,11 +156,12 @@ main_font_size_forest <- 31
 main_font_size_lab <- 9.3
 fig_width <- fig_height <- 2590
 y_title <- 0.945
-point_size <- 5
-auc_forest_plot <- plot_assays(avg_aucs, type = "auc", main_font_size_forest = main_font_size_forest, 
-                                   main_font_size_lab = main_font_size_lab,
-                                   sl_only = TRUE, immunoassay = TRUE,
-                                   colors = cbbPalette,
+point_size <- 2
+auc_forest_plot <- plot_assays(avgs = avg_aucs, type = "auc", 
+                               main_font_size_forest = main_font_size_forest, 
+                               main_font_size_lab = main_font_size_lab,
+                               sl_only = TRUE, immunoassay = TRUE,
+                               colors = cbbPalette,
                                point_size = point_size)
 ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl.png"),
        plot = plot_grid(auc_forest_plot$top_learner_nms_plot, 
