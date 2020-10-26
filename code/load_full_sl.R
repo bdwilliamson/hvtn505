@@ -90,7 +90,7 @@ lapply(sl_fits_varset_1_baseline_exposure, function(x) sort(colMeans(x$fit$coef)
 lapply(sl_fits_varset_11_all, function(x) sort(colMeans(x$fit$coef), decreasing=TRUE))
 
 # set up SL library for IPCW
-sl_lib_ipcw <- methods
+sl_lib_ipcw <- methods[!grepl("SL.glmnet", methods) & !grepl("SL.step.interaction.skinny", methods)]
 
 # average the AUCs over the 10 folds, for each
 var_set_labels <- c("No markers", "IgG + IgA", "IgG3", "T Cells", "Fx Ab", "IgG + IgA + IgG3",
@@ -103,7 +103,7 @@ for (i in 1:(length(var_set_names))) {
                            var_set_names[i], 
                            ", function(x) get_all_aucs_lst(sl_fit_lst = x, weights = weights_vaccine, 
                            scale = 'identity', C = C, Z = Z, SL.library = sl_lib_ipcw,
-                           cvControl = list(V = 3)))))")))
+                           cvControl = list(V = 4)))))")))
   all_aucs_i <- all_aucs_i %>% 
     filter(!is.na(all_aucs_i$Learner))
   eval(parse(text = paste0("avg_aucs_", var_set_names[i]," <- all_aucs_i %>% 
@@ -135,12 +135,12 @@ title_font_size <- 18
 main_font_size <- 5
 fig_width <- fig_height <- 2590
 y_title <- 0.96
-auc_forest_plot <- plot_assays(avgs = avg_aucs, type = "auc", 
+auc_forest_plot_init <- plot_assays(avgs = avg_aucs, type = "auc", 
                                main_font_size_forest = main_font_size * 3, 
                                main_font_size_lab = main_font_size, 
                                sl_only = FALSE, immunoassay = FALSE,
                                point_size = 1.5)
-auc_final_plot <- plot_grid(auc_forest_plot$top_learner_nms_plot, auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
+auc_final_plot <- plot_grid(auc_forest_plot_init$top_learner_nms_plot, auc_forest_plot_init$top_learner_plot, nrow = 1, align = "h") +
   draw_label("Assay combination", size = title_font_size, x = 0.075, y = y_title) +
   draw_label("Algorithm", size = title_font_size, x = 0.175, y = y_title) +
   draw_label("Screen", size = title_font_size, x = 0.25, y = y_title) +

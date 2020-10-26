@@ -13,14 +13,14 @@ library("glmnet")
 library("xgboost")
 library("earth")
 library("dplyr")
-## only run this if necessary
-# devtools::install_github("benkeser/cvma")
-# library("cvma")
 ## only run this if something has changed
 # install.packages("HVTN505_2019-4-25.tar.gz", type = "source", repos = NULL)
 library("HVTN505")
 library("kyotil")
 library("argparse")
+# only run this if something has changed
+# devtools::install_github("bdwilliamson/vimp", update = "never")
+library("vimp")
 
 ## set up code directory
 if (!is.na(Sys.getenv("RSTUDIO", unset = NA))) { # if running locally

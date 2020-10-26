@@ -57,7 +57,7 @@ cv_auc <- function(preds, Y, folds, scale = "identity",
   }))
   est <- colMeans(ests_cis)[1]
   se <- colMeans(ests_cis)[4]
-  ci <- vimp_ci(est, se, scale = scale, level = 0.95)
+  ci <- vimp::vimp_ci(est, se, scale = scale, level = 0.95)
   return(list(auc = est, ci = ci))
 }
 # get the CV-AUC for all learners fit with SL
@@ -214,7 +214,7 @@ cv_r2 <- function(preds, Y, folds, scale = "identity", weights = rep(1, length(Y
   }))
   est <- colMeans(ests_cis)[1]
   se <- colMeans(ests_cis)[4]
-  ci <- vimp_ci(est = est, se = se, scale = scale, level = 0.95)
+  ci <- vimp::vimp_ci(est = est, se = se, scale = scale, level = 0.95)
   return(list(r2 = est, ci = ci))
 }
 # get the CV-R^2 for a super learner fitted object
@@ -336,13 +336,15 @@ get_all_r2s_lst <- function(sl_fit_lst, scale = "identity", weights = rep(1, len
 #         by excluding large objects)
 run_cv_sl_once <- function(seed = 1, Y = NULL, X_mat = NULL, family = "binomial",
                            obsWeights = rep(1, length(Y)), sl_lib = "SL.ranger", method = "method.CC_nloglik",
-                           cvControl = list(V = 5), innerCvControl = list(V = 5), vimp = FALSE) {
+                           cvControl = list(V = 5), innerCvControl = list(V = 5), vimp = FALSE,
+                           C = rep(1, length(Y)), Z = NULL, z_lib = "SL.ranger") {
   set.seed(seed)
   fit <- SuperLearner::CV.SuperLearner(Y = Y, X = X_mat, family = family,
                                                    obsWeights = obsWeights, SL.library = sl_lib,
                                                    method = method, cvControl = cvControl,
                                                    innerCvControl = innerCvControl)
-  aucs <- get_all_aucs(fit)
+  aucs <- get_all_aucs(sl_fit = fit, scale = "identity", weights = obsWeights,
+                       C = C, Z = Z, SL.library = z_lib)
   ret_lst <- list(fit = fit, folds = fit$folds, aucs = aucs)
   if (vimp) {
     ret_lst <- list(fit = fit$SL.predict, folds = fit$folds, aucs = aucs)

@@ -278,9 +278,51 @@ SL.step.skinny <- function(Y, X, newX, family, obsWeights, ...){
   return(SL.step.fit)
 }
 
+my_SL.xgboost <- function (Y, X, newX, family, obsWeights, id, ntrees = 1000, 
+                           max_depth = 4, shrinkage = 0.1, minobspernode = 10, params = list(), 
+                           nthread = 1, verbose = 0, save_period = NULL, ...) {
+  if (packageVersion("xgboost") < 0.6) 
+    stop("SL.xgboost requires xgboost version >= 0.6, try help('SL.xgboost') for details")
+  if (!is.matrix(X)) {
+    X = model.matrix(~. - 1, X)
+  }
+  xgmat = xgboost::xgb.DMatrix(data = X, label = Y, weight = obsWeights)
+  if (family$family == "gaussian") {
+    if (packageVersion("xgboost") < "1.1.1.1") {
+      objective <- "reg:linear"
+    }
+    else {
+      objective <- "reg:squarederror"
+    }
+    model = xgboost::xgboost(data = xgmat, objective = objective, 
+                             nrounds = ntrees, max_depth = max_depth, min_child_weight = minobspernode, 
+                             eta = shrinkage, verbose = verbose, nthread = nthread, 
+                             params = params, save_period = save_period)
+  }
+  if (family$family == "binomial") {
+    model = xgboost::xgboost(data = xgmat, objective = "binary:logistic", 
+                             nrounds = ntrees, max_depth = max_depth, min_child_weight = minobspernode, 
+                             eta = shrinkage, verbose = verbose, nthread = nthread, 
+                             params = params, save_period = save_period)
+  }
+  if (family$family == "multinomial") {
+    model = xgboost::xgboost(data = xgmat, objective = "multi:softmax", 
+                             nrounds = ntrees, max_depth = max_depth, min_child_weight = minobspernode, 
+                             eta = shrinkage, verbose = verbose, num_class = length(unique(Y)), 
+                             nthread = nthread, params = params, save_period = save_period)
+  }
+  if (!is.matrix(newX)) {
+    newX = model.matrix(~. - 1, newX)
+  }
+  pred = predict(model, newdata = newX)
+  fit = list(object = model)
+  class(fit) = c("SL.xgboost")
+  out = list(pred = pred, fit = fit)
+  return(out)
+}
 # boosted decision stumps
 SL.stumpboost <- function(Y, X, newX, family, obsWeights, ...){
-  fit <- SL.xgboost(Y = Y, X = X, newX = newX, family = family, obsWeights = obsWeights, 
+  fit <- my_SL.xgboost(Y = Y, X = X, newX = newX, family = family, obsWeights = obsWeights, 
                     max_depth = 1, # so it's only a stump
                     ...)
   return(fit)
