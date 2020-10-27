@@ -19,7 +19,7 @@ library("HVTN505")
 library("kyotil")
 library("argparse")
 # only run this if something has changed
-# devtools::install_github("bdwilliamson/vimp", update = "never")
+# devtools::install_github("bdwilliamson/vimp", upgrade = "never")
 library("vimp")
 
 ## set up code directory
@@ -54,7 +54,7 @@ for (a in c("age", "BMI", "bhvrisk")) {
 }
 
 ## set up X, Y for super learning
-X_markers <- dat.505 %>% 
+X_markers <- dat.505 %>%
   select(var.super$varname, paste0(var.super$varname, "_bin"))
 
 ## only include the following variable sets:
@@ -73,9 +73,9 @@ var_set_fxab <- get_nms_group_all_antigens(X_markers, assays = c("phago", "R2a",
 # 6. 1+2+3
 var_set_igg_iga_igg3 <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3"))
 # 7. 1+2+4
-var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8"), assays_to_exclude = "IgG3") 
+var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8"), assays_to_exclude = "IgG3")
 # 8. 1+2+3+4
-var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "CD4", "CD8")) 
+var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "CD4", "CD8"))
 # 9. 1+2+3+5
 var_set_igg_iga_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "phago", "R2a", "R3a"))
 # 10. 1+4+5
@@ -88,12 +88,12 @@ var_set_igg_iga_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c(
 var_set_igg3_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "CD4", "CD8", "phago", "R2a", "R3a"))
 
 var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_igg3","4_tcells", "5_fxab",
-                   "6_igg_iga_igg3", "7_igg_iga_tcells", "8_igg_iga_igg3_tcells", 
+                   "6_igg_iga_igg3", "7_igg_iga_tcells", "8_igg_iga_igg3_tcells",
                    "9_igg_iga_igg3_fxab", "10_tcells_fxab",
                    "11_all",
                    "12_igg3_fxab", "13_igg_iga_tcells_fxab", "14_igg3_tcells_fxab")
 
-## set up a matrix of all 
+## set up a matrix of all
 var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_igg3, var_set_tcells, var_set_fxab,
                         var_set_igg_iga_igg3, var_set_igg_iga_tcells, var_set_igg_iga_igg3_tcells,
                         var_set_igg_iga_igg3_fxab, var_set_tcells_fxab,
@@ -103,24 +103,26 @@ job_id <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
 this_var_set <- var_set_matrix[job_id, ]
 cat("\n Running ", var_set_names[job_id], "\n")
 
-X_markers_varset <- X_markers %>% 
+X_markers_varset <- X_markers %>%
   select(names(X_markers)[this_var_set])
 
-X_exposure <- dat.505 %>% 
+X_exposure <- dat.505 %>%
   select(age, BMI, bhvrisk)
 X <- data.frame(trt = dat.505$trt, X_exposure, X_markers_varset)
 weights <- dat.505$wt
 Y <- dat.505$case
-vaccinees <- cbind.data.frame(Y, weights, X) %>% 
-  filter(trt == 1) %>% 
+vaccinees <- cbind.data.frame(Y, weights, X) %>%
+  filter(trt == 1) %>%
   select(-trt)
 Y_vaccine <- vaccinees$Y
 weights_vaccine <- vaccinees$weights
-X_vaccine <- vaccinees %>% 
+X_vaccine <- vaccinees %>%
   select(-Y, -weights)
+C <- rep(1, length(Y_vaccine))
+Z <- data.frame(Y = Y_vaccine, X_vaccine %>% select(age, BMI, bhvrisk))
 
 V_outer <- 5
-V_inner <- length(Y_vaccine) - 1 
+V_inner <- length(Y_vaccine) - 1
 
 ## get the SL library
 ## if var_set_none, then don't need screens; otherwise do
@@ -137,7 +139,9 @@ if (job_id == 1) {
 set.seed(4747)
 seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
 fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X_vaccine, family = "binomial",
+                           Z = Z, C = C, z_lib = methods,
                            obsWeights = weights_vaccine,
+                           scale = "logit",
                            sl_lib = sl_lib, # this comes from sl_screens.R
                            method = "method.CC_nloglik",
                            cvControl = list(V = V_outer, stratifyCV = TRUE),
@@ -146,3 +150,5 @@ fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X
                            mc.cores = num_cores
 )
 saveRDS(fits, paste0("sl_fits_varset_", var_set_names[job_id], ".rds"))
+warnings()
+rlang::last_error()

@@ -337,13 +337,13 @@ get_all_r2s_lst <- function(sl_fit_lst, scale = "identity", weights = rep(1, len
 run_cv_sl_once <- function(seed = 1, Y = NULL, X_mat = NULL, family = "binomial",
                            obsWeights = rep(1, length(Y)), sl_lib = "SL.ranger", method = "method.CC_nloglik",
                            cvControl = list(V = 5), innerCvControl = list(V = 5), vimp = FALSE,
-                           C = rep(1, length(Y)), Z = NULL, z_lib = "SL.ranger") {
+                           C = rep(1, length(Y)), Z = NULL, z_lib = "SL.ranger", scale = "identity") {
   set.seed(seed)
   fit <- SuperLearner::CV.SuperLearner(Y = Y, X = X_mat, family = family,
                                                    obsWeights = obsWeights, SL.library = sl_lib,
                                                    method = method, cvControl = cvControl,
                                                    innerCvControl = innerCvControl)
-  aucs <- get_all_aucs(sl_fit = fit, scale = "identity", weights = obsWeights,
+  aucs <- get_all_aucs(sl_fit = fit, scale = scale, weights = obsWeights,
                        C = C, Z = Z, SL.library = z_lib)
   ret_lst <- list(fit = fit, folds = fit$folds, aucs = aucs)
   if (vimp) {
