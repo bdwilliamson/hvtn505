@@ -1,9 +1,9 @@
 #!/usr/local/bin/Rscript
 
-## run the super learner
-## make sure that it is CV.SL, averaged over 10 random starts
+# run the super learner
+# make sure that it is CV.SL, averaged over 10 random starts
 
-## load required libraries and functions
+# load required libraries and functions
 library("methods")
 library("SuperLearner")
 # library("future")
@@ -13,16 +13,17 @@ library("glmnet")
 library("xgboost")
 library("earth")
 library("dplyr")
-## only run this if something has changed
+# only run this if something has changed
 # install.packages("HVTN505_2019-4-25.tar.gz", type = "source", repos = NULL)
 library("HVTN505")
 library("kyotil")
 library("argparse")
 # only run this if something has changed
 # devtools::install_github("bdwilliamson/vimp", upgrade = "never")
+# load vimp from user library (to make sure it has correct version)
 library("vimp", lib.loc = .libPaths()[2])
 
-## set up code directory
+# set up code directory
 if (!is.na(Sys.getenv("RSTUDIO", unset = NA))) { # if running locally
   code_dir <- "code/"
 } else {
@@ -33,18 +34,18 @@ print(num_cores)
 source(paste0(code_dir, "sl_screens.R")) # set up the screen/algorithm combinations
 source(paste0(code_dir, "utils.R")) # get CV-AUC for all algs
 
-## ---------------------------------------------------------------------------------
-## pre-process the data
-## ---------------------------------------------------------------------------------
-## read in the full dataset
+# ---------------------------------------------------------------------------------
+# pre-process the data
+# ---------------------------------------------------------------------------------
+# read in the full dataset
 data("dat.505", package = "HVTN505")
-## read in the super learner variables
+# read in the super learner variables
 data("var.super", package = "HVTN505") # even if there is a warning message, it still exists
-## note that "var.super" contains individual vars for vaccine-matched antigens,
-## and for vaccine-mismatched antigens, has either individual var (if only one)
-## or PC1 and/or MDW (only PC1 if cor(PC1, MDW) > 0.9)
+# note that "var.super" contains individual vars for vaccine-matched antigens,
+# and for vaccine-mismatched antigens, has either individual var (if only one)
+# or PC1 and/or MDW (only PC1 if cor(PC1, MDW) > 0.9)
 
-## scale vaccine recipients to have mean 0, sd 1 for all vars
+# scale vaccine recipients to have mean 0, sd 1 for all vars
 for (a in var.super$varname) {
   dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1]))
   dat.505[[a%.%"_bin"]] <- scale(dat.505[[a%.%"_bin"]], center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]), scale = sd(dat.505[[a%.%"_bin"]][dat.505$trt == 1]))
@@ -53,11 +54,11 @@ for (a in c("age", "BMI", "bhvrisk")) {
   dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1]))
 }
 
-## set up X, Y for super learning
+# set up X, Y for super learning
 X_markers <- dat.505 %>%
   select(var.super$varname, paste0(var.super$varname, "_bin"))
 
-## only include the following variable sets:
+# only include the following variable sets:
 assays <- unique(var.super$assay)
 antigens <- unique(var.super$antigen)
 # 1. None (baseline variables only)
@@ -82,7 +83,7 @@ var_set_igg_iga_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("I
 var_set_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "CD8", "phago", "R2a", "R3a"))
 # 11. All
 var_set_all <- rep(TRUE, ncol(X_markers))
-## 12--14: extra runs to get variable importance
+# 12--14: extra runs to get variable importance
 var_set_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "phago", "R2a", "R3a"))
 var_set_igg_iga_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8", "phago", "R2a", "R3a"), assays_to_exclude = "IgG3")
 var_set_igg3_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "CD4", "CD8", "phago", "R2a", "R3a"))
@@ -93,7 +94,7 @@ var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_igg3","4_tcells", "5_f
                    "11_all",
                    "12_igg3_fxab", "13_igg_iga_tcells_fxab", "14_igg3_tcells_fxab")
 
-## set up a matrix of all
+# set up a matrix of all
 var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_igg3, var_set_tcells, var_set_fxab,
                         var_set_igg_iga_igg3, var_set_igg_iga_tcells, var_set_igg_iga_igg3_tcells,
                         var_set_igg_iga_igg3_fxab, var_set_tcells_fxab,
@@ -124,18 +125,18 @@ Z <- data.frame(Y = Y_vaccine, X_vaccine %>% select(age, BMI, bhvrisk))
 V_outer <- 5
 V_inner <- length(Y_vaccine) - 1
 
-## get the SL library
-## if var_set_none, then don't need screens; otherwise do
+# get the SL library
+# if var_set_none, then don't need screens; otherwise do
 if (job_id == 1) {
   sl_lib <- methods
 } else {
   sl_lib <- SL_library
 }
-## ---------------------------------------------------------------------------------
-## run super learner, with leave-one-out cross-validation and all screens
-## do 10 random starts, average over these
-## ---------------------------------------------------------------------------------
-## ensure reproducibility
+# ---------------------------------------------------------------------------------
+# run super learner, with leave-one-out cross-validation and all screens
+# do 10 random starts, average over these
+# ---------------------------------------------------------------------------------
+# ensure reproducibility
 set.seed(4747)
 seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
 fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X_vaccine, family = "binomial",

@@ -1,8 +1,8 @@
 #!/usr/local/bin/Rscript
-## run the super learner for variable importance
-## make sure that it is CV.SL, averaged over 10 random starts
+# run the super learner for variable importance
+# make sure that it is CV.SL, averaged over 10 random starts
 
-## load required libraries and functions
+# load required libraries and functions
 library("methods")
 library("SuperLearner")
 # library("future")
@@ -12,10 +12,11 @@ library("glmnet")
 library("xgboost")
 library("earth")
 library("dplyr")
-## only run this if necessary
-# devtools::install_github("benkeser/cvma")
-# library("cvma")
-## only run this if something has changed
+# only run this if necessary
+# debtools::install_github("bdwilliamson/vimp", upgrade = "never")
+# load vimp from user library (to make sure it has correct version)
+library("vimp", lib.loc = .libPaths()[2])
+# only run this if something has changed
 # install.packages("HVTN505_2019-4-9.tar.gz", type = "source", repos = NULL)
 library("HVTN505")
 library("kyotil")
@@ -25,7 +26,7 @@ parser <- ArgumentParser()
 parser$add_argument("--risk-type", default = "r_squared", help = "the risk type to use")
 args <- parser$parse_args()
 
-## set up code directory
+# set up code directory
 if (!is.na(Sys.getenv("RSTUDIO", unset = NA))) { # if running locally
   code_dir <- "code/"
   results_dir <- "results/"
@@ -38,18 +39,18 @@ print(num_cores)
 source(paste0(code_dir, "sl_screens.R")) # set up the screen/algorithm combinations
 source(paste0(code_dir, "utils.R")) # get CV-AUC for all algs
 
-## ---------------------------------------------------------------------------------
-## pre-process the data
-## ---------------------------------------------------------------------------------
-## read in the full dataset
+# ---------------------------------------------------------------------------------
+# pre-process the data
+# ---------------------------------------------------------------------------------
+# read in the full dataset
 data("dat.505", package = "HVTN505")
-## read in the super learner variables
+# read in the super learner variables
 data("var.super", package = "HVTN505") # even if there is a warning message, it still exists
-## note that "var.super" contains individual vars for vaccine-matched antigens,
-## and for vaccine-mismatched antigens, has either individual var (if only one)
-## or PC1 and/or MDW (only PC1 if cor(PC1, MDW) > 0.9)
+# note that "var.super" contains individual vars for vaccine-matched antigens,
+# and for vaccine-mismatched antigens, has either individual var (if only one)
+# or PC1 and/or MDW (only PC1 if cor(PC1, MDW) > 0.9)
 
-## scale vaccine recipients to have mean 0, sd 1 for all vars
+# scale vaccine recipients to have mean 0, sd 1 for all vars
 for (a in var.super$varname) {
   dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1]))
   dat.505[[a%.%"_bin"]] <- scale(dat.505[[a%.%"_bin"]], center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]), scale = sd(dat.505[[a%.%"_bin"]][dat.505$trt == 1]))
@@ -58,11 +59,11 @@ for (a in c("age", "BMI", "bhvrisk")) {
   dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1]))
 }
 
-## set up X, Y for super learning
+# set up X, Y for super learning
 X_markers <- dat.505 %>%
   select(var.super$varname, paste0(var.super$varname, "_bin"))
 
-## only include the following variable sets:
+# only include the following variable sets:
 assays <- unique(var.super$assay)
 antigens <- unique(var.super$antigen)
 # 1. None (baseline variables only)
@@ -80,14 +81,14 @@ var_set_igg_iga_igg3 <- get_nms_group_all_antigens(X_markers, assays = c("IgG", 
 # 7. 1+2+4
 var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8"), assays_to_exclude = "IgG3")
 # 8. 1+2+3+4
-var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "CD4", "CD8")) 
+var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "CD4", "CD8"))
 # 9. 1+2+3+5
 var_set_igg_iga_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "phago", "R2a", "R3a"))
 # 10. 1+4+5
 var_set_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "CD8", "phago", "R2a", "R3a"))
 # 11. All
 var_set_all <- rep(TRUE, ncol(X_markers))
-## 12--14: extra runs to get variable importance
+# 12--14: extra runs to get variable importance
 var_set_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "phago", "R2a", "R3a"))
 var_set_igg_iga_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8", "phago", "R2a", "R3a"), assays_to_exclude = "IgG3")
 var_set_igg3_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "CD4", "CD8", "phago", "R2a", "R3a"))
@@ -98,7 +99,7 @@ var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_igg3","4_tcells", "5_f
                    "11_all",
                    "12_igg3_fxab", "13_igg_iga_tcells_fxab", "14_igg3_tcells_fxab")
 
-## set up a matrix of all
+# set up a matrix of all
 var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_igg3, var_set_tcells, var_set_fxab,
                         var_set_igg_iga_igg3, var_set_igg_iga_tcells, var_set_igg_iga_igg3_tcells,
                         var_set_igg_iga_igg3_fxab, var_set_tcells_fxab,
@@ -115,7 +116,7 @@ all_vars_mat <- rbind(var_set_matrix, group_var_mat, indiv_var_mat)
 job_id <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
 vars_vimp <- all_vars_mat[job_id, ]
 
-## remove the correct markers for vimp
+# remove the correct markers for vimp
 X_markers_vimp <- X_markers %>%
   select(names(X_markers)[vars_vimp])
 X_exposure <- dat.505 %>%
@@ -130,27 +131,29 @@ Y_vaccine <- vaccinees$Y
 weights_vaccine <- vaccinees$weights
 X_vaccine <- vaccinees %>%
   select(-Y, -weights)
+C <- rep(1, length(Y_vaccine))
+Z <- data.frame(Y = Y_vaccine, X_vaccine %>% select(age, BMI, bhvrisk))
 
 V_outer <- 5
 V_inner <- length(Y_vaccine) - 1
 
-## set up SL library; if job_id == 1, then don't need screens
+# set up SL library; if job_id == 1, then don't need screens
 if (job_id == 1) {
   sl_lib <- methods
 } else {
   sl_lib <- SL_library
 }
 
-## ---------------------------------------------------------------------------------
-## run super learner, with leave-one-out cross-validation and all screens
-## do 10 random starts, average over these
-## ---------------------------------------------------------------------------------
-## ensure reproducibility
+# ---------------------------------------------------------------------------------
+# run super learner, with leave-one-out cross-validation and all screens
+# do 10 random starts, average over these
+# ---------------------------------------------------------------------------------
+# ensure reproducibility
 set.seed(4747)
 seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts (same as full SL)
 
-## if risk_type == "r_squared", then use the full fitted values as the outcome
-## otherwise, use Y_vaccine
+# if risk_type == "r_squared", then use the full fitted values as the outcome
+# otherwise, use Y_vaccine
 if (args$risk_type == "r_squared") {
   full_fits <- readRDS(paste0(results_dir, "sl_fits_varset_8_all.rds"))
   fits <- parallel::mclapply(seeds, FUN = run_reduced_cv_sl_once,
