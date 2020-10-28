@@ -958,7 +958,7 @@ get_fold_cv_vim <- function(y, full_fit, reduced_fit, x, outer_folds, type, weig
   full_folds_lst <- mapply(function(x, y) cbind(x, y), x = full_fold_vals, y = full_fit[[x]]$folds)
   full_folds_mat <- do.call(rbind, full_folds_lst)
   full_folds <- full_folds_mat[order(full_folds_mat[, 2]), 1]
-  
+
   redu_fold_vals <- mapply(function(x, y) rep(y, length(x)), x = reduced_fit[[x]]$folds, y = as.numeric(names(reduced_fit[[x]]$folds)))
   redu_folds_lst <- mapply(function(x, y) cbind(x, y), x = redu_fold_vals, y = reduced_fit[[x]]$folds)
   redu_folds_mat <- do.call(rbind, redu_folds_lst)
