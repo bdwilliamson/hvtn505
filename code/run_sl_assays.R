@@ -20,7 +20,7 @@ library("kyotil")
 library("argparse")
 # only run this if something has changed
 # devtools::install_github("bdwilliamson/vimp", upgrade = "never")
-library("vimp")
+library("vimp", lib.loc = .libPaths()[2])
 
 ## set up code directory
 if (!is.na(Sys.getenv("RSTUDIO", unset = NA))) { # if running locally
@@ -147,8 +147,6 @@ fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X
                            cvControl = list(V = V_outer, stratifyCV = TRUE),
                            innerCvControl = list(list(V = V_inner)),
                            vimp = FALSE,
-                           mc.cores = num_cores
-)
+                           mc.cores = num_cores)
 saveRDS(fits, paste0("sl_fits_varset_", var_set_names[job_id], ".rds"))
 warnings()
-rlang::last_error()

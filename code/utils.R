@@ -178,11 +178,11 @@ get_all_aucs_lst <- function(sl_fit_lst, scale = "identity",
 #            (e.g., cvControl = list(V = 5) for 5-fold cross-validated super learner)
 one_r2 <- function(preds, Y, scale = "identity", weights = rep(1, length(Y)),
                    C = rep(1, length(Y)), Z = NULL, ...) {
-  r2 <- vimp::measure_r_squared(fitted_values = preds, y = Y, C = C, Z = Z,
-                                ipc_weights = weights, ipc_fit_type = "SL", ...)
-  se <- vimp::vimp_se(r2$point_est, r2$eif)
-  ci <- vimp::vimp_ci(r2$point_est, se, scale = scale, level = 0.95)
-  data.frame(r2 = est$point_est, cil = ci[, 1], ciu = ci[, 2], se = se[1])
+  r2_lst <- vimp::measure_r_squared(fitted_values = preds, y = Y, C = C, Z = Z,
+                                    ipc_weights = weights, ipc_fit_type = "SL", ...)
+  se <- vimp::vimp_se(r2_lst$point_est, r2_lst$eif)
+  ci <- vimp::vimp_ci(r2_lst$point_est, se, scale = scale, level = 0.95)
+  data.frame(r2 = r2_lst$point_est, cil = ci[, 1], ciu = ci[, 2], se = se[1])
 }
 # get the cross-fitted CV-R^2 for a single learner's predicted values
 # @param preds the fitted values
@@ -453,17 +453,27 @@ get_fold_cv_vim <- function(full_fit = NULL, reduced_fit = NULL, x = NULL, type 
     })
     redu_fits <- lapply(as.list(1:length(full_fit[[x]]$folds)), function(i) get_reduced_fit(i))
     ys <- lapply(as.list(1:length(full_fit[[x]]$folds)), function(i) y[folds == i])
-
+    # create the list of folds; note that we didn't do sample splitting, so p-values are invalid
+    folds_lst <- list(outer_folds = c(rep(1, length(full_fit[[x]]$fit$Y)),
+                                      rep(2, length(full_fit[[x]]$fit$Y))),
+                      inner_folds = list(inner_folds_1 = folds,
+                                         inner_folds_2 = folds))
+    # thus, VIM is based on 2 copies of the same data
+    y_vim <- rep(y, 2)
+    X_vim <- dplyr::bind_rows(Z, Z)
+    C_vim <- rep(C, 2)
+    weights_vim <- rep(weights, 2)
     # variable importance
-    vim_est <- tryCatch(vimp::cv_vim(Y = y,
+    vim_est <- tryCatch(vimp::cv_vim(Y = y_vim, X = X_vim,
+                                     V = length(unique(folds)),
                                f1 = full_fits,
                                f2 = redu_fits,
-                               folds = folds,
+                               folds = folds_lst,
                                type = type,
                                run_regression = FALSE,
                                SL.library = SL.library,
-                               ipc_weights = weights,
-                               C = C, Z = Z,
+                               ipc_weights = weights_vim,
+                               C = C_vim, Z = c("Y", paste0("X", 1:3)),
                                alpha = 0.05,
                                scale = scale, ...), error = function(e) NA)
   }
