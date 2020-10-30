@@ -128,9 +128,9 @@ V_inner <- length(Y_vaccine) - 1
 # get the SL library
 # if var_set_none, then don't need screens; otherwise do
 if (job_id == 1) {
-  sl_lib <- methods
+  sl_lib <- methods[!grepl("earth", methods)]
 } else {
-  sl_lib <- SL_library
+  sl_lib <- SL_library[!grepl("earth", SL_library)] # get rid of numerical errors from SL.earth
 }
 # ---------------------------------------------------------------------------------
 # run super learner, with leave-one-out cross-validation and all screens
@@ -140,7 +140,7 @@ if (job_id == 1) {
 set.seed(4747)
 seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
 fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X_vaccine, family = "binomial",
-                           Z = Z, C = C, z_lib = methods,
+                           Z = Z, C = C, z_lib = methods[!grepl("earth", methods)],
                            obsWeights = weights_vaccine,
                            scale = "logit",
                            sl_lib = sl_lib, # this comes from sl_screens.R

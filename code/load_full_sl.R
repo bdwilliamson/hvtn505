@@ -28,7 +28,7 @@ source("code/sl_screens.R")
 results_dir <- "results/"
 plots_dir <- "plots/"
 # the version of vimp that you used to run run_sl_assays
-vimp_version <- "2.1.4"
+vimp_version <- "2.1.0"
 
 # The palette with black:
 cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
@@ -94,7 +94,7 @@ lapply(sl_fits_varset_1_baseline_exposure, function(x) sort(colMeans(x$fit$coef)
 lapply(sl_fits_varset_11_all, function(x) sort(colMeans(x$fit$coef), decreasing=TRUE))
 
 # set up SL library for IPCW
-sl_lib_ipcw <- methods[!grepl("SL.glmnet", methods) & !grepl("SL.step.interaction.skinny", methods)]
+sl_lib_ipcw <- methods
 
 # average the AUCs over the 10 folds, for each
 var_set_labels <- c("No markers", "IgG + IgA", "IgG3", "T Cells", "Fx Ab", "IgG + IgA + IgG3",
