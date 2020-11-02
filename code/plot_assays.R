@@ -9,20 +9,18 @@
 # @param point_size what size should the points be?
 plot_assays <- function(avgs = NULL, type = "auc", main_font_size_forest = 5, 
                         main_font_size_lab = 5, sl_only = TRUE, immunoassay = TRUE, 
-                        colors = NULL, point_size = 3) {
+                        colors = NULL, point_size = 3, x_lim = c(0.4, 1), lgnd_pos = c(0.56, 0.2)) {
   # if type is AUC, make correct labels
   if (type == "auc") {
     x_lab <- "CV-AUC"
-    x_lim <- c(0.4, 1)
     avgs <- avgs %>% 
       mutate(measure = AUC)
-    lgnd_pos <- c(0.56, 0.2)
   } else {
     x_lab <- expression(paste("CV-", R^2))
-    x_lim <- c(-1, 1)
+    # x_lim <- c(-1, 1)
     avgs <- avgs %>% 
       mutate(measure = R2)
-    lgnd_pos <- c(0.65, 0.15)
+    # lgnd_pos <- c(0.65, 0.15)
   }
   # get SL and the top individual learner/screen combo from each assay
   top_learners_init <- avgs %>% 

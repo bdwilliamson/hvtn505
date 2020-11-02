@@ -28,7 +28,7 @@ source("code/sl_screens.R")
 results_dir <- "results/"
 plots_dir <- "plots/"
 # the version of vimp that you used to run run_sl_assays
-vimp_version <- "2.1.0"
+vimp_version <- "2.1.4"
 
 # The palette with black:
 cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
@@ -167,13 +167,13 @@ auc_forest_plot_init <- plot_assays(avgs = avg_aucs, type = "auc",
                                main_font_size_lab = main_font_size,
                                sl_only = FALSE, immunoassay = FALSE,
                                point_size = 1.5)
-auc_final_plot <- plot_grid(auc_forest_plot_init$top_learner_nms_plot, auc_forest_plot_init$top_learner_plot, nrow = 1, align = "h") +
+sl_plus_top_learner_auc_plot <- plot_grid(auc_forest_plot_init$top_learner_nms_plot, auc_forest_plot_init$top_learner_plot, nrow = 1, align = "h") +
   draw_label("Assay combination", size = title_font_size, x = 0.075, y = y_title) +
   draw_label("Algorithm", size = title_font_size, x = 0.175, y = y_title) +
   draw_label("Screen", size = title_font_size, x = 0.25, y = y_title) +
   draw_label("CV-AUC [95% CI]", size = title_font_size, x = 0.43, y = y_title)
 ggsave(filename = paste0(plots_dir, "cv_auc_forest_plot_sl_plus_top_learner.png"),
-       plot = auc_final_plot,
+       plot = sl_plus_top_learner_auc_plot,
        width = 45, height = 25,
        units = "cm")
 
@@ -187,37 +187,31 @@ main_font_size_lab <- 9.3
 fig_width <- fig_height <- 2590
 y_title <- 0.945
 point_size <- 2
-auc_forest_plot <- plot_assays(avgs = avg_aucs, type = "auc",
+auc_forest_plot_plus_assay <- plot_assays(avgs = avg_aucs, type = "auc",
                                main_font_size_forest = main_font_size_forest,
                                main_font_size_lab = main_font_size_lab,
                                sl_only = TRUE, immunoassay = TRUE,
                                colors = cbbPalette,
-                               point_size = point_size)
+                               point_size = point_size,
+                               x_lim = c(0.4, 1.2),
+                               lgnd_pos = c(0.6, 0.2)) 
+auc_immunoassay_plot <- plot_grid(auc_forest_plot_plus_assay$top_learner_nms_plot,
+                                            auc_forest_plot_plus_assay$top_learner_plot, 
+                                            nrow = 1, align = "h") +
+  draw_label("Month 7", size = title_font_size, x = 0.14, y = y_title + 0.04, fontface = "bold") +
+  draw_label("Marker Set", size = title_font_size, x = 0.1375, y = y_title, fontface = "bold") +
+  draw_label("CV-AUC", size = title_font_size, x = 0.4, y = y_title + 0.04, fontface = "bold") +
+  draw_label("[95% CI]", size = title_font_size, x = 0.4, y = y_title, fontface = "bold")
 ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl.png"),
-       plot = plot_grid(auc_forest_plot$top_learner_nms_plot,
-                        auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
-         draw_label("Month 7", size = title_font_size, x = 0.14, y = y_title + 0.04, fontface = "bold") +
-         draw_label("Marker Set", size = title_font_size, x = 0.1375, y = y_title, fontface = "bold") +
-         draw_label("CV-AUC", size = title_font_size, x = 0.4, y = y_title + 0.04, fontface = "bold") +
-         draw_label("[95% CI]", size = title_font_size, x = 0.4, y = y_title, fontface = "bold"),
+       plot = auc_immunoassay_plot,
        width = 50, height = 25, units = "cm")
 
 ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl.tiff"),
-       plot = plot_grid(auc_forest_plot$top_learner_nms_plot,
-                        auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
-         draw_label("Month 7", size = title_font_size, x = 0.14, y = y_title + 0.04, fontface = "bold") +
-         draw_label("Marker Set", size = title_font_size, x = 0.1375, y = y_title, fontface = "bold") +
-         draw_label("CV-AUC", size = title_font_size, x = 0.4, y = y_title + 0.04, fontface = "bold") +
-         draw_label("[95% CI]", size = title_font_size, x = 0.4, y = y_title, fontface = "bold"),
+       plot = auc_immunoassay_plot,
        width = 50, height = 25, units = "cm")
 
 ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl.pdf"),
-       plot = plot_grid(auc_forest_plot$top_learner_nms_plot,
-                        auc_forest_plot$top_learner_plot, nrow = 1, align = "h") +
-         draw_label("Month 7", size = title_font_size, x = 0.14, y = y_title + 0.04, fontface = "bold") +
-         draw_label("Marker Set", size = title_font_size, x = 0.1375, y = y_title, fontface = "bold") +
-         draw_label("CV-AUC", size = title_font_size, x = 0.4, y = y_title + 0.04, fontface = "bold") +
-         draw_label("[95% CI]", size = title_font_size, x = 0.4, y = y_title, fontface = "bold"),
+       plot = auc_immunoassay_plot,
        width = 50, height = 25, units = "cm")
 
 # --------------------------------------------------------------------------------------------------------------------------------------
@@ -324,143 +318,228 @@ full_fit_2_igg_iga <- sl_fits_varset_2_igg_iga
 
 # reduced fit for all
 reduced_fit_none <- sl_fits_varset_1_baseline_exposure
-
-# (11) all markers
-set.seed(1234)
-vimp_all_markers <- get_cv_vim(full_fit = full_fit_11_all,
-                               reduced_fit = reduced_fit_none,
-                               type = risk_type,
-                               weights = weights_vaccine,
-                               scale = scale,
-                               Z = Z, C = C, SL.library = sl_lib_ipcw)
-vimp_all_markers_avg <- get_avg_est_ci(vimp_all_markers)
-
-# (10) T cells  + Fx Ab
-vimp_tcells_fxab <- get_cv_vim(full_fit = full_fit_10_tcells_fxab,
-                               reduced_fit = reduced_fit_none,
-                               type = risk_type,
-                               weights = weights_vaccine,
-                               scale = scale,
-                               Z = Z, C = C, SL.library = sl_lib_ipcw)
-vimp_tcells_fxab_avg <- get_avg_est_ci(vimp_tcells_fxab)
-
-# (9) IgG + IgA + IgG3 + Fx Ab
-vimp_igg_iga_igg3_fxab <- get_cv_vim(full_fit = full_fit_9_igg_iga_igg3_fxab,
-                               reduced_fit = reduced_fit_none,
-                               type = risk_type,
-                               weights = weights_vaccine,
-                               scale = scale,
-                               Z = Z, C = C, SL.library = sl_lib_ipcw)
-vimp_igg_iga_igg3_fxab_avg <- get_avg_est_ci(vimp_igg_iga_igg3_fxab)
-
-# (8) IgG + IgA + IgG3 + T cells
-vimp_igg_iga_igg3_tcells <- get_cv_vim(full_fit = full_fit_8_igg_iga_igg3_tcells,
-                               reduced_fit = reduced_fit_none,
-                               type = risk_type,
-                               weights = weights_vaccine,
-                               scale = scale,
-                               Z = Z, C = C, SL.library = sl_lib_ipcw)
-vimp_igg_iga_igg3_tcells_avg <- get_avg_est_ci(vimp_igg_iga_igg3_tcells)
-
-# (7) IgG + IgA + T cells
-vimp_igg_iga_tcells <- get_cv_vim(full_fit = full_fit_7_igg_iga_tcells,
-                               reduced_fit = reduced_fit_none,
-                               type = risk_type,
-                               weights = weights_vaccine,
-                               scale = scale,
-                               Z = Z, C = C, SL.library = sl_lib_ipcw)
-vimp_igg_iga_tcells_avg <- get_avg_est_ci(vimp_igg_iga_tcells)
-
-# (6) IgG + IgA + IgG3
-vimp_igg_iga_igg3 <- get_cv_vim(full_fit = full_fit_6_igg_iga_igg3,
-                               reduced_fit = reduced_fit_none,
-                               type = risk_type,
-                               weights = weights_vaccine,
-                               scale = scale,
-                               Z = Z, C = C, SL.library = sl_lib_ipcw)
-vimp_igg_iga_igg3_avg <- get_avg_est_ci(vimp_igg_iga_igg3)
-
-# (5) Fx Ab
-vimp_fxab <- get_cv_vim(full_fit = full_fit_5_fxab,
-                               reduced_fit = reduced_fit_none,
-                               type = risk_type,
-                        weights = weights_vaccine,
-                        scale = scale,
-                        Z = Z, C = C, SL.library = sl_lib_ipcw)
-vimp_fxab_avg <- get_avg_est_ci(vimp_fxab)
-
-# (4) T cells
-vimp_tcells <- get_cv_vim(full_fit = full_fit_4_tcells,
-                               reduced_fit = reduced_fit_none,
-                               type = risk_type,
+# note that if I used vimp version >= 2.1.4, I've already computed the IPCW weights for AUC,
+# so there is no need to compute them again
+if (risk_type == "auc" && vimp_version >= "2.1.4") {
+  vimp_all_markers <- get_cv_vim_precomputed(full_ests = avg_aucs_11_all,
+                                             reduced_ests = avg_aucs_1_baseline_exposure,
+                                             risk_type = risk_type,
+                                             scale = "logit")
+  vimp_tcells_fxab <- get_cv_vim_precomputed(full_ests = avg_aucs_10_tcells_fxab,
+                                             reduced_ests = avg_aucs_1_baseline_exposure,
+                                             risk_type = risk_type,
+                                             scale = "logit")
+  vimp_igg_iga_igg3_fxab <- get_cv_vim_precomputed(full_ests = avg_aucs_9_igg_iga_igg3_fxab,
+                                                   reduced_ests = avg_aucs_1_baseline_exposure,
+                                                   risk_type = risk_type,
+                                                   scale = "logit")
+  vimp_igg_iga_igg3_tcells <- get_cv_vim_precomputed(full_ests = avg_aucs_8_igg_iga_igg3_tcells,
+                                              reduced_ests = avg_aucs_1_baseline_exposure,
+                                              risk_type = risk_type,
+                                              scale = "logit")
+  vimp_igg_iga_tcells <- get_cv_vim_precomputed(full_ests = avg_aucs_7_igg_iga_tcells,
+                                                reduced_ests = avg_aucs_1_baseline_exposure,
+                                                risk_type = risk_type,
+                                                scale = "logit")
+  vimp_igg_iga_igg3 <- get_cv_vim_precomputed(full_ests = avg_aucs_6_igg_iga_igg3,
+                                              reduced_ests = avg_aucs_1_baseline_exposure,
+                                              risk_type = risk_type,
+                                              scale = "logit")
+  vimp_fxab <- get_cv_vim_precomputed(full_ests = avg_aucs_5_fxab,
+                                      reduced_ests = avg_aucs_1_baseline_exposure,
+                                      risk_type = risk_type,
+                                      scale = "logit")
+  vimp_tcells <- get_cv_vim_precomputed(full_ests = avg_aucs_4_tcells,
+                                        reduced_ests = avg_aucs_1_baseline_exposure,
+                                        risk_type = risk_type,
+                                        scale = "logit")
+  vimp_igg3 <- get_cv_vim_precomputed(full_ests = avg_aucs_3_igg3,
+                                      reduced_ests = avg_aucs_1_baseline_exposure,
+                                      risk_type = risk_type,
+                                      scale = "logit")
+  vimp_igg_iga <- get_cv_vim_precomputed(full_ests = avg_aucs_2_igg_iga,
+                                         reduced_ests = avg_aucs_1_baseline_exposure,
+                                         risk_type = risk_type,
+                                         scale = "logit")
+  # combine together
+  vimp_tibble <- tibble(assay_grp = c("All markers",
+                                      "T Cells + Fx Ab",
+                                      "IgG + IgA + IgG3 + Fx Ab",
+                                      "IgG + IgA + IgG3 + T Cells",
+                                      "IgG + IgA + T Cells",
+                                      "IgG + IgA + IgG3",
+                                      "Fx Ab",
+                                      "T Cells",
+                                      "IgG3",
+                                      "IgG + IgA"),
+                        est = c(vimp_all_markers$est,
+                                vimp_tcells_fxab$est,
+                                vimp_igg_iga_igg3_fxab$est,
+                                vimp_igg_iga_igg3_tcells$est,
+                                vimp_igg_iga_tcells$est,
+                                vimp_igg_iga_igg3$est,
+                                vimp_fxab$est,
+                                vimp_tcells$est,
+                                vimp_igg3$est,
+                                vimp_igg_iga$est),
+                        cil = c(vimp_all_markers$ci_ll,
+                                vimp_tcells_fxab$ci_ll,
+                                vimp_igg_iga_igg3_fxab$ci_ll,
+                                vimp_igg_iga_igg3_tcells$ci_ll,
+                                vimp_igg_iga_tcells$ci_ll,
+                                vimp_igg_iga_igg3$ci_ll,
+                                vimp_fxab$ci_ll,
+                                vimp_tcells$ci_ll,
+                                vimp_igg3$ci_ll,
+                                vimp_igg_iga$ci_ll),
+                        ciu = c(vimp_all_markers$ci_ul,
+                                vimp_tcells_fxab$ci_ul,
+                                vimp_igg_iga_igg3_fxab$ci_ul,
+                                vimp_igg_iga_igg3_tcells$ci_ul,
+                                vimp_igg_iga_tcells$ci_ul,
+                                vimp_igg_iga_igg3$ci_ul,
+                                vimp_fxab$ci_ul,
+                                vimp_tcells$ci_ul,
+                                vimp_igg3$ci_ul,
+                                vimp_igg_iga$ci_ul))
+} else {
+  # (11) all markers
+  set.seed(1234)
+  vimp_all_markers <- get_cv_vim(full_fit = full_fit_11_all,
+                                 reduced_fit = reduced_fit_none,
+                                 type = risk_type,
+                                 weights = weights_vaccine,
+                                 scale = scale,
+                                 Z = Z, C = C, SL.library = sl_lib_ipcw)
+  vimp_all_markers_avg <- get_avg_est_ci(vimp_all_markers)
+  
+  # (10) T cells  + Fx Ab
+  vimp_tcells_fxab <- get_cv_vim(full_fit = full_fit_10_tcells_fxab,
+                                 reduced_fit = reduced_fit_none,
+                                 type = risk_type,
+                                 weights = weights_vaccine,
+                                 scale = scale,
+                                 Z = Z, C = C, SL.library = sl_lib_ipcw)
+  vimp_tcells_fxab_avg <- get_avg_est_ci(vimp_tcells_fxab)
+  
+  # (9) IgG + IgA + IgG3 + Fx Ab
+  vimp_igg_iga_igg3_fxab <- get_cv_vim(full_fit = full_fit_9_igg_iga_igg3_fxab,
+                                       reduced_fit = reduced_fit_none,
+                                       type = risk_type,
+                                       weights = weights_vaccine,
+                                       scale = scale,
+                                       Z = Z, C = C, SL.library = sl_lib_ipcw)
+  vimp_igg_iga_igg3_fxab_avg <- get_avg_est_ci(vimp_igg_iga_igg3_fxab)
+  
+  # (8) IgG + IgA + IgG3 + T cells
+  vimp_igg_iga_igg3_tcells <- get_cv_vim(full_fit = full_fit_8_igg_iga_igg3_tcells,
+                                         reduced_fit = reduced_fit_none,
+                                         type = risk_type,
+                                         weights = weights_vaccine,
+                                         scale = scale,
+                                         Z = Z, C = C, SL.library = sl_lib_ipcw)
+  vimp_igg_iga_igg3_tcells_avg <- get_avg_est_ci(vimp_igg_iga_igg3_tcells)
+  
+  # (7) IgG + IgA + T cells
+  vimp_igg_iga_tcells <- get_cv_vim(full_fit = full_fit_7_igg_iga_tcells,
+                                    reduced_fit = reduced_fit_none,
+                                    type = risk_type,
+                                    weights = weights_vaccine,
+                                    scale = scale,
+                                    Z = Z, C = C, SL.library = sl_lib_ipcw)
+  vimp_igg_iga_tcells_avg <- get_avg_est_ci(vimp_igg_iga_tcells)
+  
+  # (6) IgG + IgA + IgG3
+  vimp_igg_iga_igg3 <- get_cv_vim(full_fit = full_fit_6_igg_iga_igg3,
+                                  reduced_fit = reduced_fit_none,
+                                  type = risk_type,
+                                  weights = weights_vaccine,
+                                  scale = scale,
+                                  Z = Z, C = C, SL.library = sl_lib_ipcw)
+  vimp_igg_iga_igg3_avg <- get_avg_est_ci(vimp_igg_iga_igg3)
+  
+  # (5) Fx Ab
+  vimp_fxab <- get_cv_vim(full_fit = full_fit_5_fxab,
+                          reduced_fit = reduced_fit_none,
+                          type = risk_type,
                           weights = weights_vaccine,
                           scale = scale,
                           Z = Z, C = C, SL.library = sl_lib_ipcw)
-vimp_tcells_avg <- get_avg_est_ci(vimp_tcells)
-
-# (3) IgG3
-vimp_igg3 <- get_cv_vim(full_fit = full_fit_3_igg3,
-                               reduced_fit = reduced_fit_none,
-                               type = risk_type,
-                        weights = weights_vaccine,
-                        scale = scale,
-                        Z = Z, C = C, SL.library = sl_lib_ipcw)
-vimp_igg3_avg <- get_avg_est_ci(vimp_igg3)
-
-# (2) IgG + IgA
-vimp_igg_iga <- get_cv_vim(full_fit = full_fit_2_igg_iga,
-                               reduced_fit = reduced_fit_none,
-                               type = risk_type,
-                           weights = weights_vaccine,
-                           scale = scale,
-                           Z = Z, C = C, SL.library = sl_lib_ipcw)
-vimp_igg_iga_avg <- get_avg_est_ci(vimp_igg_iga)
-
-# combine together
-vimp_tibble <- tibble(assay_grp = c("All markers",
-                                    "T Cells + Fx Ab",
-                                    "IgG + IgA + IgG3 + Fx Ab",
-                                    "IgG + IgA + IgG3 + T Cells",
-                                    "IgG + IgA + T Cells",
-                                    "IgG + IgA + IgG3",
-                                    "Fx Ab",
-                                    "T Cells",
-                                    "IgG3",
-                                    "IgG + IgA"),
-                      est = c(vimp_all_markers_avg$est,
-                              vimp_tcells_fxab_avg$est,
-                              vimp_igg_iga_igg3_fxab_avg$est,
-                              vimp_igg_iga_igg3_tcells_avg$est,
-                              vimp_igg_iga_tcells_avg$est,
-                              vimp_igg_iga_igg3_avg$est,
-                              vimp_fxab_avg$est,
-                              vimp_tcells_avg$est,
-                              vimp_igg3_avg$est,
-                              vimp_igg_iga_avg$est),
-                      cil = c(vimp_all_markers_avg$ci[1],
-                              vimp_tcells_fxab_avg$ci[1],
-                              vimp_igg_iga_igg3_fxab_avg$ci[1],
-                              vimp_igg_iga_igg3_tcells_avg$ci[1],
-                              vimp_igg_iga_tcells_avg$ci[1],
-                              vimp_igg_iga_igg3_avg$ci[1],
-                              vimp_fxab_avg$ci[1],
-                              vimp_tcells_avg$ci[1],
-                              vimp_igg3_avg$ci[1],
-                              vimp_igg_iga_avg$ci[1]),
-                      ciu = c(vimp_all_markers_avg$ci[2],
-                              vimp_tcells_fxab_avg$ci[2],
-                              vimp_igg_iga_igg3_fxab_avg$ci[2],
-                              vimp_igg_iga_igg3_tcells_avg$ci[2],
-                              vimp_igg_iga_tcells_avg$ci[2],
-                              vimp_igg_iga_igg3_avg$ci[2],
-                              vimp_fxab_avg$ci[2],
-                              vimp_tcells_avg$ci[2],
-                              vimp_igg3_avg$ci[2],
-                              vimp_igg_iga_avg$ci[2]))
+  vimp_fxab_avg <- get_avg_est_ci(vimp_fxab)
+  
+  # (4) T cells
+  vimp_tcells <- get_cv_vim(full_fit = full_fit_4_tcells,
+                            reduced_fit = reduced_fit_none,
+                            type = risk_type,
+                            weights = weights_vaccine,
+                            scale = scale,
+                            Z = Z, C = C, SL.library = sl_lib_ipcw)
+  vimp_tcells_avg <- get_avg_est_ci(vimp_tcells)
+  
+  # (3) IgG3
+  vimp_igg3 <- get_cv_vim(full_fit = full_fit_3_igg3,
+                          reduced_fit = reduced_fit_none,
+                          type = risk_type,
+                          weights = weights_vaccine,
+                          scale = scale,
+                          Z = Z, C = C, SL.library = sl_lib_ipcw)
+  vimp_igg3_avg <- get_avg_est_ci(vimp_igg3)
+  
+  # (2) IgG + IgA
+  vimp_igg_iga <- get_cv_vim(full_fit = full_fit_2_igg_iga,
+                             reduced_fit = reduced_fit_none,
+                             type = risk_type,
+                             weights = weights_vaccine,
+                             scale = scale,
+                             Z = Z, C = C, SL.library = sl_lib_ipcw)
+  vimp_igg_iga_avg <- get_avg_est_ci(vimp_igg_iga)
+  
+  # combine together
+  vimp_tibble <- tibble(assay_grp = c("All markers",
+                                      "T Cells + Fx Ab",
+                                      "IgG + IgA + IgG3 + Fx Ab",
+                                      "IgG + IgA + IgG3 + T Cells",
+                                      "IgG + IgA + T Cells",
+                                      "IgG + IgA + IgG3",
+                                      "Fx Ab",
+                                      "T Cells",
+                                      "IgG3",
+                                      "IgG + IgA"),
+                        est = c(vimp_all_markers_avg$est,
+                                vimp_tcells_fxab_avg$est,
+                                vimp_igg_iga_igg3_fxab_avg$est,
+                                vimp_igg_iga_igg3_tcells_avg$est,
+                                vimp_igg_iga_tcells_avg$est,
+                                vimp_igg_iga_igg3_avg$est,
+                                vimp_fxab_avg$est,
+                                vimp_tcells_avg$est,
+                                vimp_igg3_avg$est,
+                                vimp_igg_iga_avg$est),
+                        cil = c(vimp_all_markers_avg$ci[1],
+                                vimp_tcells_fxab_avg$ci[1],
+                                vimp_igg_iga_igg3_fxab_avg$ci[1],
+                                vimp_igg_iga_igg3_tcells_avg$ci[1],
+                                vimp_igg_iga_tcells_avg$ci[1],
+                                vimp_igg_iga_igg3_avg$ci[1],
+                                vimp_fxab_avg$ci[1],
+                                vimp_tcells_avg$ci[1],
+                                vimp_igg3_avg$ci[1],
+                                vimp_igg_iga_avg$ci[1]),
+                        ciu = c(vimp_all_markers_avg$ci[2],
+                                vimp_tcells_fxab_avg$ci[2],
+                                vimp_igg_iga_igg3_fxab_avg$ci[2],
+                                vimp_igg_iga_igg3_tcells_avg$ci[2],
+                                vimp_igg_iga_tcells_avg$ci[2],
+                                vimp_igg_iga_igg3_avg$ci[2],
+                                vimp_fxab_avg$ci[2],
+                                vimp_tcells_avg$ci[2],
+                                vimp_igg3_avg$ci[2],
+                                vimp_igg_iga_avg$ci[2]))
+}
 vimp_tibble <- tibble::add_column(vimp_tibble, immunoassay_set = get_immunoassay_set(vimp_tibble$assay_grp))
 # save this object for easy loading
-saveRDS(vimp_tibble, paste0(results_dir, "vimp_tibble_", risk_type))
-vimp_tibble <- readRDS(paste0(results_dir, "vimp_tibble_", risk_type))
+saveRDS(vimp_tibble, paste0(results_dir, "vimp_tibble_", risk_type, ".rds"))
+vimp_tibble <- readRDS(paste0(results_dir, "vimp_tibble_", risk_type, ".rds"))
 
 title_font_size <- 26
 main_font_size_forest <- 31

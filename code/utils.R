@@ -416,7 +416,7 @@ run_reduced_cv_sl_once <- function(seed = 1, Y = NULL, X_mat = NULL, family = "b
 get_fold_cv_vim <- function(full_fit = NULL, reduced_fit = NULL, x = NULL, type = "auc",
                             weights = rep(1, length(full_fit)), C = rep(1, length(full_fit)),
                             Z = NULL, SL.library = "ranger",
-                            scale = "identity", vimp = FALSE, ...) {
+                            scale = "identity", vimp = FALSE,...) {
   # get the outcome, folds
   if (!vimp) {
     y <- full_fit[[x]]$fit$Y
@@ -499,6 +499,54 @@ get_cv_vim <- function(full_fit = NULL, reduced_fit = NULL, type = "auc",
                         reduced_fit = reduced_fit, type = type, weights = weights, scale = scale, vimp = vimp,
                         C = C, Z = Z, SL.library = SL.library, ...)
   return(all_cv_vims)
+}
+# get CV vim averaged over 10 starts, if I've pre-computed IPCW
+# @param full_ests a tibble with estimate and CIs, all covariates
+# @param reduced_ests a tibble with estimate and CIs, reduced set of covariates
+get_cv_vim_precomputed <- function(full_ests, reduced_ests, risk_type = "auc", scale = "identity") {
+  if (risk_type == "auc") {
+    full_est <- full_ests %>% 
+      mutate(est = AUC) %>% 
+      filter(Learner == "SL")
+    reduced_est <- reduced_ests %>% 
+      mutate(est = AUC) %>% 
+      filter(Learner == "SL")
+  } else {
+    full_est <- full_ests %>% 
+      mutate(est = R2) %>% 
+      filter(Learner == "SL")
+    reduced_est <- reduced_ests %>% 
+      mutate(est = R2) %>% 
+      filter(Learner == "SL")
+  }
+  if (scale == "identity") {
+    full_se_scaled <- (full_est$ci_ul - full_est$est) 
+    reduced_se_scaled <- (reduced_est$ci_ul - reduced_est$est)   
+  } else if (scale == "logit") {
+    full_se_scaled <- stats::qlogis(full_est$ci_ul) - stats::qlogis(full_est$est)
+    reduced_se_scaled <- stats::qlogis(reduced_est$ci_ul) - stats::qlogis(reduced_est$est)
+  } else {
+    full_se_scaled <- log(full_est$ci_ul) - log(full_est$est)
+    reduced_se_scaled <- log(reduced_est$ci_ul) - log(reduced_est$est)
+  }
+  var_scaled <- (full_se_scaled / stats::qnorm(0.975)) ^ 2 + (reduced_se_scaled / stats::qnorm(0.975)) ^ 2
+  point_est <- full_est$est - reduced_est$est
+  if (scale == "identity") {
+    out <- tibble(est = point_est, 
+                  ci_ll = point_est - stats::qnorm(0.975) * sqrt(var_scaled),
+                  ci_ul = point_est + stats::qnorm(0.975) * sqrt(var_scaled))
+  } else if (scale == "logit") {
+    tmp <- stats::qlogis(point_est)
+    out <- tibble(est = ifelse(is.na(tmp), 0, point_est), 
+                  ci_ll = ifelse(is.na(tmp), 0, stats::plogis(stats::qlogis(point_est) - stats::qnorm(0.975) * sqrt(var_scaled))),
+                  ci_ul = ifelse(is.na(tmp), 0, stats::plogis(stats::qlogis(point_est) + stats::qnorm(0.975) * sqrt(var_scaled))))
+  } else {
+    tmp <- log(point_est)
+    out <- tibble(est = ifelse(is.na(tmp), 0, point_est), 
+                  ci_ll = ifelse(is.na(tmp), 0, exp(log(point_est) - stats::qnorm(0.975) * sqrt(var_scaled))),
+                  ci_ul = ifelse(is.na(tmp), 0, exp(log(point_est) - stats::qnorm(0.975) * sqrt(var_scaled))))
+  }
+  out
 }
 # get estimate, CI based on averaging over the 10 random starts
 get_avg_est_ci <- function(vimp_lst) {
