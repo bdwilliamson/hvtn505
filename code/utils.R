@@ -675,10 +675,13 @@ make_nice_variable_name <- function(varname, antigen, assay) {
 }
 # get immunoassay set from character vector: T cells, Ab only, T cells and Ab
 # @param vec the character vector of interest
-get_immunoassay_set <- function(vec) {
-  get_one_immunoassay <- function(x) {
-    # ret_vec <- c("T Cell variables", "Ab variables", "T Cell and Ab variables", "No markers")
-    ret_vec <- c("T Cell variables", "Ab variables", "T Cell and Ab", "No markers")
+get_immunoassay_set <- function(vec, variables = FALSE) {
+  get_one_immunoassay <- function(x, variables = FALSE) {
+    if (variables) {
+      ret_vec <- c("T Cell variables", "Ab variables", "T Cell and Ab variables", "No markers")
+    } else {
+      ret_vec <- c("T Cell variables", "Ab variables", "T Cell and Ab", "No markers") 
+    }
     if (grepl("T Cells", x)) {
       ret_init <- ret_vec[c(1, 3)]
       if (grepl("IgG", x) | grepl("IgA", x) | grepl("IgG3", x) | grepl("Fx Ab", x)) {
@@ -695,7 +698,7 @@ get_immunoassay_set <- function(vec) {
     }
     return(ret)
   }
-  ret <- apply(matrix(vec), 1, get_one_immunoassay)
+  ret <- apply(matrix(vec), 1, get_one_immunoassay, variables = variables)
   return(as.vector(ret))
 }
 # make a plot for a given assay and antigen
