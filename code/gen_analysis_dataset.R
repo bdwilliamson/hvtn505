@@ -7,6 +7,9 @@ library("readr")
 # Read in the full dataset and make sure that
 # strata are computed across ALL participants
 # ------------------------------------------------------
+# these data come from the SCHARP ATLAS page for 505, 
+# https://atlas.scharp.org/cpas/project/HVTN%20Public%20Data/HVTN%20505/begin.view?
+# (select primary505_for_sharing.csv within the Fong et al. (2018, JID) folder)
 full_data <- readr::read_csv("data/primary505_for_sharing.csv") 
 full_data_with_strata <- full_data %>% 
   mutate(hg_strata = ifelse(is.na(hg_strata), 

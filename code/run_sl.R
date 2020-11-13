@@ -21,14 +21,19 @@ library("HVTN505")
 library("vimp", lib.loc = .libPaths()[2])
 library("kyotil")
 library("argparse")
+# only run this if something has changed
+# devtools::install_github("bdwilliamson/vimp", upgrade = "never")
 
 # set up code directory
 if (!is.na(Sys.getenv("RSTUDIO", unset = NA))) { # if running locally
   code_dir <- "code/"
-  # plan("sequential")
+  data_dir <- "data/"
+  # load vimp from user library (to make sure it has correct version)
+  library("vimp")
 } else {
   code_dir <- ""
-  # plan("multicore")
+  # load vimp from user library (to make sure it has correct version)
+  library("vimp", lib.loc = .libPaths()[2])
 }
 num_cores <- parallel::detectCores()
 print(num_cores)
