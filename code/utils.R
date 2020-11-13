@@ -49,16 +49,17 @@ cv_auc <- function(preds, Y, folds, scale = "identity",
   folds_init <- rep(as.numeric(names(folds)), each = length(Y)/length(folds))
   folds_mat <- cbind(fold_row_nums, folds_init)
   folds_numeric <- folds_mat[order(folds_mat[, 1]), 2]
+  folds_z <- c(folds_numeric, sample(seq_len(V), nrow(Z) - length(folds_numeric), replace = TRUE))
   ests_cis <- do.call(rbind.data.frame, lapply(as.list(1:V), function(v) {
     one_auc(preds = preds[folds_numeric == v], Y[folds_numeric == v],
             scale = scale,
-            weights = weights[folds_numeric == v], C = C[folds_numeric == v],
-            Z = Z[folds_numeric == v, , drop = FALSE], ...)
+            weights = weights[folds_z == v], C = C[folds_z == v],
+            Z = Z[folds_z == v, , drop = FALSE], ...)
   }))
   est <- colMeans(ests_cis)[1]
   se <- colMeans(ests_cis)[4]
   ci <- vimp::vimp_ci(est, se, scale = scale, level = 0.95)
-  return(list(auc = est, ci = ci))
+  return(list(auc = est, se = se, ci = ci))
 }
 # get the CV-AUC for all learners fit with SL
 # @param sl_fit the super learner fit object
@@ -78,15 +79,15 @@ get_all_aucs <- function(sl_fit, scale = "identity", weights = rep(1, length(sl_
   sl_auc <- cv_auc(preds = sl_fit$SL.predict, Y = sl_fit$Y, folds = sl_fit$folds,
                    scale = scale, weights = weights, C = C, Z = Z, ...)
   out <- data.frame(Learner="SL", Screen="All", AUC = sl_auc$auc,
-                    ci_ll = sl_auc$ci[1], ci_ul=sl_auc$ci[2])
+                    se = sl_auc$se, ci_ll = sl_auc$ci[1], ci_ul=sl_auc$ci[2])
 
   # Get the CV-auc of the Discrete SuperLearner predictions
   discrete_sl_auc <- cv_auc(preds = sl_fit$discreteSL.predict, Y = sl_fit$Y,
                             folds = sl_fit$folds, scale = scale, weights = weights, C = C,
                             Z = Z, ...)
   out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All",
-                               AUC = discrete_sl_auc$auc, ci_ll = discrete_sl_auc$ci[1],
-                               ci_ul = discrete_sl_auc$ci[2]))
+                               AUC = discrete_sl_auc$auc, se = discrete_sl_auc$se,
+                               ci_ll = discrete_sl_auc$ci[1], ci_ul = discrete_sl_auc$ci[2]))
 
   # Get the cvauc of the individual learners in the library
   get_individual_auc <- function(sl_fit, col, scale = "identity", weights = rep(1, length(sl_fit$Y)),
@@ -101,7 +102,7 @@ get_all_aucs <- function(sl_fit, scale = "identity", weights = rep(1, length(sl_
     alg <- tail(alg_screen_string[grepl(".", alg_screen_string, fixed = TRUE)], n = 1)
     screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, fixed = TRUE)],
                      collapse = "_")
-    data.frame(Learner = alg, Screen = screen, AUC = alg_auc$auc,
+    data.frame(Learner = alg, Screen = screen, AUC = alg_auc$auc, se = alg_auc$se,
                ci_ll = alg_auc$ci[1], ci_ul = alg_auc$ci[2])
   }
   other_aucs <- plyr::ldply(1:ncol(sl_fit$library.predict),
@@ -153,7 +154,7 @@ get_all_aucs_lst <- function(sl_fit_lst, scale = "identity",
       alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_", fixed = TRUE)[[1]]
       alg <- tail(alg_screen_string[grepl(".", alg_screen_string, fixed = TRUE)], n = 1)
       screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, fixed = TRUE)], collapse = "_")
-      data.frame(Learner = alg, Screen = screen, AUC = alg_auc$auc, ci_ll = alg_auc$ci[1], ci_ul = alg_auc$ci[2])
+      data.frame(Learner = alg, Screen = screen, AUC = alg_auc$auc, se = alg_auc$se, ci_ll = alg_auc$ci[1], ci_ul = alg_auc$ci[2])
     }
     other_aucs <- plyr::ldply(1:ncol(sl_fit_lst$fit$library.predict),
                               function(x) get_individual_auc(sl_fit = sl_fit_lst$fit,
@@ -215,7 +216,7 @@ cv_r2 <- function(preds, Y, folds, scale = "identity", weights = rep(1, length(Y
   est <- colMeans(ests_cis)[1]
   se <- colMeans(ests_cis)[4]
   ci <- vimp::vimp_ci(est = est, se = se, scale = scale, level = 0.95)
-  return(list(r2 = est, ci = ci))
+  return(list(r2 = est, se = se, ci = ci))
 }
 # get the CV-R^2 for a super learner fitted object
 # @param sl_fit the super learner fit object
@@ -235,15 +236,15 @@ get_all_r2s <- function(sl_fit, scale = "identity", weights = rep(1, length(sl_f
   # get the CV-R^2 of the SuperLearner predictions
   sl_r2 <- cv_r2(preds = sl_fit$SL.predict, Y = sl_fit$Y, folds = sl_fit$folds,
                  scale = scale, C = C, Z = Z, ...)
-  out <- data.frame(Learner="SL", Screen="All", R2 = sl_r2$r2,
+  out <- data.frame(Learner="SL", Screen="All", R2 = sl_r2$r2, se = sl_r2$se,
                     ci_ll = sl_r2$ci[1], ci_ul=sl_r2$ci[2])
 
   # Get the CV-R2 of the Discrete SuperLearner predictions
   discrete_sl_r2 <- cv_r2(preds = sl_fit$discreteSL.predict, Y = sl_fit$Y,
                           folds = sl_fit$folds, scale = scale, C = C, Z = Z, ...)
   out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All",
-                               R2 = discrete_sl_r2$r2, ci_ll = discrete_sl_r2$ci[1],
-                               ci_ul = discrete_sl_r2$ci[2]))
+                               R2 = discrete_sl_r2$r2, se = discrete_sl_r2$se,
+                               ci_ll = discrete_sl_r2$ci[1], ci_ul = discrete_sl_r2$ci[2]))
 
   # Get the cvr2 of the individual learners in the library
   get_individual_r2 <- function(sl_fit, col, scale = "identity",
@@ -257,7 +258,7 @@ get_all_r2s <- function(sl_fit, scale = "identity", weights = rep(1, length(sl_f
     alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_", fixed = TRUE)[[1]]
     alg <- tail(alg_screen_string[grepl(".", alg_screen_string, fixed = TRUE)], n = 1)
     screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, fixed = TRUE)], collapse = "_")
-    data.frame(Learner = alg, Screen = screen, R2 = alg_r2$r2, ci_ll = alg_r2$ci[1], ci_ul = alg_r2$ci[2])
+    data.frame(Learner = alg, Screen = screen, R2 = alg_r2$r2, se = alg_r2$se, ci_ll = alg_r2$ci[1], ci_ul = alg_r2$ci[2])
   }
   other_r2s <- plyr::ldply(1:ncol(sl_fit$library.predict),
                            function(x) get_individual_r2(sl_fit = sl_fit, col = x,
@@ -287,7 +288,7 @@ get_all_r2s_lst <- function(sl_fit_lst, scale = "identity", weights = rep(1, len
     sl_r2 <- cv_r2(preds = sl_fit_lst$fit$SL.predict, Y = sl_fit_lst$fit$Y,
                    folds = sl_fit_lst$fit$folds, scale = scale, weights = weights,
                    C = C, Z = Z, ...)
-    out <- data.frame(Learner="SL", Screen="All", R2 = sl_r2$r2,
+    out <- data.frame(Learner="SL", Screen="All", R2 = sl_r2$r2, se = sl_r2$se,
                       ci_ll = sl_r2$ci[1], ci_ul=sl_r2$ci[2])
 
     # Get the CV-R2 of the Discrete SuperLearner predictions
@@ -295,8 +296,8 @@ get_all_r2s_lst <- function(sl_fit_lst, scale = "identity", weights = rep(1, len
                             Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds,
                             scale = scale, weights = weights, C = C, Z = Z, ...)
     out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All",
-                                 R2 = discrete_sl_r2$r2, ci_ll = discrete_sl_r2$ci[1],
-                                 ci_ul = discrete_sl_r2$ci[2]))
+                                 R2 = discrete_sl_r2$r2, se = discrete_sl_r2$se,
+                                 ci_ll = discrete_sl_r2$ci[1], ci_ul = discrete_sl_r2$ci[2]))
 
     # Get the cvr2 of the individual learners in the library
     get_individual_r2 <- function(sl_fit, col, scale, weights, C, Z, ...) {
@@ -308,7 +309,7 @@ get_all_r2s_lst <- function(sl_fit_lst, scale = "identity", weights = rep(1, len
       alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_", fixed = TRUE)[[1]]
       alg <- tail(alg_screen_string[grepl(".", alg_screen_string, fixed = TRUE)], n = 1)
       screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, fixed = TRUE)], collapse = "_")
-      data.frame(Learner = alg, Screen = screen, R2 = alg_r2$r2, ci_ll = alg_r2$ci[1], ci_ul = alg_r2$ci[2])
+      data.frame(Learner = alg, Screen = screen, R2 = alg_r2$r2, se = alg_r2$se, ci_ll = alg_r2$ci[1], ci_ul = alg_r2$ci[2])
     }
     other_r2s <- plyr::ldply(1:ncol(sl_fit_lst$fit$library.predict),
                              function(x) get_individual_r2(sl_fit = sl_fit_lst$fit, col = x,
@@ -327,6 +328,7 @@ get_all_r2s_lst <- function(sl_fit_lst, scale = "identity", weights = rep(1, len
 # @param X_mat the covariates
 # @param family the family, for super learner (e.g., "binomial")
 # @param obsWeights the inverse probability of censoring weights (for super learner)
+# @param all_weights the IPC weights for variable importance (full data)
 # @param sl_lib the super learner library (e.g., "SL.ranger")
 # @param method the method for determining the optimal combination of base learners
 # @param cvControl a list of control parameters to pass to the outer super learner
@@ -335,7 +337,8 @@ get_all_r2s_lst <- function(sl_fit_lst, scale = "identity", weights = rep(1, len
 #        (for variable importance, we don't need it so can save some memory
 #         by excluding large objects)
 run_cv_sl_once <- function(seed = 1, Y = NULL, X_mat = NULL, family = "binomial",
-                           obsWeights = rep(1, length(Y)), sl_lib = "SL.ranger", method = "method.CC_nloglik",
+                           obsWeights = rep(1, length(Y)), all_weights = rep(1, nrow(Z)),
+                           sl_lib = "SL.ranger", method = "method.CC_nloglik",
                            cvControl = list(V = 5), innerCvControl = list(V = 5), vimp = FALSE,
                            C = rep(1, length(Y)), Z = NULL, z_lib = "SL.ranger", scale = "identity") {
   set.seed(seed)
@@ -343,7 +346,7 @@ run_cv_sl_once <- function(seed = 1, Y = NULL, X_mat = NULL, family = "binomial"
                                                    obsWeights = obsWeights, SL.library = sl_lib,
                                                    method = method, cvControl = cvControl,
                                                    innerCvControl = innerCvControl)
-  aucs <- get_all_aucs(sl_fit = fit, scale = scale, weights = obsWeights,
+  aucs <- get_all_aucs(sl_fit = fit, scale = scale, weights = all_weights,
                        C = C, Z = Z, SL.library = z_lib)
   ret_lst <- list(fit = fit, folds = fit$folds, aucs = aucs)
   if (vimp) {
