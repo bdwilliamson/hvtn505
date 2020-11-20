@@ -3,8 +3,8 @@ title: "Super Learner + `vimp`: Investigating HIV-1 correlates of protection in 
 author: "Brian Williamson"
 date: "`r Sys.Date()`"
 output:
-  bookdown::html_document2:
-  # bookdown::pdf_document2:
+  # bookdown::html_document2:
+  bookdown::pdf_document2:
     toc: true
 
 references:
@@ -169,11 +169,12 @@ We performed some data cleaning and a dimension reduction step prior to the stat
 * For variables with a positive response call (IgG, IgG3, IgA, R2a, R3a, phago, Tier 1 nAb) require $>$ 20% vaccine group positive response.  For all variables, require a significantly greater response in the vaccine group than the placebo group to include in the analysis (Wilcoxon rank sum test 2-sided p $<$ 0.01).  Note that no Tier 1 nAb variables are included because none met the $>$ 20% vaccine group response criterion.
 * For all variables in an interpretable variable set (defined by assay and antigen) that are for vaccine-mismatched antigens, aggregate the variables into two scores to be kept for CoR analysis: PC1 and the maximal diversity weighted score (MDWS).
 
-The data are included in the R package HVTN505. The data are available at the [Statistical Center for HIV/AIDS Research and Prevention](https://atlas.scharp.org/cpas/project/HVTN%20Public%20Data/HVTN%20505/begin.view) website. Install the package from `HVTN505_2019-4-25.tar.gz` using the following code:
+The data are included in the R package HVTN505. The data are available at the [Statistical Center for HIV/AIDS Research and Prevention](https://atlas.scharp.org/cpas/project/HVTN%20Public%20Data/HVTN%20505/begin.view) website, in the `correlates` subfolder. Install the package from `HVTN505_2019-4-25.tar.gz` (you may only have access to a later date) using the following code:
 
 ```{r install-hvtn505}
 # only run this line if the package isn't already installed; edit the file path
-# to point to the directory where the .tar.gz file is located
+# to point to the directory where the .tar.gz file is located and make sure you have
+# the correct name
 # devtools::install_local("HVTN505_2019-4-25.tar.gz")
 ```
 
@@ -200,6 +201,91 @@ We consider 11 candidate variable sets in this analysis, defined by assay combin
 11. No markers.
 
 In all analyses, as we mentioned above, we adjust for three baseline variables: age, BMI, and behavioral risk.
+
+## Inverse Probability Weights
+
+All of the following analyses rely on vaccine recipients who were at risk of HIV-1 infection at Month 7. This is a case-control cohort within the full HVTN 505 analysis dataset. Thus, all of our analyses must account for this sampling. The HVTN 505 correlates dataset `dat.505` contains the weights for the vaccine recipients, which is useful for running the regressions of outcome on various sets of covariates. However, to fully account for the case-control sampling, we need the weights for all vaccine recipients along with an indicator of which vaccine recipients are in the case-control cohort. The following code uses the full HVTN 505 data to obtain weights for each trial participant, which we will use in the subsequent sections.
+
+```{r get_all_weights}
+library("dplyr")
+library("tidyr")
+library("tibble")
+library("readr")
+# ------------------------------------------------------
+# Read in the full dataset and make sure that
+# strata are computed across ALL participants
+# ------------------------------------------------------
+# these data come from the SCHARP ATLAS page for 505, 
+# https://atlas.scharp.org/cpas/project/HVTN%20Public%20Data/HVTN%20505/begin.view?
+# (select primary505_for_sharing.csv within the Fong et al. (2018, JID) folder)
+# I've saved this in a data/ subfolder, but change the path to where you've saved it
+full_data <- readr::read_csv("data/primary505_for_sharing.csv") 
+full_data_with_strata <- full_data %>% 
+  mutate(hg_strata = ifelse(is.na(hg_strata), 
+                            paste0(
+                              ifelse(trt == 0, "Plac/", "Vacc/"),
+                              ifelse(racecc == "White", "White", "Blk_Hisp"),
+                              ifelse(trt == 1 & is.na(BMI), "/Missing", ""),
+                              ifelse(trt == 1 & BMI < 25 & !is.na(BMI), "/[18.4, 25)", ""),
+                              ifelse(trt == 1 & 25 <= BMI & BMI < 29.8 & !is.na(BMI), "/[25, 29.8)", ""),
+                              ifelse(trt == 1 & 29.8 <= BMI & !is.na(BMI), "/[29.8, 40)", "")
+                            ), 
+                            hg_strata)) %>% 
+  filter(!is.na(BMI))
+
+# read in table to match pub_id from this dataset with the
+# ID in the HVTN505 R package; available upon request
+pub_id_converter <- readr::read_csv("data/rx_v2.csv") %>% 
+  select(Ptid, pub_id) %>%
+  rename(hvtn505_id = Ptid) %>% 
+  mutate(hvtn505_id = gsub("-", "", hvtn505_id))
+
+# update pub id
+full_data_with_matched_ids <- full_data_with_strata %>% 
+  left_join(pub_id_converter, by = "pub_id")
+# ------------------------------------------------------
+# Compute inverse probability weights
+# ------------------------------------------------------
+# compute strata 
+full_data_with_stratuminds <- full_data_with_matched_ids %>% 
+  mutate(
+    stratuminds = case_when(
+      hg_strata == "Plac/Blk_Hisp" ~ 1,
+      hg_strata == "Plac/White" ~ 2,
+      hg_strata == "Vacc/Blk_Hisp/[18.4, 25)" ~ 3,
+      hg_strata == "Vacc/Blk_Hisp/[25, 29.8)" ~ 4,
+      hg_strata == "Vacc/Blk_Hisp/[29.8, 40)" ~ 5,
+      hg_strata == "Vacc/White/[18.4, 25)" ~ 6,
+      hg_strata == "Vacc/White/[25, 29.8)" ~ 7,
+      hg_strata == "Vacc/White/[29.8, 40)" ~ 8
+    ),
+    stratuminds_vaccs = stratuminds - 2
+  )
+cc_data <- full_data_with_stratuminds %>% 
+  filter(casecontrol == 1)
+# numbers of cases and controls in each stratum
+n0 <- full_data_with_stratuminds %>% 
+  filter(cc_cohort == 1, HIVwk28preunbl == 0) %>% 
+  group_by(cc_strata) %>% 
+  summarize(n0 = n(), .groups = "drop")
+n1 <- full_data_with_stratuminds %>% 
+  filter(cc_cohort == 1, HIVwk28preunbl == 1) %>% 
+  group_by(cc_strata) %>% 
+  summarize(n1 = n(), .groups = "drop")
+# compute the weights
+weights <- cbind(n0$n0, n1$n1) / table(cc_data$stratuminds, cc_data$HIVwk28preunbl)
+full_data_with_weights <- full_data_with_stratuminds %>% 
+  mutate(weight = ifelse(HIVwk28preunbl == 1, 
+                         1, 
+                         weights[, 1][full_data_with_stratuminds$stratuminds]))
+
+# final tibble
+Z_plus_weights <- full_data_with_weights %>% 
+  select(hvtn505_id, trt, HIVpreunbl, age, BMI, bhvrisk, weight) %>% 
+  rename(ptid = hvtn505_id, Y = HIVpreunbl) %>% 
+  mutate(ptid = as.numeric(ptid)) %>% 
+  filter(!is.na(Y), !is.na(age), !is.na(BMI), !is.na(bhvrisk))
+```
 
 ## Super Learning Analysis
 
@@ -303,8 +389,21 @@ Y_vaccine <- vaccinees$Y
 weights_vaccine <- vaccinees$weights
 X_vaccine <- vaccinees %>%
   select(-Y, -weights)
-C <- rep(1, length(Y_vaccine))
-Z <- data.frame(Y = Y_vaccine, X_vaccine %>% select(age, BMI, bhvrisk))
+
+# match the rows in vaccinees to get Z, C
+all_cc_vaccine <- Z_plus_weights %>% 
+  filter(ptid %in% vaccinees$ptid, trt == 1)
+# pull out the participants who are NOT in the cc cohort and received the vaccine
+all_non_cc_vaccine <- Z_plus_weights %>% 
+  filter(!(ptid %in% vaccinees$ptid), trt == 1)
+# put them back together
+phase_1_data_vaccine <- dplyr::bind_rows(all_cc_vaccine, all_non_cc_vaccine) %>% 
+  select(-trt)
+Z_vaccine <- phase_1_data_vaccine %>% 
+  select(-ptid, -weight)
+all_ipw_weights_vaccine <- phase_1_data_vaccine %>% 
+  pull(weight)
+C <- (phase_1_data_vaccine$ptid %in% vaccinees$ptid)
 
 V_outer <- 5
 V_inner <- length(Y_vaccine) - 1
@@ -319,7 +418,7 @@ set.seed(4747)
 seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
 fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, 
                            X_mat = X_vaccine, family = "binomial", 
-                           Z = Z, C = C, z_lib = "SL.glm",
+                           Z = Z_vaccine, C = C, z_lib = "SL.glm",
                            obsWeights = weights_vaccine,
                            scale = "logit",
                            sl_lib = SL_library[1],
@@ -333,7 +432,7 @@ sl_fits_varset_11_all <- fits
 # do the same thing for confounders only
 fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, 
                            X_mat = X_none, family = "binomial",
-                           Z = Z, C = C, z_lib = "SL.glm",
+                           Z = Z_vaccine, C = C, z_lib = "SL.glm",
                            obsWeights = weights_vaccine,
                            scale = "logit",
                            sl_lib = methods[1],
@@ -350,7 +449,7 @@ The code to reproduce the results of the original analysis is provided in the Ap
 
 ## Variable Importance
 
-We use the `vimp` package to compute variable importance estimates and confidence intervals. In all cases, we consider variable importance as a summary of the true data-generating distribution. Since our outcome is binary, we estimate variable importance in two ways: using the population difference in R-squared [@williamson2020a], and using the population difference in area under the receiver operating characteristic curve (AUC) [@williamson2020b]. We interpret the R-squared-based importance as the proportion of the variability in the outcome explained by including a group of covariates. We interpret the AUC-based importance as the difference in our ability to discriminate between cases and controls based on using a group of covariates. Load the `vimp` package using the following code:
+We use the `vimp` package to compute variable importance estimates and confidence intervals. In all cases, we consider variable importance as a summary of the true data-generating distribution. Since our outcome is binary, we estimate variable importance using the population difference in area under the receiver operating characteristic curve (AUC) [@williamson2020b]. We interpret the AUC-based importance as the difference in our ability to discriminate between cases and controls based on using a group of covariates. Load the `vimp` package using the following code:
 
 ```{r load-vimp}
 # only run the next line if you haven't already installed 'vimp' version 2.1.4 or later
@@ -419,8 +518,20 @@ for (i in (1:14)[-11]) {
   weights_vaccine <- vaccinees$weights
   X_vaccine <- vaccinees %>%
     select(-Y, -weights)
-  C <- rep(1, length(Y_vaccine))
-  Z <- data.frame(Y = Y_vaccine, X_vaccine %>% select(age, BMI, bhvrisk))
+  # match the rows in vaccinees to get Z, C
+  all_cc_vaccine <- Z_plus_weights %>% 
+    filter(ptid %in% vaccinees$ptid, trt == 1)
+  # pull out the participants who are NOT in the cc cohort and received the vaccine
+  all_non_cc_vaccine <- Z_plus_weights %>% 
+    filter(!(ptid %in% vaccinees$ptid), trt == 1)
+  # put them back together
+  phase_1_data_vaccine <- dplyr::bind_rows(all_cc_vaccine, all_non_cc_vaccine) %>% 
+    select(-trt)
+  Z_vaccine <- phase_1_data_vaccine %>% 
+    select(-ptid, -weight)
+  all_ipw_weights_vaccine <- phase_1_data_vaccine %>% 
+    pull(weight)
+  C <- (phase_1_data_vaccine$ptid %in% vaccinees$ptid)
 
   V_outer <- 5
   V_inner <- length(Y_vaccine) - 1
@@ -442,7 +553,7 @@ for (i in (1:14)[-11]) {
   fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, 
                              X_mat = X_vaccine,
                              family = "binomial", 
-                             C = C, Z = Z, z_lib = "SL.glm",
+                             C = C, Z = Z_vaccine, z_lib = "SL.glm",
                              obsWeights = weights_vaccine,
                              scale = "logit",
                              sl_lib = sl_lib,
@@ -532,7 +643,7 @@ The following code chunk creates a function that makes plots:
 
 ## Super Learning Analysis
 
-We ran the Super Learner algorithm for each of the 11 variable sets defined in Section 1 using the procedure defined in Section 2. We present the cross-validated AUC for the overall Super Learner from each of the variable sets. These are provided in Figures \@ref(fig:sl-forest-plot-auc) and \@ref(fig:sl-forest-plot-r2), respectively. In each figure, the error bars are colored by immunoassay set: antibody (Ab) variables (black), no markers (yellow), T cell variables (green), and T cell and Ab variables (blue).
+We ran the Super Learner algorithm for each of the 11 variable sets defined in Section 1 using the procedure defined in Section 2. We present the cross-validated AUC for the overall Super Learner from each of the variable sets. These are provided in Figure \@ref(fig:sl-forest-plot-auc). In the figure, the error bars are colored by immunoassay set: antibody (Ab) variables (black), no markers (yellow), T cell variables (green), and T cell and Ab variables (blue).
 
 In Figure \@ref(fig:sl-forest-plot-auc), we see improved performance of the Super Learner when including marker variables compared to baseline risk variables only. Indeed, the Super Learner using only baseline variables and no markers has a cross-validated AUC of `r round((avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC, 3)`. Other variable sets have a smaller estimated cross-validated AUC, but this is likely due to the small candidate library that we used for this analysis. Our proposed estimator of HIV-1 infection risk among vaccinees, the cross-validated Super Learner, has an estimated AUC of `r round((avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$AUC, 3)` based on all markers, with a 95\% confidence interval of `r paste0("[", round((avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ll, 3), ", ", round((avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ul, 3), "]")`. This is an improvement over the Super Learner based on only the baseline risk variables, with an estimated AUC of `r round((avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC, 3)` `r paste0("[", round((avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ll, 3), ", ", round((avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ul, 3), "]")`. These results must be interpreted with the large caveat that we have used a restricted set of learners in our Super Learner library to reduce computation time. A fuller set of learners is recommended for any publication-ready analysis (indeed, when we used the full library of learners in the full published analysis, the Super Learner based on all markers had a much improved AUC over the Super Learner with baseline risk variables only).
 
@@ -558,10 +669,6 @@ sl_plus_top_learner_auc_plot <- plot_grid(auc_forest_plot_init$top_learner_nms_p
   draw_label("Algorithm", size = title_font_size, x = 0.175, y = y_title) +
   draw_label("Screen", size = title_font_size, x = 0.25, y = y_title) +
   draw_label("CV-AUC [95% CI]", size = title_font_size, x = 0.43, y = y_title)
-sl_plus_top_learner_auc_plot
-```
-
-```{r auc-immunoassay-plot, fig.cap = "Forest plot of cross-validated AUC for the Super Learner colored by assay combination.", fig.width = 20, fig.height = 8}
 
 # add on immunoassay set
 avg_aucs <- avg_aucs %>%
@@ -776,9 +883,6 @@ vimp_forest_plot <- vimp_tibble %>%
 vimp_forest_plot
 ```
 
-We additionally measured the importance of each individual variable within the assay and antigen groups: these results are presented in the Appendix.
-
-
 # Conclusions
 
 In this analysis, we developed a model that predicts HIV-1 infection in vaccinees from month 7 marker variables and baseline risk variables. This model employs nested cross-validation to combine a flexible library of individual learners into a prediction algorithm that admits desirable asymptotic properties: namely, that the resulting cross-validated estimator is asymptotically guaranteed to have the same risk as the oracle estimator.
@@ -789,7 +893,7 @@ The main limitation of this analysis is that, to save computation time in this v
 
 # Appendix
 
-Code to reproduce the full Super Learning analysis is provided here. The original analysis of the HVTN 505 data [@neidich2019] used a previous version of the `vimp` package (specifically, `vimp` version 1.3.0); in this version of the package, hypothesis testing was not available, and the regressions based on the group of covariates of interest (e.g., IgG + IgA variables) and the group of remaining covariates (e.g., all variables besides IgG + IgA) were estimated on the same data. Additionally, the confidence intervals for CV-AUC did not fully account for the inverse weighting arising from the two-phase sample. In the updated `vimp` version used here (version 2.1.4), it is possible to do hypothesis testing and the inverse weighting is properly handled. However, the hypothesis testing relies on the regressions being estimated on separate splits of the data; we do not do that here to harmonize this analysis with the original analysis.
+Code to reproduce the full Super Learning analysis is provided here. The original analysis of the HVTN 505 data [@neidich2019] used a previous version of the `vimp` package (specifically, `vimp` version 1.3.0); in this version of the package, hypothesis testing was not available, and the regressions based on the group of covariates of interest (e.g., IgG + IgA variables) and the group of remaining covariates (e.g., all variables besides IgG + IgA) were estimated on the same data. In the updated `vimp` version used here (version 2.1.4), it is possible to do hypothesis testing and the inverse weighting is properly handled. However, the hypothesis testing relies on the regressions being estimated on separate splits of the data; we do not do that here to harmonize this analysis with the original analysis.
 
 ```{r run-full-sl, eval = FALSE, code = readLines("code/run_sl.R")}
 ```
