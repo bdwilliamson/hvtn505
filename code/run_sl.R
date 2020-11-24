@@ -40,9 +40,9 @@ print(num_cores)
 source(paste0(code_dir, "sl_screens.R")) # set up the screen/algorithm combinations
 source(paste0(code_dir, "utils.R")) # get CV-AUC for all algs
 
-# ---------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # pre-process the data
-# ---------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # read in the full dataset
 data("dat.505", package = "HVTN505")
 # read in the super learner variables
@@ -101,12 +101,10 @@ C <- (phase_1_data_vaccine$ptid %in% vaccinees$ptid)
 
 V_outer <- 5
 V_inner <- length(Y_vaccine) - 1
-# ---------------------------------------------------------------------------------
-# run super learner, with leave-one-out cross-validation and all screens
+# ------------------------------------------------------------------------------# run super learner, with leave-one-out cross-validation and all screens
 # do 10 random starts, average over these
 # use assay groups as screens
-# ---------------------------------------------------------------------------------
-# ensure reproducibility
+# ------------------------------------------------------------------------------# ensure reproducibility
 set.seed(4747)
 seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
 fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X_vaccine, family = "binomial",

@@ -38,9 +38,9 @@ print(num_cores)
 source(paste0(code_dir, "sl_screens.R")) # set up the screen/algorithm combinations
 source(paste0(code_dir, "utils.R")) # get CV-AUC for all algs
 
-# ---------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # pre-process the data
-# ---------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # read in the full dataset
 data("dat.505", package = "HVTN505")
 # read in the super learner variables
@@ -112,10 +112,10 @@ cat("\n Running ", var_set_names[job_id], "\n")
 X_markers_varset <- X_markers %>%
   select(names(X_markers)[this_var_set])
 X_exposure <- dat.505 %>%
-  as_tibble() %>% 
+  as_tibble() %>%
   select(age, BMI, bhvrisk)
-X <- tibble::tibble(ptid = dat.505$ptid, trt = dat.505$trt, 
-                    weight = dat.505$wt) %>% 
+X <- tibble::tibble(ptid = dat.505$ptid, trt = dat.505$trt,
+                    weight = dat.505$wt) %>%
      bind_cols(X_exposure, X_markers_varset)
 Y <- tibble(Y = dat.505$case)
 vaccinees <- dplyr::bind_cols(Y, X) %>%
@@ -127,23 +127,23 @@ X_vaccine <- vaccinees %>%
   select(-Y, -weight, -ptid)
 # read in the full phase 1 dataset and weights,
 # and reorder so that rows match rows of X_vaccine with the remaining rows after
-# note that in this case, Z_plus_weights has 2494 rows 
+# note that in this case, Z_plus_weights has 2494 rows
 # (the number of participants with complete data on age, BMI, bhvrisk)
 # and that the number of vaccinees is 1250
 Z_plus_weights <- readRDS(file = paste0(data_dir, "z_and_weights_for_505_analysis.rds"))
 # pull out the participants in the cc cohort who also received the vaccine;
 # this matches the rows in vaccinees
-all_cc_vaccine <- Z_plus_weights %>% 
+all_cc_vaccine <- Z_plus_weights %>%
   filter(ptid %in% vaccinees$ptid, trt == 1)
 # pull out the participants who are NOT in the cc cohort and received the vaccine
-all_non_cc_vaccine <- Z_plus_weights %>% 
+all_non_cc_vaccine <- Z_plus_weights %>%
   filter(!(ptid %in% vaccinees$ptid), trt == 1)
 # put them back together
-phase_1_data_vaccine <- dplyr::bind_rows(all_cc_vaccine, all_non_cc_vaccine) %>% 
+phase_1_data_vaccine <- dplyr::bind_rows(all_cc_vaccine, all_non_cc_vaccine) %>%
   select(-trt)
-Z_vaccine <- phase_1_data_vaccine %>% 
+Z_vaccine <- phase_1_data_vaccine %>%
   select(-ptid, -weight)
-all_ipw_weights_vaccine <- phase_1_data_vaccine %>% 
+all_ipw_weights_vaccine <- phase_1_data_vaccine %>%
   pull(weight)
 C <- (phase_1_data_vaccine$ptid %in% vaccinees$ptid)
 
@@ -157,10 +157,10 @@ if (job_id == 1) {
 } else {
   sl_lib <- SL_library[!grepl("earth", SL_library)] # get rid of numerical errors from SL.earth
 }
-# ---------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # run super learner, with leave-one-out cross-validation and all screens
 # do 10 random starts, average over these
-# ---------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # ensure reproducibility
 set.seed(4747)
 seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts

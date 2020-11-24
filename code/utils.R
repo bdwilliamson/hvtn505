@@ -8,39 +8,50 @@
 # get the CV-AUC for a single learner's predicted values
 # @param preds the fitted values
 # @param Y the outcome
-# @param scale what scale should the IPCW correction be applied on? Can help with numbers outside of (0, 1)
+# @param scale what scale should the IPCW correction be applied on? 
+#              Can help with numbers outside of (0, 1)
 #             ("identity" denotes the identity scale;
-#              "logit" means that AUC is transformed to the logit scale, correction is applied, and then back-transformed)
+#              "logit" means that AUC is transformed to the logit scale, 
+#              correction is applied, and then back-transformed)
 # @param weights the inverse probability of censoring weights
 # @param C the indicator of being observed in phase 2 (1) or not (0)
-# @param Z a matrix of predictors observed on all participants in phase 1 (can include the outcome)
+# @param Z a matrix of predictors observed on all participants in phase 1 
+#          (can include the outcome)
 # @param ... other arguments to measure_auc, but should include at least:
 #            a library of learners (using arg "SL.library")
 #            and may include control parameters for the super learner
-#            (e.g., cvControl = list(V = 5) for 5-fold cross-validated super learner)
+#            (e.g., cvControl = list(V = 5) 
+#             for 5-fold cross-validated super learner)
 one_auc <- function(preds, Y, scale = "identity",
                     weights = rep(1, length(Y)), C = rep(1, length(Y)),
                     Z = NULL, ...) {
-  auc_lst <- vimp::measure_auc(fitted_values = preds, y = Y, C = C, Z = Z,
-                               ipc_weights = weights, ipc_fit_type = "SL", ...)
+  auc_lst <- vimp::measure_auc(fitted_values = preds, y = Y, C = C, 
+                               Z = Z,
+                               ipc_weights = weights, 
+                               ipc_fit_type = "SL", ...)
   se <- vimp::vimp_se(auc_lst$point_est, auc_lst$eif)
-  ci <- vimp::vimp_ci(est = auc_lst$point_est, se = se, scale = scale, level = 0.95)
+  ci <- vimp::vimp_ci(est = auc_lst$point_est, se = se, scale = scale, 
+                      level = 0.95)
   data.frame(auc = auc_lst$point_est, cil = ci[, 1], ciu = ci[, 2], se = se[1])
 }
 # get the cross-fitted CV-AUC for a single learner's predicted values
 # @param preds the fitted values
 # @param Y the outcome
 # @param folds the different cv folds that the learner was evaluated on
-# @param scale what scale should the IPCW correction be applied on? Can help with numbers outside of (0, 1)
+# @param scale what scale should the IPCW correction be applied on? 
+#              Can help with numbers outside of (0, 1)
 #             ("identity" denotes the identity scale;
-#              "logit" means that AUC is transformed to the logit scale, correction is applied, and then back-transformed)
+#              "logit" means that AUC is transformed to the logit scale, 
+#              correction is applied, and then back-transformed)
 # @param weights the inverse probability of censoring weights
 # @param C the indicator of being observed in phase 2 (1) or not (0)
-# @param Z a matrix of predictors observed on all participants in phase 1 (can include the outcome)
+# @param Z a matrix of predictors observed on all participants in phase 1 
+#          (can include the outcome)
 # @param ... other arguments to measure_auc, but should include at least:
 #            a library of learners (using arg "SL.library")
 #            and may include control parameters for the super learner
-#            (e.g., cvControl = list(V = 5) for 5-fold cross-validated super learner)
+#            (e.g., cvControl = list(V = 5) 
+#             for 5-fold cross-validated super learner)
 cv_auc <- function(preds, Y, folds, scale = "identity",
                    weights = rep(1, length(Y)), C = rep(1, length(Y)),
                    Z = NULL, ...) {
@@ -49,7 +60,8 @@ cv_auc <- function(preds, Y, folds, scale = "identity",
   folds_init <- rep(as.numeric(names(folds)), each = length(Y)/length(folds))
   folds_mat <- cbind(fold_row_nums, folds_init)
   folds_numeric <- folds_mat[order(folds_mat[, 1]), 2]
-  folds_z <- c(folds_numeric, sample(seq_len(V), nrow(Z) - length(folds_numeric), replace = TRUE))
+  folds_z <- c(folds_numeric, sample(seq_len(V), nrow(Z) - length(folds_numeric), 
+                                     replace = TRUE))
   ests_cis <- do.call(rbind.data.frame, lapply(as.list(1:V), function(v) {
     one_auc(preds = preds[folds_numeric == v], Y[folds_numeric == v],
             scale = scale,
@@ -63,124 +75,168 @@ cv_auc <- function(preds, Y, folds, scale = "identity",
 }
 # get the CV-AUC for all learners fit with SL
 # @param sl_fit the super learner fit object
-# @param scale what scale should the IPCW correction be applied on? Can help with numbers outside of (0, 1)
+# @param scale what scale should the IPCW correction be applied on? 
+#              Can help with numbers outside of (0, 1)
 #             ("identity" denotes the identity scale;
-#              "logit" means that AUC is transformed to the logit scale, correction is applied, and then back-transformed)
+#              "logit" means that AUC is transformed to the logit scale, 
+#              correction is applied, and then back-transformed)
 # @param weights the inverse probability of censoring weights
 # @param C the indicator of being observed in phase 2 (1) or not (0)
-# @param Z a matrix of predictors observed on all participants in phase 1 (can include the outcome)
+# @param Z a matrix of predictors observed on all participants in phase 1 
+#          (can include the outcome)
 # @param ... other arguments to measure_auc, but should include at least:
 #            a library of learners (using arg "SL.library")
 #            and may include control parameters for the super learner
-#            (e.g., cvControl = list(V = 5) for 5-fold cross-validated super learner)
-get_all_aucs <- function(sl_fit, scale = "identity", weights = rep(1, length(sl_fit$Y)), C = rep(1, length(sl_fit$Y)),
+#            (e.g., cvControl = list(V = 5) 
+#             for 5-fold cross-validated super learner)
+get_all_aucs <- function(sl_fit, scale = "identity", 
+                         weights = rep(1, length(sl_fit$Y)),
+                         C = rep(1, length(sl_fit$Y)),
                          Z = NULL, ...) {
   # get the CV-AUC of the SuperLearner predictions
-  sl_auc <- cv_auc(preds = sl_fit$SL.predict, Y = sl_fit$Y, folds = sl_fit$folds,
+  sl_auc <- cv_auc(preds = sl_fit$SL.predict, Y = sl_fit$Y, 
+                   folds = sl_fit$folds,
                    scale = scale, weights = weights, C = C, Z = Z, ...)
   out <- data.frame(Learner="SL", Screen="All", AUC = sl_auc$auc,
                     se = sl_auc$se, ci_ll = sl_auc$ci[1], ci_ul=sl_auc$ci[2])
 
   # Get the CV-auc of the Discrete SuperLearner predictions
   discrete_sl_auc <- cv_auc(preds = sl_fit$discreteSL.predict, Y = sl_fit$Y,
-                            folds = sl_fit$folds, scale = scale, weights = weights, C = C,
+                            folds = sl_fit$folds, scale = scale, 
+                            weights = weights, C = C,
                             Z = Z, ...)
   out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All",
-                               AUC = discrete_sl_auc$auc, se = discrete_sl_auc$se,
-                               ci_ll = discrete_sl_auc$ci[1], ci_ul = discrete_sl_auc$ci[2]))
+                               AUC = discrete_sl_auc$auc, 
+                               se = discrete_sl_auc$se,
+                               ci_ll = discrete_sl_auc$ci[1], 
+                               ci_ul = discrete_sl_auc$ci[2]))
 
   # Get the cvauc of the individual learners in the library
-  get_individual_auc <- function(sl_fit, col, scale = "identity", weights = rep(1, length(sl_fit$Y)),
+  get_individual_auc <- function(sl_fit, col, scale = "identity", 
+                                 weights = rep(1, length(sl_fit$Y)),
                                  C = rep(1, length(sl_fit$Y)), Z = NULL, ...) {
     if(any(is.na(sl_fit$library.predict[, col]))) return(NULL)
     alg_auc <- cv_auc(preds = sl_fit$library.predict[, col], Y = sl_fit$Y,
                       scale = scale,
-                      folds = sl_fit$folds, weights = weights, C = C, Z = Z, ...)
+                      folds = sl_fit$folds, weights = weights, 
+                      C = C, Z = Z, ...)
     # get the regexp object
     alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_",
                                   fixed = TRUE)[[1]]
-    alg <- tail(alg_screen_string[grepl(".", alg_screen_string, fixed = TRUE)], n = 1)
-    screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, fixed = TRUE)],
+    alg <- tail(alg_screen_string[grepl(".", alg_screen_string, 
+                                        fixed = TRUE)], n = 1)
+    screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, 
+                                              fixed = TRUE)],
                      collapse = "_")
-    data.frame(Learner = alg, Screen = screen, AUC = alg_auc$auc, se = alg_auc$se,
+    data.frame(Learner = alg, Screen = screen, AUC = alg_auc$auc, 
+               se = alg_auc$se,
                ci_ll = alg_auc$ci[1], ci_ul = alg_auc$ci[2])
   }
   other_aucs <- plyr::ldply(1:ncol(sl_fit$library.predict),
-                            function(x) get_individual_auc(sl_fit = sl_fit, col = x, scale = scale,
-                                                           weights = weights, C = C, Z = Z, ...))
+                            function(x) 
+                              get_individual_auc(
+                                sl_fit = sl_fit, 
+                                col = x, 
+                                scale = scale,
+                                weights = weights, 
+                                C = C, Z = Z, ...)
+                            )
   rbind(out, other_aucs)
 }
 # get the CV-AUC for all super learner objects in a list
 # @param sl_fit_lst a list of super learner fit objects
-# @param scale what scale should the IPCW correction be applied on? Can help with numbers outside of (0, 1)
+# @param scale what scale should the IPCW correction be applied on? 
+#              Can help with numbers outside of (0, 1)
 #             ("identity" denotes the identity scale;
-#              "logit" means that AUC is transformed to the logit scale, correction is applied, and then back-transformed)
+#              "logit" means that AUC is transformed to the logit scale, 
+#              correction is applied, and then back-transformed)
 # @param weights the inverse probability of censoring weights
 # @param C the indicator of being observed in phase 2 (1) or not (0)
-# @param Z a matrix of predictors observed on all participants in phase 1 (can include the outcome)
+# @param Z a matrix of predictors observed on all participants in phase 1 
+#          (can include the outcome)
 # @param ... other arguments to measure_auc, but should include at least:
 #            a library of learners (using arg "SL.library")
 #            and may include control parameters for the super learner
-#            (e.g., cvControl = list(V = 5) for 5-fold cross-validated super learner)
+#            (e.g., cvControl = list(V = 5) 
+#             for 5-fold cross-validated super learner)
 get_all_aucs_lst <- function(sl_fit_lst, scale = "identity",
                              weights = rep(1, length(sl_fit_lst[[1]]$fit$Y)),
-                             C = rep(1, length(sl_fit_lst[[1]]$fit$Y)), Z = NULL, ...) {
+                             C = rep(1, length(sl_fit_lst[[1]]$fit$Y)), 
+                             Z = NULL, ...) {
   # get the CV-AUC of the SuperLearner predictions
   if (is.null(sl_fit_lst)) {
     return(NA)
   } else {
-    sl_auc <- cv_auc(preds = sl_fit_lst$fit$SL.predict, Y = sl_fit_lst$fit$Y,
+    sl_auc <- cv_auc(preds = sl_fit_lst$fit$SL.predict, 
+                     Y = sl_fit_lst$fit$Y,
                      scale = scale,
                      folds = sl_fit_lst$fit$folds, weights = weights,
                      C = C, Z = Z, ...)
-    out <- data.frame(Learner="SL", Screen="All", AUC = sl_auc$auc, ci_ll = sl_auc$ci[1],
+    out <- data.frame(Learner="SL", Screen="All", AUC = sl_auc$auc, 
+                      ci_ll = sl_auc$ci[1],
                       ci_ul=sl_auc$ci[2])
 
     # Get the CV-auc of the Discrete SuperLearner predictions
     discrete_sl_auc <- cv_auc(preds = sl_fit_lst$fit$discreteSL.predict,
-                              Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds,
+                              Y = sl_fit_lst$fit$Y, 
+                              folds = sl_fit_lst$fit$folds,
                               scale = scale,
                               weights = weights, C = C, Z = Z, ...)
-    out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All", AUC = discrete_sl_auc$auc,
-                                 ci_ll = discrete_sl_auc$ci[1], ci_ul = discrete_sl_auc$ci[2]))
+    out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All", 
+                                 AUC = discrete_sl_auc$auc,
+                                 ci_ll = discrete_sl_auc$ci[1], 
+                                 ci_ul = discrete_sl_auc$ci[2]))
 
     # Get the cvauc of the individual learners in the library
     get_individual_auc <- function(sl_fit, col, scale, weights, C, Z, ...) {
       if(any(is.na(sl_fit$library.predict[, col]))) return(NULL)
       alg_auc <- cv_auc(preds = sl_fit$library.predict[, col], Y = sl_fit$Y,
                         scale = scale,
-                        folds = sl_fit$folds, weights = weights, C = C, Z = Z, ...)
+                        folds = sl_fit$folds, weights = weights, 
+                        C = C, Z = Z, ...)
       # get the regexp object
-      alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_", fixed = TRUE)[[1]]
-      alg <- tail(alg_screen_string[grepl(".", alg_screen_string, fixed = TRUE)], n = 1)
-      screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, fixed = TRUE)], collapse = "_")
-      data.frame(Learner = alg, Screen = screen, AUC = alg_auc$auc, se = alg_auc$se, ci_ll = alg_auc$ci[1], ci_ul = alg_auc$ci[2])
+      alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_", 
+                                    fixed = TRUE)[[1]]
+      alg <- tail(alg_screen_string[grepl(".", alg_screen_string, 
+                                          fixed = TRUE)], n = 1)
+      screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, 
+                                                fixed = TRUE)], collapse = "_")
+      data.frame(Learner = alg, Screen = screen, AUC = alg_auc$auc, 
+                 se = alg_auc$se, ci_ll = alg_auc$ci[1], ci_ul = alg_auc$ci[2])
     }
     other_aucs <- plyr::ldply(1:ncol(sl_fit_lst$fit$library.predict),
-                              function(x) get_individual_auc(sl_fit = sl_fit_lst$fit,
-                                                             col = x,
-                                                             weights = weights, scale = scale,
-                                                             C = C, Z = Z, ...))
+                              function(x) get_individual_auc(
+                                sl_fit = sl_fit_lst$fit,
+                                col = x,
+                                weights = weights, scale = scale,
+                                C = C, Z = Z, ...)
+                              )
     rbind(out, other_aucs)
   }
 }
 # get the CV-R^2 for a single learner's predicted values
 # @param preds the fitted values
 # @param Y the outcome
-# @param scale what scale should the IPCW correction be applied on? Can help with numbers outside of (0, 1)
+# @param scale what scale should the IPCW correction be applied on? 
+#              Can help with numbers outside of (0, 1)
 #             ("identity" denotes the identity scale;
-#              "logit" means that R^2 is transformed to the logit scale, correction is applied, and then back-transformed)
+#              "logit" means that R^2 is transformed to the logit scale, 
+#             correction is applied, and then back-transformed)
 # @param weights the inverse probability of censoring weights
 # @param C the indicator of being observed in phase 2 (1) or not (0)
-# @param Z a matrix of predictors observed on all participants in phase 1 (can include the outcome)
+# @param Z a matrix of predictors observed on all participants in phase 1 
+#            (can include the outcome)
 # @param ... other arguments to measure_auc, but should include at least:
 #            a library of learners (using arg "SL.library")
 #            and may include control parameters for the super learner
-#            (e.g., cvControl = list(V = 5) for 5-fold cross-validated super learner)
+#            (e.g., cvControl = list(V = 5) 
+#             for 5-fold cross-validated super learner)
 one_r2 <- function(preds, Y, scale = "identity", weights = rep(1, length(Y)),
                    C = rep(1, length(Y)), Z = NULL, ...) {
-  r2_lst <- vimp::measure_r_squared(fitted_values = preds, y = Y, C = C, Z = Z,
-                                    ipc_weights = weights, ipc_fit_type = "SL", ...)
+  r2_lst <- vimp::measure_r_squared(fitted_values = preds, y = Y, 
+                                    C = C, Z = Z,
+                                    ipc_weights = weights, 
+                                    ipc_fit_type = "SL", ...)
   se <- vimp::vimp_se(r2_lst$point_est, r2_lst$eif)
   ci <- vimp::vimp_ci(r2_lst$point_est, se, scale = scale, level = 0.95)
   data.frame(r2 = r2_lst$point_est, cil = ci[, 1], ciu = ci[, 2], se = se[1])
@@ -189,18 +245,22 @@ one_r2 <- function(preds, Y, scale = "identity", weights = rep(1, length(Y)),
 # @param preds the fitted values
 # @param Y the outcome
 # @param folds the folds that the learner was evaluated on
-# @param scale what scale should the IPCW correction be applied on? Can help with numbers outside of (0, 1)
+# @param scale what scale should the IPCW correction be applied on? 
+#              Can help with numbers outside of (0, 1)
 #             ("identity" denotes the identity scale;
-#              "logit" means that R^2 is transformed to the logit scale, correction is applied, and then back-transformed)
+#              "logit" means that R^2 is transformed to the logit scale, 
+#             correction is applied, and then back-transformed)
 # @param weights the inverse probability of censoring weights
 # @param C the indicator of being observed in phase 2 (1) or not (0)
-# @param Z a matrix of predictors observed on all participants in phase 1 (can include the outcome)
+# @param Z a matrix of predictors observed on all participants in phase 1 
+#          (can include the outcome)
 # @param ... other arguments to measure_auc, but should include at least:
 #            a library of learners (using arg "SL.library")
 #            and may include control parameters for the super learner
-#            (e.g., cvControl = list(V = 5) for 5-fold cross-validated super learner)
-
-cv_r2 <- function(preds, Y, folds, scale = "identity", weights = rep(1, length(Y)),
+#            (e.g., cvControl = list(V = 5) 
+#            for 5-fold cross-validated super learner)
+cv_r2 <- function(preds, Y, folds, scale = "identity", 
+                  weights = rep(1, length(Y)),
                   C = rep(1, length(Y)), Z = NULL, ...) {
   V <- length(folds)
   fold_row_nums <- as.vector(do.call(cbind, folds))
@@ -220,31 +280,39 @@ cv_r2 <- function(preds, Y, folds, scale = "identity", weights = rep(1, length(Y
 }
 # get the CV-R^2 for a super learner fitted object
 # @param sl_fit the super learner fit object
-# @param scale what scale should the IPCW correction be applied on? Can help with numbers outside of (0, 1)
+# @param scale what scale should the IPCW correction be applied on? 
+#              Can help with numbers outside of (0, 1)
 #             ("identity" denotes the identity scale;
-#              "logit" means that R^2 is transformed to the logit scale, correction is applied, and then back-transformed)
+#              "logit" means that R^2 is transformed to the logit scale, 
+#              correction is applied, and then back-transformed)
 # @param weights the inverse probability of censoring weights
 # @param C the indicator of being observed in phase 2 (1) or not (0)
-# @param Z a matrix of predictors observed on all participants in phase 1 (can include the outcome)
+# @param Z a matrix of predictors observed on all participants in phase 1 
+#          (can include the outcome)
 # @param ... other arguments to measure_auc, but should include at least:
 #            a library of learners (using arg "SL.library")
 #            and may include control parameters for the super learner
-#            (e.g., cvControl = list(V = 5) for 5-fold cross-validated super learner)
-
-get_all_r2s <- function(sl_fit, scale = "identity", weights = rep(1, length(sl_fit$Y)),
+#            (e.g., cvControl = list(V = 5) 
+#             for 5-fold cross-validated super learner)
+get_all_r2s <- function(sl_fit, scale = "identity", 
+                        weights = rep(1, length(sl_fit$Y)),
                         C = rep(1, length(sl_fit$Y)), Z = NULL, ...) {
   # get the CV-R^2 of the SuperLearner predictions
-  sl_r2 <- cv_r2(preds = sl_fit$SL.predict, Y = sl_fit$Y, folds = sl_fit$folds,
+  sl_r2 <- cv_r2(preds = sl_fit$SL.predict, Y = sl_fit$Y, 
+                 folds = sl_fit$folds,
                  scale = scale, C = C, Z = Z, ...)
-  out <- data.frame(Learner="SL", Screen="All", R2 = sl_r2$r2, se = sl_r2$se,
+  out <- data.frame(Learner="SL", Screen="All", R2 = sl_r2$r2, 
+                    se = sl_r2$se,
                     ci_ll = sl_r2$ci[1], ci_ul=sl_r2$ci[2])
 
   # Get the CV-R2 of the Discrete SuperLearner predictions
   discrete_sl_r2 <- cv_r2(preds = sl_fit$discreteSL.predict, Y = sl_fit$Y,
-                          folds = sl_fit$folds, scale = scale, C = C, Z = Z, ...)
+                          folds = sl_fit$folds, scale = scale, 
+                          C = C, Z = Z, ...)
   out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All",
                                R2 = discrete_sl_r2$r2, se = discrete_sl_r2$se,
-                               ci_ll = discrete_sl_r2$ci[1], ci_ul = discrete_sl_r2$ci[2]))
+                               ci_ll = discrete_sl_r2$ci[1], 
+                               ci_ul = discrete_sl_r2$ci[2]))
 
   # Get the cvr2 of the individual learners in the library
   get_individual_r2 <- function(sl_fit, col, scale = "identity",
@@ -255,66 +323,90 @@ get_all_r2s <- function(sl_fit, scale = "identity", weights = rep(1, length(sl_f
                     folds = sl_fit$folds, scale = scale, weights = weights,
                     C = C, Z = Z, ...)
     # get the regexp object
-    alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_", fixed = TRUE)[[1]]
-    alg <- tail(alg_screen_string[grepl(".", alg_screen_string, fixed = TRUE)], n = 1)
-    screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, fixed = TRUE)], collapse = "_")
-    data.frame(Learner = alg, Screen = screen, R2 = alg_r2$r2, se = alg_r2$se, ci_ll = alg_r2$ci[1], ci_ul = alg_r2$ci[2])
+    alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_", 
+                                  fixed = TRUE)[[1]]
+    alg <- tail(alg_screen_string[grepl(".", alg_screen_string, 
+                                        fixed = TRUE)], n = 1)
+    screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, 
+                                              fixed = TRUE)], collapse = "_")
+    data.frame(Learner = alg, Screen = screen, R2 = alg_r2$r2, 
+               se = alg_r2$se, ci_ll = alg_r2$ci[1], ci_ul = alg_r2$ci[2])
   }
   other_r2s <- plyr::ldply(1:ncol(sl_fit$library.predict),
-                           function(x) get_individual_r2(sl_fit = sl_fit, col = x,
-                                                         scale = scale, weights = weights,
-                                                         C = C, Z = Z, ...))
+                           function(x) get_individual_r2(
+                             sl_fit = sl_fit, col = x,
+                             scale = scale, weights = weights,
+                             C = C, Z = Z, ...)
+                           )
   rbind(out, other_r2s)
 }
 # get the CV-R^2 for a list of super learner objects
 # @param sl_fit_lst the list of super learner fit objects
-# @param scale what scale should the IPCW correction be applied on? Can help with numbers outside of (0, 1)
+# @param scale what scale should the IPCW correction be applied on? 
+#              Can help with numbers outside of (0, 1)
 #             ("identity" denotes the identity scale;
-#              "logit" means that R^2 is transformed to the logit scale, correction is applied, and then back-transformed)
+#              "logit" means that R^2 is transformed to the logit scale, 
+#               correction is applied, and then back-transformed)
 # @param weights the inverse probability of censoring weights
 # @param C the indicator of being observed in phase 2 (1) or not (0)
-# @param Z a matrix of predictors observed on all participants in phase 1 (can include the outcome)
+# @param Z a matrix of predictors observed on all participants in phase 1 
+#          (can include the outcome)
 # @param ... other arguments to measure_auc, but should include at least:
 #            a library of learners (using arg "SL.library")
 #            and may include control parameters for the super learner
-#            (e.g., cvControl = list(V = 5) for 5-fold cross-validated super learner)
-
-get_all_r2s_lst <- function(sl_fit_lst, scale = "identity", weights = rep(1, length(sl_fit_lst[[1]]$fit$Y)),
-                            C = rep(1, length(sl_fit_lst[[1]]$Y)), Z = NULL, ...) {
+#            (e.g., cvControl = list(V = 5) 
+#             for 5-fold cross-validated super learner)
+get_all_r2s_lst <- function(sl_fit_lst, scale = "identity", 
+                            weights = rep(1, length(sl_fit_lst[[1]]$fit$Y)),
+                            C = rep(1, length(sl_fit_lst[[1]]$Y)), 
+                            Z = NULL, ...) {
   # get the CV-R^2 of the SuperLearner predictions
   if (is.null(sl_fit_lst)) {
     return(NA)
   } else {
-    sl_r2 <- cv_r2(preds = sl_fit_lst$fit$SL.predict, Y = sl_fit_lst$fit$Y,
-                   folds = sl_fit_lst$fit$folds, scale = scale, weights = weights,
+    sl_r2 <- cv_r2(preds = sl_fit_lst$fit$SL.predict, 
+                   Y = sl_fit_lst$fit$Y,
+                   folds = sl_fit_lst$fit$folds, 
+                   scale = scale, weights = weights,
                    C = C, Z = Z, ...)
-    out <- data.frame(Learner="SL", Screen="All", R2 = sl_r2$r2, se = sl_r2$se,
+    out <- data.frame(Learner="SL", Screen="All", R2 = sl_r2$r2, 
+                      se = sl_r2$se,
                       ci_ll = sl_r2$ci[1], ci_ul=sl_r2$ci[2])
 
     # Get the CV-R2 of the Discrete SuperLearner predictions
     discrete_sl_r2 <- cv_r2(preds = sl_fit_lst$fit$discreteSL.predict,
                             Y = sl_fit_lst$fit$Y, folds = sl_fit_lst$fit$folds,
-                            scale = scale, weights = weights, C = C, Z = Z, ...)
+                            scale = scale, weights = weights, 
+                            C = C, Z = Z, ...)
     out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All",
-                                 R2 = discrete_sl_r2$r2, se = discrete_sl_r2$se,
-                                 ci_ll = discrete_sl_r2$ci[1], ci_ul = discrete_sl_r2$ci[2]))
+                                 R2 = discrete_sl_r2$r2, 
+                                 se = discrete_sl_r2$se,
+                                 ci_ll = discrete_sl_r2$ci[1], 
+                                 ci_ul = discrete_sl_r2$ci[2]))
 
     # Get the cvr2 of the individual learners in the library
     get_individual_r2 <- function(sl_fit, col, scale, weights, C, Z, ...) {
       if(any(is.na(sl_fit$library.predict[, col]))) return(NULL)
       alg_r2 <- cv_r2(preds = sl_fit$library.predict[, col], Y = sl_fit$Y,
                       scale = scale,
-                      folds = sl_fit$folds, weights = weights, C = C, Z = Z, ...)
+                      folds = sl_fit$folds, weights = weights, 
+                      C = C, Z = Z, ...)
       # get the regexp object
-      alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_", fixed = TRUE)[[1]]
-      alg <- tail(alg_screen_string[grepl(".", alg_screen_string, fixed = TRUE)], n = 1)
-      screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, fixed = TRUE)], collapse = "_")
-      data.frame(Learner = alg, Screen = screen, R2 = alg_r2$r2, se = alg_r2$se, ci_ll = alg_r2$ci[1], ci_ul = alg_r2$ci[2])
+      alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_", 
+                                    fixed = TRUE)[[1]]
+      alg <- tail(alg_screen_string[grepl(".", alg_screen_string,
+                                          fixed = TRUE)], n = 1)
+      screen <- paste0(alg_screen_string[!grepl(alg, alg_screen_string, 
+                                                fixed = TRUE)], collapse = "_")
+      data.frame(Learner = alg, Screen = screen, R2 = alg_r2$r2, 
+                 se = alg_r2$se, ci_ll = alg_r2$ci[1], ci_ul = alg_r2$ci[2])
     }
     other_r2s <- plyr::ldply(1:ncol(sl_fit_lst$fit$library.predict),
-                             function(x) get_individual_r2(sl_fit = sl_fit_lst$fit, col = x,
-                                                           scale = scale, weights = weights,
-                                                           C = C, Z = Z, ...))
+                             function(x) get_individual_r2(
+                               sl_fit = sl_fit_lst$fit, col = x,
+                               scale = scale, weights = weights,
+                               C = C, Z = Z, ...)
+                             )
     rbind(out, other_r2s)
   }
 }
@@ -327,25 +419,34 @@ get_all_r2s_lst <- function(sl_fit_lst, scale = "identity", weights = rep(1, len
 # @param Y the outcome
 # @param X_mat the covariates
 # @param family the family, for super learner (e.g., "binomial")
-# @param obsWeights the inverse probability of censoring weights (for super learner)
+# @param obsWeights the inverse probability of censoring weights 
+#                   (for super learner)
 # @param all_weights the IPC weights for variable importance (full data)
 # @param sl_lib the super learner library (e.g., "SL.ranger")
-# @param method the method for determining the optimal combination of base learners
-# @param cvControl a list of control parameters to pass to the outer super learner
-# @param innerCvControl a list of control parameters to pass to the inner super learners
+# @param method the method for determining the optimal combination 
+#               of base learners
+# @param cvControl a list of control parameters to pass to the 
+#                  outer super learner
+# @param innerCvControl a list of control parameters to pass to the 
+#                       inner super learners
 # @param vimp determines whether or not we save the entire SL fit object
 #        (for variable importance, we don't need it so can save some memory
 #         by excluding large objects)
-run_cv_sl_once <- function(seed = 1, Y = NULL, X_mat = NULL, family = "binomial",
-                           obsWeights = rep(1, length(Y)), all_weights = rep(1, nrow(Z)),
+run_cv_sl_once <- function(seed = 1, Y = NULL, X_mat = NULL, 
+                           family = "binomial",
+                           obsWeights = rep(1, length(Y)), 
+                           all_weights = rep(1, nrow(Z)),
                            sl_lib = "SL.ranger", method = "method.CC_nloglik",
-                           cvControl = list(V = 5), innerCvControl = list(V = 5), vimp = FALSE,
-                           C = rep(1, length(Y)), Z = NULL, z_lib = "SL.ranger", scale = "identity") {
+                           cvControl = list(V = 5), 
+                           innerCvControl = list(V = 5), vimp = FALSE,
+                           C = rep(1, length(Y)), Z = NULL, 
+                           z_lib = "SL.ranger", scale = "identity") {
   set.seed(seed)
   fit <- SuperLearner::CV.SuperLearner(Y = Y, X = X_mat, family = family,
-                                                   obsWeights = obsWeights, SL.library = sl_lib,
-                                                   method = method, cvControl = cvControl,
-                                                   innerCvControl = innerCvControl)
+                                       obsWeights = obsWeights, 
+                                       SL.library = sl_lib,
+                                       method = method, cvControl = cvControl,
+                                       innerCvControl = innerCvControl)
   aucs <- get_all_aucs(sl_fit = fit, scale = scale, weights = all_weights,
                        C = C, Z = Z, SL.library = z_lib)
   ret_lst <- list(fit = fit, folds = fit$folds, aucs = aucs)
@@ -357,18 +458,24 @@ run_cv_sl_once <- function(seed = 1, Y = NULL, X_mat = NULL, family = "binomial"
 # run SuperLearner given the set of results from the CV.SL with all markers
 # for one given random seed
 # @param seed the random number seed
-# @param Y the outcome -- this is actually the "fit" object from the CV.SL results object
+# @param Y the outcome -- this is actually the "fit" object from the 
+#          CV.SL results object
 # @param X_mat the covariates
 # @param family the family, for super learner (e.g., "binomial")
-# @param obsWeights the inverse probability of censoring weights (for super learner)
+# @param obsWeights the inverse probability of censoring weights 
+#                   (for super learner)
 # @param sl_lib the super learner library (e.g., "SL.ranger")
-# @param method the method for determining the optimal combination of base learners
-# @param innerCvControl a list of control parameters to pass to the inner super learners
+# @param method the method for determining the optimal combination of 
+#               base learners
+# @param innerCvControl a list of control parameters to pass to the 
+#                       inner super learners
 # @param vimp determines whether or not we save the entire SL fit object
 #        (for variable importance, we don't need it so can save some memory
 #         by excluding large objects)
-run_reduced_cv_sl_once <- function(seed = 1, Y = NULL, X_mat = NULL, family = "binomial",
-                                   obsWeights = rep(1, length(Y)), sl_lib = "SL.ranger",
+run_reduced_cv_sl_once <- function(seed = 1, Y = NULL, X_mat = NULL, 
+                                   family = "binomial",
+                                   obsWeights = rep(1, length(Y)), 
+                                   sl_lib = "SL.ranger",
                                    method = "method.CC_nloglik",
                                    innerCvControl = list(V = 5), vimp = TRUE) {
   # pull out the correct set of fitted values
@@ -378,7 +485,8 @@ run_reduced_cv_sl_once <- function(seed = 1, Y = NULL, X_mat = NULL, family = "b
   full_fit <- Y[[indx]]$fit
   # use the same folds as the CV.SuperLearner
   fold_row_nums <- as.vector(do.call(cbind, full_fit$folds))
-  folds_init <- rep(as.numeric(names(full_fit$folds)), each = dim(X_mat)[1]/length(full_fit$folds))
+  folds_init <- rep(as.numeric(names(full_fit$folds)), 
+                    each = dim(X_mat)[1] /length(full_fit$folds))
   folds_mat <- cbind(fold_row_nums, folds_init)
   folds <- folds_mat[order(folds_mat[, 1]), 2]
   V <- length(unique(folds))
@@ -388,15 +496,29 @@ run_reduced_cv_sl_once <- function(seed = 1, Y = NULL, X_mat = NULL, family = "b
   preds_lst <- vector("list", length = V)
   for (v in 1:V) {
     # run an SL of full fit on reduced set of predictors
-    inner_sl <- SuperLearner::SuperLearner(Y = full_fit$SL.predict[folds != v], X = X_mat[folds != v, , drop = FALSE],
-                                           newX = X_mat[folds == v, , drop = FALSE],
-                                           family = family, obsWeights = obsWeights[folds != v], SL.library = sl_lib,
-                                           method = method, cvControl = innerCvControl)
+    inner_sl <- SuperLearner::SuperLearner(Y = full_fit$SL.predict[folds != v], 
+                                           X = X_mat[folds != v, , 
+                                                     drop = FALSE],
+                                           newX = X_mat[folds == v, , 
+                                                        drop = FALSE],
+                                           family = family, 
+                                           obsWeights = obsWeights[folds != v], 
+                                           SL.library = sl_lib,
+                                           method = method, 
+                                           cvControl = innerCvControl)
     # get the predicted values on the vth fold
     preds_lst[[v]] <- inner_sl$SL.predict
   }
   # make a vector out of the predictions
-  preds_mat <- do.call(rbind.data.frame, lapply(preds_lst, function(x) cbind.data.frame(x, row_num = as.numeric(rownames(x)))))
+  preds_mat <- do.call(rbind.data.frame, 
+                       lapply(preds_lst, 
+                              function(x) 
+                                cbind.data.frame(x, 
+                                                 row_num = 
+                                                   as.numeric(rownames(x))
+                                                 )
+                              )
+                       )
   preds_mat_ordered <- preds_mat[order(preds_mat$row_num), ]
   # return
   ret_lst <- list(fit = preds_mat_ordered[, 1], folds = full_fit$folds)
@@ -405,8 +527,10 @@ run_reduced_cv_sl_once <- function(seed = 1, Y = NULL, X_mat = NULL, family = "b
 # Cross-fitted estimates of variable importance based on the chosen measure
 # --------------------------------------------------------------------------
 # get the cv vim for each fold
-# @param full_fit the fitted values from a regression with the variables of interest
-# @param reduced_fit the fitted values from a regression without the variables of interest
+# @param full_fit the fitted values from a regression with the 
+#                 variables of interest
+# @param reduced_fit the fitted values from a regression without the 
+#                    variables of interest
 # @param x the fold to get importance on
 # @param type the type of importance (e.g., "auc")
 # @param weights the IPC weights
@@ -414,10 +538,13 @@ run_reduced_cv_sl_once <- function(seed = 1, Y = NULL, X_mat = NULL, family = "b
 # @param Z the predictors/outcome measured in phase 1
 # @param SL.library the super learner library for IPCW correction
 # @param scale the scale to measure importance/CIs on
-# @param vimp do we want to do variable importance, or just estimate the CV-predictiveness?
+# @param vimp do we want to do variable importance, or just estimate 
+#             the CV-predictiveness?
 # @param ... other arguments to inner super learner (e.g., cvControl)
-get_fold_cv_vim <- function(full_fit = NULL, reduced_fit = NULL, x = NULL, type = "auc",
-                            weights = rep(1, length(full_fit)), C = rep(1, length(full_fit)),
+get_fold_cv_vim <- function(full_fit = NULL, reduced_fit = NULL, x = NULL, 
+                            type = "auc",
+                            weights = rep(1, length(full_fit)), 
+                            C = rep(1, length(full_fit)),
                             Z = NULL, SL.library = "ranger",
                             scale = "identity", vimp = FALSE,...) {
   # get the outcome, folds
@@ -430,14 +557,16 @@ get_fold_cv_vim <- function(full_fit = NULL, reduced_fit = NULL, x = NULL, type 
     vim_est <- NA
   } else {
     fold_row_nums <- as.vector(do.call(cbind, full_fit[[x]]$folds))
-    folds_init <- rep(as.numeric(names(full_fit[[x]]$folds)), each = length(y)/length(full_fit[[x]]$folds))
+    folds_init <- rep(as.numeric(names(full_fit[[x]]$folds)), 
+                      each = length(y)/length(full_fit[[x]]$folds))
     folds_mat <- cbind(fold_row_nums, folds_init)
     folds <- folds_mat[order(folds_mat[, 1]), 2]
 
     # get the full, reduced predictions from the two CV objects
     get_reduced_fit <- function(i) {
       if (type == "r_squared" & is.null(reduced_fit[[x]]$fit$Y)) {
-        tryCatch(reduced_fit[[x]]$fit[folds == i], error = function(e) rep(NA, sum(folds == i)))
+        tryCatch(reduced_fit[[x]]$fit[folds == i], 
+                 error = function(e) rep(NA, sum(folds == i)))
       } else {
         if (is.list(reduced_fit[[x]]$fit)) {
           reduced_fit[[x]]$fit$SL.predict[folds == i]
@@ -454,9 +583,16 @@ get_fold_cv_vim <- function(full_fit = NULL, reduced_fit = NULL, x = NULL, type 
       }
 
     })
-    redu_fits <- lapply(as.list(1:length(full_fit[[x]]$folds)), function(i) get_reduced_fit(i))
-    ys <- lapply(as.list(1:length(full_fit[[x]]$folds)), function(i) y[folds == i])
-    # create the list of folds; note that we didn't do sample splitting, so p-values are invalid
+    redu_fits <- lapply(
+      as.list(1:length(full_fit[[x]]$folds)), 
+      function(i) get_reduced_fit(i)
+      )
+    ys <- lapply(
+      as.list(1:length(full_fit[[x]]$folds)), 
+      function(i) y[folds == i]
+      )
+    # create the list of folds; note that we didn't do sample splitting, 
+    # so p-values are invalid
     folds_lst <- list(outer_folds = c(rep(1, length(full_fit[[x]]$fit$Y)),
                                       rep(2, length(full_fit[[x]]$fit$Y))),
                       inner_folds = list(inner_folds_1 = folds,
@@ -483,8 +619,10 @@ get_fold_cv_vim <- function(full_fit = NULL, reduced_fit = NULL, x = NULL, type 
   return(vim_est)
 }
 # get the CV vim averaged over the 10 folds
-# @param full_fit the fitted values from a regression with the variables of interest
-# @param reduced_fit the fitted values from a regression without the variables of interest
+# @param full_fit the fitted values from a regression with the 
+#                 variables of interest
+# @param reduced_fit the fitted values from a regression without the 
+#                    variables of interest
 # @param x the fold to get importance on
 # @param type the type of importance (e.g., "auc")
 # @param weights the IPC weights
@@ -492,21 +630,28 @@ get_fold_cv_vim <- function(full_fit = NULL, reduced_fit = NULL, x = NULL, type 
 # @param Z the predictors/outcome measured in phase 1
 # @param SL.library the super learner library for IPCW correction
 # @param scale the scale to measure importance/CIs on
-# @param vimp do we want to do variable importance, or just estimate the CV-predictiveness?
+# @param vimp do we want to do variable importance, or just estimate 
+#             the CV-predictiveness?
 # @param ... other arguments to inner super learner (e.g., cvControl)
 get_cv_vim <- function(full_fit = NULL, reduced_fit = NULL, type = "auc",
-                       weights = rep(1, length(full_fit)), C = rep(1, length(full_fit)),
-                       Z = NULL, SL.library = "SL.ranger", scale = "identity", vimp = FALSE, ...) {
+                       weights = rep(1, length(full_fit)), 
+                       C = rep(1, length(full_fit)),
+                       Z = NULL, SL.library = "SL.ranger", 
+                       scale = "identity", vimp = FALSE, ...) {
   # get the cv vim for each fold
-  all_cv_vims <- lapply(as.list(1:length(full_fit)), get_fold_cv_vim, full_fit = full_fit,
-                        reduced_fit = reduced_fit, type = type, weights = weights, scale = scale, vimp = vimp,
+  all_cv_vims <- lapply(as.list(1:length(full_fit)), get_fold_cv_vim, 
+                        full_fit = full_fit,
+                        reduced_fit = reduced_fit, type = type, 
+                        weights = weights, scale = scale, vimp = vimp,
                         C = C, Z = Z, SL.library = SL.library, ...)
   return(all_cv_vims)
 }
 # get CV vim averaged over 10 starts, if I've pre-computed IPCW
 # @param full_ests a tibble with estimate and CIs, all covariates
 # @param reduced_ests a tibble with estimate and CIs, reduced set of covariates
-get_cv_vim_precomputed <- function(full_ests, reduced_ests, risk_type = "auc", scale = "identity") {
+get_cv_vim_precomputed <- function(full_ests, reduced_ests, 
+                                   risk_type = "auc", 
+                                   scale = "identity") {
   if (risk_type == "auc") {
     full_est <- full_ests %>% 
       mutate(est = AUC) %>% 
@@ -526,13 +671,16 @@ get_cv_vim_precomputed <- function(full_ests, reduced_ests, risk_type = "auc", s
     full_se_scaled <- (full_est$ci_ul - full_est$est) 
     reduced_se_scaled <- (reduced_est$ci_ul - reduced_est$est)   
   } else if (scale == "logit") {
-    full_se_scaled <- stats::qlogis(full_est$ci_ul) - stats::qlogis(full_est$est)
-    reduced_se_scaled <- stats::qlogis(reduced_est$ci_ul) - stats::qlogis(reduced_est$est)
+    full_se_scaled <- stats::qlogis(full_est$ci_ul) - 
+      stats::qlogis(full_est$est)
+    reduced_se_scaled <- stats::qlogis(reduced_est$ci_ul) - 
+      stats::qlogis(reduced_est$est)
   } else {
     full_se_scaled <- log(full_est$ci_ul) - log(full_est$est)
     reduced_se_scaled <- log(reduced_est$ci_ul) - log(reduced_est$est)
   }
-  var_scaled <- (full_se_scaled / stats::qnorm(0.975)) ^ 2 + (reduced_se_scaled / stats::qnorm(0.975)) ^ 2
+  var_scaled <- (full_se_scaled / stats::qnorm(0.975)) ^ 2 + 
+    (reduced_se_scaled / stats::qnorm(0.975)) ^ 2
   point_est <- full_est$est - reduced_est$est
   if (scale == "identity") {
     out <- tibble(est = point_est, 
@@ -541,21 +689,50 @@ get_cv_vim_precomputed <- function(full_ests, reduced_ests, risk_type = "auc", s
   } else if (scale == "logit") {
     tmp <- stats::qlogis(point_est)
     out <- tibble(est = ifelse(is.na(tmp), 0, point_est), 
-                  ci_ll = ifelse(is.na(tmp), 0, stats::plogis(stats::qlogis(point_est) - stats::qnorm(0.975) * sqrt(var_scaled))),
-                  ci_ul = ifelse(is.na(tmp), 0, stats::plogis(stats::qlogis(point_est) + stats::qnorm(0.975) * sqrt(var_scaled))))
+                  ci_ll = ifelse(is.na(tmp), 
+                                 0, 
+                                 stats::plogis(stats::qlogis(point_est) - 
+                                                 stats::qnorm(0.975) * 
+                                                 sqrt(var_scaled))
+                                 ),
+                  ci_ul = ifelse(is.na(tmp), 
+                                 0, 
+                                 stats::plogis(stats::qlogis(point_est) + 
+                                                 stats::qnorm(0.975) * 
+                                                 sqrt(var_scaled))
+                                 )
+                  )
   } else {
     tmp <- log(point_est)
     out <- tibble(est = ifelse(is.na(tmp), 0, point_est), 
-                  ci_ll = ifelse(is.na(tmp), 0, exp(log(point_est) - stats::qnorm(0.975) * sqrt(var_scaled))),
-                  ci_ul = ifelse(is.na(tmp), 0, exp(log(point_est) - stats::qnorm(0.975) * sqrt(var_scaled))))
+                  ci_ll = ifelse(is.na(tmp), 
+                                 0, 
+                                 exp(log(point_est) - stats::qnorm(0.975) * 
+                                       sqrt(var_scaled))),
+                  ci_ul = ifelse(is.na(tmp), 
+                                 0, 
+                                 exp(log(point_est) - stats::qnorm(0.975) * 
+                                       sqrt(var_scaled))))
   }
   out
 }
 # get estimate, CI based on averaging over the 10 random starts
 get_avg_est_ci <- function(vimp_lst) {
-  ests <- unlist(lapply(vimp_lst, function(x) if (length(x) > 1) {x$est} else {NA}))
-  cis <- do.call(rbind, lapply(vimp_lst, function(x) if (length(x) > 1) {x$ci} else {NA}))
-  pvals <- unlist(lapply(vimp_lst, function(x) if(length(x) > 1) {x$p_value} else {NA}))
+  ests <- unlist(lapply(vimp_lst, function(x) 
+    if (length(x) > 1) {
+      x$est
+    } else {
+      NA
+    }))
+  cis <- do.call(rbind, lapply(vimp_lst, 
+                               function(x) 
+                                 if (length(x) > 1) {
+                                   x$ci
+                                 } else {
+                                   NA
+                                 }))
+  pvals <- unlist(lapply(vimp_lst, function(x) 
+    if(length(x) > 1) {x$p_value} else {NA}))
   est <- mean(ests, na.rm = TRUE)
   ci <- colMeans(cis, na.rm = TRUE)
   pval <- mean(pvals, na.rm = TRUE)
@@ -583,8 +760,10 @@ get_avg_risk_ci <- function(vimp_lst) {
 # -----------------------------------------------------------------------------
 # get names for multiple assays, all antigens
 # @param X the matrix of predictors
-# @param assays a character vector with the assays of interest to include (e.g., c("IgG", "IgA"))
-# @param assays_to_exclude a character string with the assays to exclude (e.g., "IgG3")
+# @param assays a character vector with the assays of interest to include 
+#               (e.g., c("IgG", "IgA"))
+# @param assays_to_exclude a character string with the assays to exclude 
+#                          (e.g., "IgG3")
 get_nms_group_all_antigens <- function(X, assays, assays_to_exclude = "") {
   # set all vars to be false
   vars <- rep(FALSE, ncol(X))
@@ -592,7 +771,8 @@ get_nms_group_all_antigens <- function(X, assays, assays_to_exclude = "") {
   # may be more than one
   for (i in 1:length(assays)) {
     if (assays_to_exclude != "") {
-      vars[grepl(assays[i], names(X)) & !grepl(assays_to_exclude, names(X))] <- TRUE
+      vars[grepl(assays[i], names(X)) & 
+             !grepl(assays_to_exclude, names(X))] <- TRUE
     } else {
       vars[grepl(assays[i], names(X))] <- TRUE
     }
@@ -622,8 +802,9 @@ get_nms_group_all_assays <- function(X, antigens) {
 # @param assay a character string with the name of the assay of interest
 # @param antigens a character string with the antigen of interest
 get_nms_group <- function(X, assay, antigen) {
-  vars <- rep(FALSE, ncol(X)) # initially include all vars
-  vars[grepl(assay, names(X)) & grepl(antigen, names(X))] <- TRUE # toggle on the ones in assay/antigen group
+  vars <- rep(FALSE, ncol(X)) 
+  # toggle on the ones in assay/antigen group
+  vars[grepl(assay, names(X)) & grepl(antigen, names(X))] <- TRUE 
   return(vars)
 }
 # get the names of an individual, for importance
@@ -631,7 +812,8 @@ get_nms_group <- function(X, assay, antigen) {
 # @param nm_ind a string with the name of the variable of interest
 get_nms_ind <- function(X, nm_ind) {
   vars <- rep(FALSE, ncol(X))
-  vars[grepl(nm_ind, names(X))] <- TRUE # toggle on the one, for vimp compared to baseline only
+  # toggle on the one, for vimp compared to baseline only
+  vars[grepl(nm_ind, names(X))] <- TRUE 
   return(vars)
 }
 
@@ -648,17 +830,22 @@ remove_str <- function(x, str) {
 # make learner names nice for printing
 # @param learners the names of the learners
 make_nice_learner_name <- function(learners) {
-  no_dots <- strsplit(as.character(learners), ".", fixed = TRUE) # split on the dots
-  no_sl <- lapply(no_dots, function(x) remove_str(x, "SL")) # remove SL if length is > 1
-  no_skinny <- lapply(no_sl, function(x) remove_str(x, "skinny")) # remove "skinny" if it's there
-  learner_nms <- unlist(lapply(no_skinny, function(x) paste(x, collapse = "_")))
+  no_dots <- strsplit(as.character(learners), ".", fixed = TRUE) 
+  no_sl <- lapply(no_dots, function(x) remove_str(x, "SL")) 
+  no_skinny <- lapply(no_sl, function(x) remove_str(x, "skinny")) 
+  learner_nms <- unlist(lapply(no_skinny, function(x) 
+    paste(x, collapse = "_")))
   return(learner_nms)
 }
 # make screen names nice for printing
 # @param screens the names of the screens
 make_nice_screen_name <- function(screens) {
   no_underscores <- strsplit(as.character(screens), "_", fixed = TRUE)
-  no_screen_plus_exposure <- lapply(no_underscores, function(x) x[!grepl("screen", x) & !grepl("plus", x) & !grepl("exposure", x)])
+  no_screen_plus_exposure <- lapply(no_underscores, 
+                                    function(x) 
+                                      x[!grepl("screen", x) & 
+                                          !grepl("plus", x) & 
+                                          !grepl("exposure", x)])
   no_all <- lapply(no_screen_plus_exposure, function(x) remove_str(x, "All"))
   screen_nms <- unlist(lapply(no_all, function(x) paste(x, collapse = "_")))
   return(screen_nms)
@@ -681,13 +868,16 @@ make_nice_variable_name <- function(varname, antigen, assay) {
 get_immunoassay_set <- function(vec, variables = FALSE) {
   get_one_immunoassay <- function(x, variables = FALSE) {
     if (variables) {
-      ret_vec <- c("T Cell variables", "Ab variables", "T Cell and Ab variables", "No markers")
+      ret_vec <- c("T Cell variables", "Ab variables", 
+                   "T Cell and Ab variables", "No markers")
     } else {
-      ret_vec <- c("T Cell variables", "Ab variables", "T Cell and Ab", "No markers") 
+      ret_vec <- c("T Cell variables", "Ab variables", 
+                   "T Cell and Ab", "No markers") 
     }
     if (grepl("T Cells", x)) {
       ret_init <- ret_vec[c(1, 3)]
-      if (grepl("IgG", x) | grepl("IgA", x) | grepl("IgG3", x) | grepl("Fx Ab", x)) {
+      if (grepl("IgG", x) | grepl("IgA", x) | 
+          grepl("IgG3", x) | grepl("Fx Ab", x)) {
         ret <- ret_init[2]
       } else {
         ret <- ret_init[1]
@@ -714,51 +904,76 @@ get_immunoassay_set <- function(vec, variables = FALSE) {
 # @param x_lim the x-axis limits
 # @param cols colors for points
 # @param cols2 colors for ?
-assay_antigen_plot <- function(vimp_tibble = NULL, assay = "IgG", antigen = "ANYHIV",
-                               risk_type = "auc", main_font_size = 5, point_size = 3,
+assay_antigen_plot <- function(vimp_tibble = NULL, assay = "IgG", 
+                               antigen = "ANYHIV",
+                               risk_type = "auc", main_font_size = 5, 
+                               point_size = 3,
                                x_lim = c(0, 1), cols = "black",
                                cols2 = NULL) {
   if (!is.null(cols2)) {
-    current_tibble <- (vimp_tibble %>% filter(assay_group == assay, antigen_group == antigen))
-    current_tibble$t_cell_type <- apply(matrix(grepl("CD8", current_tibble$var_name)), 1, function(x) ifelse(x, "CD8", "CD4"))
+    current_tibble <- (vimp_tibble %>% filter(assay_group == assay, 
+                                              antigen_group == antigen))
+    current_tibble$t_cell_type <- apply(
+      matrix(grepl("CD8", current_tibble$var_name)), 
+      1, function(x) ifelse(x, "CD8", "CD4")
+      )
     vimp_plot <- current_tibble %>%
       ggplot(aes(x = est,
-                 y = factor(var_name, levels = var_name[order(est, decreasing = TRUE)],
+                 y = factor(var_name, 
+                            levels = var_name[order(est, decreasing = TRUE)],
                             labels = var_name[order(est, decreasing = TRUE)]),
                  color = t_cell_type)) +
-      geom_errorbarh(aes(xmin = cil, xmax = ciu, color = greater_zero), size = point_size/2,
+      geom_errorbarh(aes(xmin = cil, xmax = ciu, color = greater_zero), 
+                     size = point_size / 2,
                      show.legend = FALSE) +
       geom_point(size = point_size) +
       geom_vline(xintercept = 0, color = "red", linetype = "dotted") +
       scale_color_manual(breaks = c("CD4", "CD8"), values = c(cols2, cols)) +
       xlim(x_lim) +
       ylab("Variable name") +
-      xlab(paste0("Variable importance estimate: difference in CV-", ifelse(risk_type == "r_squared", expression(R^2), "AUC"))) +
+      xlab(paste0("Variable importance estimate: difference in CV-", 
+                  ifelse(risk_type == "r_squared", expression(R^2), "AUC"))) +
       labs(color = "T Cell type") +
       theme(legend.position = c(0.025, 0.15),
             axis.text.y = element_text(size = main_font_size),
             text = element_text(size = main_font_size),
             axis.title = element_text(size = main_font_size),
             axis.text.x = element_text(size = main_font_size),
-            axis.title.x = element_text(margin = ggplot2::margin(t = 20, r = 0, b = 0, l = 0), size = main_font_size),
+            axis.title.x = element_text(margin = ggplot2::margin(t = 20, 
+                                                                 r = 0, 
+                                                                 b = 0, 
+                                                                 l = 0), 
+                                        size = main_font_size),
             plot.margin=unit(c(1,0.5,0,0),"cm")) # top, right, bottom, left
   } else {
     vimp_plot <- vimp_tibble %>%
       filter(assay_group == assay, antigen_group == antigen) %>%
-      ggplot(aes(x = est, y = factor(var_name, levels = var_name[order(est, decreasing = TRUE)], labels = var_name[order(est, decreasing = TRUE)]))) +
-      geom_errorbarh(aes(xmin = cil, xmax = ciu, color = greater_zero), size = point_size/2) +
+      ggplot(aes(x = est, y = factor(var_name, 
+                                     levels = var_name[order(est, 
+                                                             decreasing = 
+                                                               TRUE)], 
+                                     labels = var_name[order(est, 
+                                                             decreasing = 
+                                                               TRUE)]))) +
+      geom_errorbarh(aes(xmin = cil, xmax = ciu, color = greater_zero), 
+                     size = point_size / 2) +
       geom_point(size = point_size) +
       geom_vline(xintercept = 0, color = "red", linetype = "dotted") +
       scale_color_manual(values = cols) +
       xlim(x_lim) +
       ylab("Variable name") +
-      xlab(paste0("Variable importance estimate: difference in CV-", ifelse(risk_type == "r_squared", expression(R^2), "AUC"))) +
+      xlab(paste0("Variable importance estimate: difference in CV-", 
+                  ifelse(risk_type == "r_squared", expression(R^2), "AUC"))) +
       guides(color = FALSE) +
       theme(axis.text.y = element_text(size = main_font_size),
             text = element_text(size = main_font_size),
             axis.title = element_text(size = main_font_size),
             axis.text.x = element_text(size = main_font_size),
-            axis.title.x = element_text(margin = ggplot2::margin(t = 20, r = 0, b = 0, l = 0), size = main_font_size),
+            axis.title.x = element_text(margin = ggplot2::margin(t = 20, 
+                                                                 r = 0, 
+                                                                 b = 0, 
+                                                                 l = 0), 
+                                        size = main_font_size),
             plot.margin=unit(c(1,0.5,0,0),"cm")) # top, right, bottom, left
   }
   vimp_plot
@@ -774,11 +989,16 @@ assay_antigen_plot <- function(vimp_tibble = NULL, assay = "IgG", antigen = "ANY
 # @param x_lim the x-axis limits
 # @param cols colors for points
 # @param cols2 colors for ?
-assay_antigen_plot_list <- function(vimp_tibble = NULL, assay = "IgG", antigen = "ANYHIV",
-                                    risk_type = "auc", main_font_size = 5, point_size = 3,
+assay_antigen_plot_list <- function(vimp_tibble = NULL, assay = "IgG", 
+                                    antigen = "ANYHIV",
+                                    risk_type = "auc", 
+                                    main_font_size = 5, point_size = 3,
                                     x_lim = c(0, 1), cols = "black",
                                     cols2 = NULL) {
-  plot_lst <- lapply(as.list(antigens), assay_antigen_plot, vimp_tibble = vimp_tibble, assay = assay, risk_type = risk_type,
-                     main_font_size = main_font_size, point_size = point_size, x_lim = x_lim, cols = cols, cols2 = cols2)
+  plot_lst <- lapply(as.list(antigens), assay_antigen_plot, 
+                     vimp_tibble = vimp_tibble, assay = assay, 
+                     risk_type = risk_type,
+                     main_font_size = main_font_size, point_size = point_size, 
+                     x_lim = x_lim, cols = cols, cols2 = cols2)
   return(plot_lst)
 }
