@@ -26,13 +26,13 @@ full_data_with_strata <- full_data %>%
 
 # read in table to match pub_id from this dataset with the
 # ID in the HVTN505 R package
-pub_id_converter <- readr::read_csv("data/rx_v2_bdw.csv") %>% 
-  select(hvtn505_id, primary505_id) %>% 
+pub_id_converter <- readr::read_csv("data/rx_v2.csv") %>% 
+  rename(hvtn505_id = Ptid) %>%
   mutate(hvtn505_id = gsub("-", "", hvtn505_id))
 
 # update pub id
-full_data_with_matched_ids <- full_data_with_strata %>% 
-  left_join(pub_id_converter %>% rename(pub_id = primary505_id), by = "pub_id")
+full_data_with_matched_ids <- full_data_with_strata %>%
+  left_join(pub_id_converter, by = "pub_id")
 # ------------------------------------------------------
 # Compute inverse probability weights
 # ------------------------------------------------------
