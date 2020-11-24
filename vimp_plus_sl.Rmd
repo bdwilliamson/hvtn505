@@ -235,7 +235,7 @@ full_data_with_strata <- full_data %>%
   filter(!is.na(BMI))
 
 # read in table to match pub_id from this dataset with the
-# ID in the HVTN505 R package
+# ID in the HVTN505 R package; saved in the 'data' subfolder
 pub_id_converter <- readr::read_csv("data/rx_v2.csv") %>%
   select(Ptid, pub_id) %>%
   rename(hvtn505_id = Ptid) %>%
@@ -364,38 +364,38 @@ suppressWarnings(data("var.super", package = "HVTN505"))
 # or PC1 and/or MDW (only PC1 if cor(PC1, MDW) > 0.9)
 
 # scale vaccine recipients to have mean 0, sd 1 for all vars
+# scale vaccine recipients to have mean 0, sd 1 for all vars
 for (a in var.super$varname) {
-  dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]),
-                        scale = sd(dat.505[[a]][dat.505$trt == 1]))
-  dat.505[[a%.%"_bin"]] <- scale(dat.505[[a%.%"_bin"]],
-                                 center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]),
-                                 scale = sd(dat.505[[a%.%"_bin"]][dat.505$trt == 1]))
+  dat.505[[a]] <- as.vector(scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1])))
+  dat.505[[a%.%"_bin"]] <- as.vector(scale(dat.505[[a%.%"_bin"]], center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]), scale = sd(dat.505[[a%.%"_bin"]][dat.505$trt == 1])))
 }
 for (a in c("age", "BMI", "bhvrisk")) {
-  dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]),
-                        scale = sd(dat.505[[a]][dat.505$trt == 1]))
+  dat.505[[a]] <- as.vector(scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1])))
 }
 
 # set up X, Y for super learning
 X_markers <- dat.505 %>%
   select(var.super$varname, paste0(var.super$varname, "_bin"))
 X_exposure <- dat.505 %>%
+  as_tibble() %>% 
   select(age, BMI, bhvrisk)
-X <- data.frame(trt = dat.505$trt, X_exposure, X_markers)
-X_full_none <- data.frame(trt = dat.505$trt, X_exposure)
-weights <- dat.505$wt
-Y <- dat.505$case
-vaccinees <- cbind.data.frame(Y, weights, X) %>%
+X <- tibble::tibble(ptid = dat.505$ptid, trt = dat.505$trt,
+                    weight = dat.505$wt) %>%
+     bind_cols(X_exposure, X_markers)
+X_none_all <- tibble::tibble(ptid = dat.505$ptid, trt = dat.505$trt,
+                    weight = dat.505$wt) %>%
+     bind_cols(X_exposure)
+Y <- tibble(Y = dat.505$case)
+vaccinees <- dplyr::bind_cols(Y, X) %>%
   filter(trt == 1) %>%
   select(-trt)
-X_none <- cbind.data.frame(Y, weights, X_full_none) %>%
-  filter(trt == 1) %>%
-  select(-trt, -Y, -weights)
 Y_vaccine <- vaccinees$Y
-weights_vaccine <- vaccinees$weights
+weights_vaccine <- vaccinees$weight
 X_vaccine <- vaccinees %>%
-  select(-Y, -weights)
-
+  select(-Y, -weight, -ptid)
+X_none <- X_none_all %>% 
+  filter(trt == 1) %>% 
+  select(-trt, -ptid, -weight)
 # match the rows in vaccinees to get Z, C
 all_cc_vaccine <- Z_plus_weights %>%
   filter(ptid %in% vaccinees$ptid, trt == 1)
@@ -435,20 +435,6 @@ fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine,
                            mc.cores = num_cores
 )
 sl_fits_varset_11_all <- fits
-# do the same thing for confounders only
-fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine,
-                           X_mat = X_none, family = "binomial",
-                           Z = Z_vaccine, C = C, z_lib = "SL.glm",
-                           obsWeights = weights_vaccine,
-                           scale = "logit",
-                           sl_lib = methods[1],
-                           method = "method.CC_nloglik",
-                           cvControl = list(V = V_outer, stratifyCV = TRUE),
-                           innerCvControl = list(list(V = V_inner)),
-                           vimp = FALSE,
-                           mc.cores = num_cores
-)
-sl_fits_varset_1_baseline_exposure <- fits
 ```
 
 The code to reproduce the results of the original analysis is provided in the Appendix, and was designed to run on a high-performance cluster (HPC) computer (it takes multiple hours to run).
@@ -526,19 +512,21 @@ for (i in (1:14)[-11]) {
 
   X_markers_varset <- X_markers %>%
     select(names(X_markers)[this_var_set])
-
   X_exposure <- dat.505 %>%
+    as_tibble() %>% 
     select(age, BMI, bhvrisk)
-  X <- data.frame(trt = dat.505$trt, X_exposure, X_markers_varset)
+  X <- tibble::tibble(ptid = dat.505$ptid, trt = dat.505$trt, 
+                      weight = dat.505$wt) %>% 
+    bind_cols(X_exposure, X_markers_varset)
   weights <- dat.505$wt
-  Y <- dat.505$case
-  vaccinees <- cbind.data.frame(Y, weights, X) %>%
+  Y <- tibble(Y = dat.505$case)
+  vaccinees <- dplyr::bind_cols(Y, X) %>%
     filter(trt == 1) %>%
     select(-trt)
   Y_vaccine <- vaccinees$Y
-  weights_vaccine <- vaccinees$weights
+  weights_vaccine <- vaccinees$weight
   X_vaccine <- vaccinees %>%
-    select(-Y, -weights)
+    select(-Y, -weight, -ptid)
   # match the rows in vaccinees to get Z, C
   all_cc_vaccine <- Z_plus_weights %>%
     filter(ptid %in% vaccinees$ptid, trt == 1)
@@ -755,33 +743,35 @@ suppressWarnings(data("var.super", package = "HVTN505"))
 # or PC1 and/or MDW (only PC1 if cor(PC1, MDW) > 0.9)
 
 # scale vaccine recipients to have mean 0, sd 1 for all vars
+# scale vaccine recipients to have mean 0, sd 1 for all vars
 for (a in var.super$varname) {
-  dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]),
-                        scale = sd(dat.505[[a]][dat.505$trt == 1]))
-  dat.505[[a%.%"_bin"]] <- scale(dat.505[[a%.%"_bin"]],
-                                 center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]),
-                                 scale = sd(dat.505[[a%.%"_bin"]][dat.505$trt == 1]))
+  dat.505[[a]] <- as.vector(scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1])))
+  dat.505[[a%.%"_bin"]] <- as.vector(scale(dat.505[[a%.%"_bin"]], center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]), scale = sd(dat.505[[a%.%"_bin"]][dat.505$trt == 1])))
 }
 for (a in c("age", "BMI", "bhvrisk")) {
-  dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]),
-                        scale = sd(dat.505[[a]][dat.505$trt == 1]))
+  dat.505[[a]] <- as.vector(scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1])))
 }
 
 # set up X, Y for super learning
 X_markers <- dat.505 %>%
   select(var.super$varname, paste0(var.super$varname, "_bin"))
 X_exposure <- dat.505 %>%
+  as_tibble() %>% 
   select(age, BMI, bhvrisk)
-X <- data.frame(trt = dat.505$trt, X_exposure, X_markers)
-weights <- dat.505$wt
-Y <- dat.505$case
-vaccinees <- cbind.data.frame(Y, weights, X) %>%
+X <- tibble::tibble(ptid = dat.505$ptid, trt = dat.505$trt,
+                    weight = dat.505$wt) %>%
+     bind_cols(X_exposure, X_markers)
+X_none_all <- tibble::tibble(ptid = dat.505$ptid, trt = dat.505$trt,
+                    weight = dat.505$wt) %>%
+     bind_cols(X_exposure)
+Y <- tibble(Y = dat.505$case)
+vaccinees <- dplyr::bind_cols(Y, X) %>%
   filter(trt == 1) %>%
   select(-trt)
 Y_vaccine <- vaccinees$Y
-weights_vaccine <- vaccinees$weights
+weights_vaccine <- vaccinees$weight
 X_vaccine <- vaccinees %>%
-  select(-Y, -weights)
+  select(-Y, -weight, -ptid)
 
 # ----------------------------------------------------------------------------------------------
 # FIGURE 3, 4: do variable importance relative to baseline risk vars only
