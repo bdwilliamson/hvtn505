@@ -53,11 +53,23 @@ data("var.super", package = "HVTN505") # even if there is a warning message, it 
 
 # scale vaccine recipients to have mean 0, sd 1 for all vars
 for (a in var.super$varname) {
-  dat.505[[a]] <- as.vector(scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1])))
-  dat.505[[a%.%"_bin"]] <- as.vector(scale(dat.505[[a%.%"_bin"]], center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]), scale = sd(dat.505[[a%.%"_bin"]][dat.505$trt == 1])))
+  dat.505[[a]] <- as.vector(
+    scale(dat.505[[a]], 
+          center = mean(dat.505[[a]][dat.505$trt == 1]), 
+          scale = sd(dat.505[[a]][dat.505$trt == 1]))
+    )
+  dat.505[[a%.%"_bin"]] <- as.vector(
+    scale(dat.505[[a%.%"_bin"]], 
+          center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]), 
+          scale = sd(dat.505[[a%.%"_bin"]][dat.505$trt == 1]))
+    )
 }
 for (a in c("age", "BMI", "bhvrisk")) {
-  dat.505[[a]] <- as.vector(scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1])))
+  dat.505[[a]] <- as.vector(
+    scale(dat.505[[a]], 
+          center = mean(dat.505[[a]][dat.505$trt == 1]), 
+          scale = sd(dat.505[[a]][dat.505$trt == 1]))
+    )
 }
 
 # set up X, Y for super learning
@@ -82,7 +94,8 @@ X_vaccine <- vaccinees %>%
 # note that in this case, Z_plus_weights has 2494 rows
 # (the number of participants with complete data on age, BMI, bhvrisk)
 # and that the number of vaccinees is 1250
-Z_plus_weights <- readRDS(file = paste0(data_dir, "z_and_weights_for_505_analysis.rds"))
+Z_plus_weights <- readRDS(file = paste0(data_dir, 
+                                        "z_and_weights_for_505_analysis.rds"))
 # pull out the participants in the cc cohort who also received the vaccine;
 # this matches the rows in vaccinees
 all_cc_vaccine <- Z_plus_weights %>%
@@ -101,16 +114,18 @@ C <- (phase_1_data_vaccine$ptid %in% vaccinees$ptid)
 
 V_outer <- 5
 V_inner <- length(Y_vaccine) - 1
-# ------------------------------------------------------------------------------# run super learner, with leave-one-out cross-validation and all screens
+# ------------------------------------------------------------------------------
 # do 10 random starts, average over these
 # use assay groups as screens
-# ------------------------------------------------------------------------------# ensure reproducibility
+# ------------------------------------------------------------------------------
+# ensure reproducibility
 set.seed(4747)
 seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
-fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, X_mat = X_vaccine, family = "binomial",
+fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, 
+                           X_mat = X_vaccine, family = "binomial",
               Z = Z, C = C, z_lib = methods[!grepl("earth", methods)],
               obsWeights = weights_vaccine,
-              sl_lib = SL_library_with_assay_groups, # this comes from sl_screens.R
+              sl_lib = SL_library_with_assay_groups,
               scale = "logit",
               method = "method.CC_nloglik",
               cvControl = list(V = V_outer, stratifyCV = TRUE),

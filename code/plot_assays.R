@@ -11,7 +11,8 @@
 plot_assays <- function(avgs = NULL, type = "auc", main_font_size_forest = 5,
                         main_font_size_lab = 5, sl_only = TRUE,
                         immunoassay = TRUE,
-                        colors = NULL, point_size = 3, x_lim = c(0.4, 1), lgnd_pos = c(0.56, 0.2)) {
+                        colors = NULL, point_size = 3, x_lim = c(0.4, 1), 
+                        lgnd_pos = c(0.56, 0.2)) {
   # if type is AUC, make correct labels
   if (type == "auc") {
     x_lab <- "CV-AUC"
@@ -29,7 +30,8 @@ plot_assays <- function(avgs = NULL, type = "auc", main_font_size_forest = 5,
     group_by(assay) %>%
     arrange(desc(measure), .by_group = TRUE) %>%
     filter((Learner == "SL" & Screen == "All") | row_number() == 1) %>%
-    mutate(learner_nm = make_nice_learner_name(Learner), screen_nm = make_nice_screen_name(Screen)) %>%
+    mutate(learner_nm = make_nice_learner_name(Learner), 
+           screen_nm = make_nice_screen_name(Screen)) %>%
     ungroup() %>%
     arrange(desc(measure)) %>%
     mutate(ci_ll_truncated = pmax(ci_ll, x_lim[1]),
@@ -48,17 +50,20 @@ plot_assays <- function(avgs = NULL, type = "auc", main_font_size_forest = 5,
     ggplot(aes(y = measure,
         x = factor(paste0(Screen, "_", Learner, "_", assay),
         levels = paste0(Screen, "_", Learner, "_", assay)[order(measure)],
-        labels = paste0(varset_label, " ", learner_nm, " ", screen_nm)[order(measure)]),
+        labels = paste0(varset_label, " ", learner_nm, " ", 
+                        screen_nm)[order(measure)]),
         xend = factor(paste0(Screen, "_", Learner, "_", assay),
         levels = paste0(Screen, "_", Learner, "_", assay)[order(measure)],
-        labels = paste0(varset_label, " ", learner_nm, " ", screen_nm)[order(measure)]))) +
+        labels = paste0(varset_label, " ", learner_nm, " ", 
+                        screen_nm)[order(measure)]))) +
     geom_errorbar(aes(ymin = ci_ll, ymax = ci_ul), size = point_size) +
     geom_pointrange(aes(ymin = ci_ll_truncated, ymax = ci_ul_truncated),
     size = point_size) +
     ylab(x_lab) +
     xlab("") +
     scale_y_continuous(breaks = round(seq(x_lim[1], x_lim[2], 0.1), 1),
-                       labels = as.character(round(seq(x_lim[1], x_lim[2], 0.1), 1)),
+                       labels = as.character(round(seq(x_lim[1], 
+                                                       x_lim[2], 0.1), 1)),
                        limits = x_lim) +
     coord_flip() +
     theme(legend.position = "",
@@ -92,7 +97,8 @@ plot_assays <- function(avgs = NULL, type = "auc", main_font_size_forest = 5,
             axis.title.x = element_text(margin = ggplot2::margin(t = 5,
                  r = 0, b = 0, l = 0), size = main_font_size_forest),
             legend.text = element_text(size = main_font_size_forest),
-            plot.margin=unit(c(1.25,0.5,0.5,0),"cm")) # top, right, bottom, left
+            plot.margin=unit(c(1.25,0.5,0.5,0),"cm")) 
+    
     # separate plot with nice names,
     # printed values of measures, based on immunoassays only
     top_learners_labels <- top_learners %>%
@@ -150,5 +156,6 @@ plot_assays <- function(avgs = NULL, type = "auc", main_font_size_forest = 5,
           plot.background=element_blank())
 
 
-  return(list(top_learner_plot = top_learner_plot, top_learner_nms_plot = top_learner_nms_plot))
+  return(list(top_learner_plot = top_learner_plot, 
+              top_learner_nms_plot = top_learner_nms_plot))
 }

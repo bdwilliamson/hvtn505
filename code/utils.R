@@ -25,10 +25,11 @@
 one_auc <- function(preds, Y, scale = "identity",
                     weights = rep(1, length(Y)), C = rep(1, length(Y)),
                     Z = NULL, ...) {
-  auc_lst <- vimp::measure_auc(fitted_values = preds, y = Y, C = C, 
-                               Z = Z,
-                               ipc_weights = weights, 
-                               ipc_fit_type = "SL", ...)
+  auc_lst <- vimp::measure_auc(
+    fitted_values = preds, y = Y, C = C, 
+    Z = Z,
+    ipc_weights = weights, 
+    ipc_fit_type = "SL", ...)
   se <- vimp::vimp_se(auc_lst$point_est, auc_lst$eif)
   ci <- vimp::vimp_ci(est = auc_lst$point_est, se = se, scale = scale, 
                       level = 0.95)

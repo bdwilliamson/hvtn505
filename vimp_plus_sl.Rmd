@@ -140,7 +140,7 @@ references:
 ```{r setup, include=FALSE}
 library("knitr")
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 80, indent = 2), tidy = TRUE)
+knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 70, indent = 2), tidy = 'styler')
 ```
 
 # Introduction
@@ -335,7 +335,7 @@ We next define some useful functions that we will use in subsequent analyses:
 
 The following code runs the full Super Learner with a reduced library of candidate learners. This is for illustration only --- we recommend using a large library of candidate learners, as we did in the original analysis. Please note, however, that the following code chunk may take several minutes to run. If the code chunk does not run, a useful first debugging step is to make sure that you have installed all of the required packages.
 
-```{r run-full-sl-with-small-lib, eval = FALSE}
+```{r run-full-sl-with-small-lib}
 # load required libraries and functions
 library("methods")
 library("SuperLearner")
@@ -464,7 +464,7 @@ library("vimp")
 
 We next ran multiple Super Learners with reduced sets of covariates. Again, we originally ran this code on an HPC computer, and recommend that any final analyses use the full library of candidate learners. However, in the code below, we use a smaller library for illustration. Please note that this code chunk may take a couple of minutes to run.
 
-```{r run-assays-with-small-lib, eval = FALSE}
+```{r run-assays-with-small-lib}
 # only include the following variable sets:
 assays <- unique(var.super$assay)
 antigens <- unique(var.super$antigen)
@@ -639,7 +639,7 @@ for (i in (1:14)[-11]) {
 
 The following code compiles results and creates plots, and must be run after all Super Learner fits have been obtained.
 
-```{r compile-results-small-lib, eval = FALSE}
+```{r compile-results-small-lib}
 # results from full SL analysis
 # includes CV-AUC plots
 
@@ -730,7 +730,7 @@ We ran the Super Learner algorithm for each of the 11 variable sets defined in S
 
 In Figure \@ref(fig:sl-forest-plot-auc), we see improved performance of the Super Learner when including marker variables compared to baseline risk variables only. Indeed, the Super Learner using only baseline variables and no markers has a cross-validated AUC of `r round((avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC, 3)`. Other variable sets have a smaller estimated cross-validated AUC, but this is likely due to the small candidate library that we used for this analysis. Our proposed estimator of HIV-1 infection risk among vaccinees, the cross-validated Super Learner, has an estimated AUC of `r round((avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$AUC, 3)` based on all markers, with a 95\% confidence interval of `r paste0("[", round((avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ll, 3), ", ", round((avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ul, 3), "]")`. This is an improvement over the Super Learner based on only the baseline risk variables, with an estimated AUC of `r round((avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC, 3)` `r paste0("[", round((avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ll, 3), ", ", round((avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ul, 3), "]")`. These results must be interpreted with the large caveat that we have used a restricted set of learners in our Super Learner library to reduce computation time. A fuller set of learners is recommended for any publication-ready analysis (indeed, when we used the full library of learners in the full published analysis, the Super Learner based on all markers had a much improved AUC over the Super Learner with baseline risk variables only).
 
-```{r sl-forest-plot-auc, fig.cap = "Forest plot of cross-validated AUC for the Super Learner and the top individual learner for each assay combination.", fig.width = 20, fig.height = 8, eval = FALSE}
+```{r sl-forest-plot-auc, fig.cap = "Forest plot of cross-validated AUC for the Super Learner and the top individual learner for each assay combination.", fig.width = 20, fig.height = 8}
 # The palette with black:
 cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", 
                 "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
@@ -801,7 +801,7 @@ auc_immunoassay_plot
 
 We estimated the variable importance for 10 groups: all marker variables, IgG + IgA, IgG3, T cells, functional antibodies, IgG + IgA and IgG3, IgG + IgA and T cells, IgG + IgA and IgG3 and T cells, IgG + IgA and IgG3 and functional antibodies, and T cells and functional antibodies. In each case, we used the cross-validated Super Learner predictions from the analysis based on using the appropriate set of marker variables and baseline risk variables as our estimate of the full regression function; we then used the cross-validated Super Learner based on the baseline risk variables only to define the reduced regression function. This defines variable importance as the improvement in prediction performance from including a group of marker variables relative to including baseline variables only. The following code compiles the variable importance results for easy plotting:
 
-```{r compile-vimp-results, eval = FALSE}
+```{r compile-vimp-results}
 # -----------------------------------------------------------------------------
 # Variable importance plot for the different assay combinations:
 # All markers yields the full regression fit
@@ -978,12 +978,13 @@ vimp_tibble <- tibble(assay_grp = c("All markers",
                               vimp_igg3$ci_ul,
                               vimp_igg_iga$ci_ul))
 vimp_tibble <- tibble::add_column(vimp_tibble,
-                                  immunoassay_set = get_immunoassay_set(vimp_tibble$assay_grp))
+                                  immunoassay_set = 
+                                    get_immunoassay_set(vimp_tibble$assay_grp))
 ```
 
 The results based on cross-validated AUC are presented in Figure \@ref(fig:vimp-plot-auc). Here, we see that using the group of all marker variables results in an estimated increase in cross-validated AUC of only `r round((vimp_tibble %>% filter(assay_grp == "All markers"))$est, 3)` over using the baseline risk variables only. Interestingly, the groups of IgG, IgA, IgG3, and T cell markers; IgG, IgA, and T cell markers; and T cell markers and those markers measured in functional antibody assays have estimated equivalent prediction performance. The most important group appears to be IgG3 markers, with an estimated increase in cross-validated AUC of approximately `r round((vimp_tibble %>% filter(assay_grp == "IgG3"))$est, 3)` compared to using baseline risk variables only. Again, these results must be interpreted with the large caveat that we have used a restricted set of learners in our Super Learner library to reduce computation time. A fuller set of learners is recommended for any publication-ready analysis.
 
-```{r vimp-plot-auc, fig.cap = "Estimated variable importance (based on the difference in AUCs relative to a model with baseline exposure variables only) for each assay combination.", fig.height = 8, fig.width = 20, eval = FALSE}
+```{r vimp-plot-auc, fig.cap = "Estimated variable importance (based on the difference in AUCs relative to a model with baseline exposure variables only) for each assay combination.", fig.height = 8, fig.width = 20}
 title_font_size <- 26
 main_font_size_forest <- 31
 main_font_size_lab <- 9.3
@@ -1027,11 +1028,11 @@ The main limitation of this analysis is that, to save computation time in this v
 
 Code to reproduce the full Super Learning analysis is provided here. The original analysis of the HVTN 505 data [@neidich2019] used a previous version of the `vimp` package (specifically, `vimp` version 1.3.0); in this version of the package, hypothesis testing was not available, and the regressions based on the group of covariates of interest (e.g., IgG + IgA variables) and the group of remaining covariates (e.g., all variables besides IgG + IgA) were estimated on the same data. In the updated `vimp` version used here (version 2.1.4), it is possible to do hypothesis testing and the inverse weighting is properly handled. However, the hypothesis testing relies on the regressions being estimated on separate splits of the data; we do not do that here to harmonize this analysis with the original analysis.
 
-```{r run-full-sl, eval = FALSE, code = readLines("code/run_sl.R")}
+```{r run-full-sl, code = readLines("code/run_sl.R")}
 ```
 
 Code to reproduce the full variable importance analysis:
-```{r run-assays, eval = FALSE, code = readLines("code/run_sl_assays.R")}
+```{r run-assays, code = readLines("code/run_sl_assays.R")}
 ```
 
 # References
