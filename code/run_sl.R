@@ -65,18 +65,39 @@ X_markers <- dat.505 %>%
   select(var.super$varname, paste0(var.super$varname, "_bin"))
 X_exposure <- dat.505 %>%
   select(age, BMI, bhvrisk)
-X <- data.frame(trt = dat.505$trt, X_exposure, X_markers)
+X <- tibble::tibble(ptid = dat.505$ptid, trt = dat.505$trt,
+                    weight = dat.505$wt) %>%
+     bind_cols(X_exposure, X_markers_varset)
 weights <- dat.505$wt
-Y <- dat.505$case
-vaccinees <- cbind.data.frame(Y, weights, X) %>%
+Y <- tibble(Y = dat.505$case)
+vaccinees <- dplyr::bind_cols(Y, X) %>%
   filter(trt == 1) %>%
   select(-trt)
 Y_vaccine <- vaccinees$Y
-weights_vaccine <- vaccinees$weights
+weights_vaccine <- vaccinees$weight
 X_vaccine <- vaccinees %>%
-  select(-Y, -weights)
-C <- rep(1, length(Y_vaccine))
-Z <- data.frame(Y = Y_vaccine, X_vaccine %>% select(age, BMI, bhvrisk))
+  select(-Y, -weight, -ptid)
+# read in the full phase 1 dataset and weights,
+# and reorder so that rows match rows of X_vaccine with the remaining rows after
+# note that in this case, Z_plus_weights has 2494 rows
+# (the number of participants with complete data on age, BMI, bhvrisk)
+# and that the number of vaccinees is 1250
+Z_plus_weights <- readRDS(file = paste0(data_dir, "z_and_weights_for_505_analysis.rds"))
+# pull out the participants in the cc cohort who also received the vaccine;
+# this matches the rows in vaccinees
+all_cc_vaccine <- Z_plus_weights %>%
+  filter(ptid %in% vaccinees$ptid, trt == 1)
+# pull out the participants who are NOT in the cc cohort and received the vaccine
+all_non_cc_vaccine <- Z_plus_weights %>%
+  filter(!(ptid %in% vaccinees$ptid), trt == 1)
+# put them back together
+phase_1_data_vaccine <- dplyr::bind_rows(all_cc_vaccine, all_non_cc_vaccine) %>%
+  select(-trt)
+Z_vaccine <- phase_1_data_vaccine %>%
+  select(-ptid, -weight)
+all_ipw_weights_vaccine <- phase_1_data_vaccine %>%
+  pull(weight)
+C <- (phase_1_data_vaccine$ptid %in% vaccinees$ptid)
 
 V_outer <- 5
 V_inner <- length(Y_vaccine) - 1

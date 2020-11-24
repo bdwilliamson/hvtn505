@@ -50,14 +50,41 @@ for (a in c("age", "BMI", "bhvrisk")) {
 }
 
 # set up X, Y for super learning
-X_markers <- dat.505 %>%
-  select(var.super$varname, paste0(var.super$varname, "_bin"))
-weights_vaccine <- dat.505$wt[dat.505$trt == 1]
-Z <- dplyr::bind_cols(tibble::as_tibble(Y_vaccine, column_name = "Y"),
-                      X_vaccine %>%
-                        select(age, BMI, bhvrisk)) %>%
-  rename(Y = value)
-C <- rep(1, length(Y_vaccine))
+X_exposure <- dat.505 %>%
+  as_tibble() %>%
+  select(age, BMI, bhvrisk)
+X <- tibble::tibble(ptid = dat.505$ptid, trt = dat.505$trt,
+                    weight = dat.505$wt) %>%
+     bind_cols(X_exposure, X_markers_varset)
+Y <- tibble(Y = dat.505$case)
+vaccinees <- dplyr::bind_cols(Y, X) %>%
+  filter(trt == 1) %>%
+  select(-trt)
+Y_vaccine <- vaccinees$Y
+weights_vaccine <- vaccinees$weight
+X_vaccine <- vaccinees %>%
+  select(-Y, -weight, -ptid)
+# read in the full phase 1 dataset and weights,
+# and reorder so that rows match rows of X_vaccine with the remaining rows after
+# note that in this case, Z_plus_weights has 2494 rows
+# (the number of participants with complete data on age, BMI, bhvrisk)
+# and that the number of vaccinees is 1250
+Z_plus_weights <- readRDS(file = paste0(data_dir, "z_and_weights_for_505_analysis.rds"))
+# pull out the participants in the cc cohort who also received the vaccine;
+# this matches the rows in vaccinees
+all_cc_vaccine <- Z_plus_weights %>%
+  filter(ptid %in% vaccinees$ptid, trt == 1)
+# pull out the participants who are NOT in the cc cohort and received the vaccine
+all_non_cc_vaccine <- Z_plus_weights %>%
+  filter(!(ptid %in% vaccinees$ptid), trt == 1)
+# put them back together
+phase_1_data_vaccine <- dplyr::bind_rows(all_cc_vaccine, all_non_cc_vaccine) %>%
+  select(-trt)
+Z_vaccine <- phase_1_data_vaccine %>%
+  select(-ptid, -weight)
+all_ipw_weights_vaccine <- phase_1_data_vaccine %>%
+  pull(weight)
+C <- (phase_1_data_vaccine$ptid %in% vaccinees$ptid)
 # set up SL library for IPCW
 sl_lib_ipcw <- methods[!grepl("SL.glmnet", methods) & !grepl("SL.step.interaction.skinny", methods)]
 

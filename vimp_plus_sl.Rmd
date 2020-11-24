@@ -138,8 +138,9 @@ references:
 ---
 
 ```{r setup, include=FALSE}
+library("knitr")
 knitr::opts_chunk$set(echo = TRUE)
-# knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80), tidy = TRUE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80), tidy = TRUE)
 ```
 
 # Introduction
@@ -215,13 +216,13 @@ library("readr")
 # Read in the full dataset and make sure that
 # strata are computed across ALL participants
 # ------------------------------------------------------
-# these data come from the SCHARP ATLAS page for 505, 
+# these data come from the SCHARP ATLAS page for 505,
 # https://atlas.scharp.org/cpas/project/HVTN%20Public%20Data/HVTN%20505/begin.view?
 # (select primary505_for_sharing.csv within the Fong et al. (2018, JID) folder)
 # I've saved this in a data/ subfolder, but change the path to where you've saved it
-full_data <- readr::read_csv("data/primary505_for_sharing.csv") 
-full_data_with_strata <- full_data %>% 
-  mutate(hg_strata = ifelse(is.na(hg_strata), 
+full_data <- readr::read_csv("data/primary505_for_sharing.csv")
+full_data_with_strata <- full_data %>%
+  mutate(hg_strata = ifelse(is.na(hg_strata),
                             paste0(
                               ifelse(trt == 0, "Plac/", "Vacc/"),
                               ifelse(racecc == "White", "White", "Blk_Hisp"),
@@ -229,25 +230,25 @@ full_data_with_strata <- full_data %>%
                               ifelse(trt == 1 & BMI < 25 & !is.na(BMI), "/[18.4, 25)", ""),
                               ifelse(trt == 1 & 25 <= BMI & BMI < 29.8 & !is.na(BMI), "/[25, 29.8)", ""),
                               ifelse(trt == 1 & 29.8 <= BMI & !is.na(BMI), "/[29.8, 40)", "")
-                            ), 
-                            hg_strata)) %>% 
+                            ),
+                            hg_strata)) %>%
   filter(!is.na(BMI))
 
 # read in table to match pub_id from this dataset with the
-# ID in the HVTN505 R package; available upon request
-pub_id_converter <- readr::read_csv("data/rx_v2.csv") %>% 
+# ID in the HVTN505 R package
+pub_id_converter <- readr::read_csv("data/rx_v2.csv") %>%
   select(Ptid, pub_id) %>%
-  rename(hvtn505_id = Ptid) %>% 
+  rename(hvtn505_id = Ptid) %>%
   mutate(hvtn505_id = gsub("-", "", hvtn505_id))
 
 # update pub id
-full_data_with_matched_ids <- full_data_with_strata %>% 
+full_data_with_matched_ids <- full_data_with_strata %>%
   left_join(pub_id_converter, by = "pub_id")
 # ------------------------------------------------------
 # Compute inverse probability weights
 # ------------------------------------------------------
-# compute strata 
-full_data_with_stratuminds <- full_data_with_matched_ids %>% 
+# compute strata
+full_data_with_stratuminds <- full_data_with_matched_ids %>%
   mutate(
     stratuminds = case_when(
       hg_strata == "Plac/Blk_Hisp" ~ 1,
@@ -261,29 +262,29 @@ full_data_with_stratuminds <- full_data_with_matched_ids %>%
     ),
     stratuminds_vaccs = stratuminds - 2
   )
-cc_data <- full_data_with_stratuminds %>% 
+cc_data <- full_data_with_stratuminds %>%
   filter(casecontrol == 1)
 # numbers of cases and controls in each stratum
-n0 <- full_data_with_stratuminds %>% 
-  filter(cc_cohort == 1, HIVwk28preunbl == 0) %>% 
-  group_by(cc_strata) %>% 
+n0 <- full_data_with_stratuminds %>%
+  filter(cc_cohort == 1, HIVwk28preunbl == 0) %>%
+  group_by(cc_strata) %>%
   summarize(n0 = n(), .groups = "drop")
-n1 <- full_data_with_stratuminds %>% 
-  filter(cc_cohort == 1, HIVwk28preunbl == 1) %>% 
-  group_by(cc_strata) %>% 
+n1 <- full_data_with_stratuminds %>%
+  filter(cc_cohort == 1, HIVwk28preunbl == 1) %>%
+  group_by(cc_strata) %>%
   summarize(n1 = n(), .groups = "drop")
 # compute the weights
 weights <- cbind(n0$n0, n1$n1) / table(cc_data$stratuminds, cc_data$HIVwk28preunbl)
-full_data_with_weights <- full_data_with_stratuminds %>% 
-  mutate(weight = ifelse(HIVwk28preunbl == 1, 
-                         1, 
+full_data_with_weights <- full_data_with_stratuminds %>%
+  mutate(weight = ifelse(HIVwk28preunbl == 1,
+                         1,
                          weights[, 1][full_data_with_stratuminds$stratuminds]))
 
 # final tibble
-Z_plus_weights <- full_data_with_weights %>% 
-  select(hvtn505_id, trt, HIVpreunbl, age, BMI, bhvrisk, weight) %>% 
-  rename(ptid = hvtn505_id, Y = HIVpreunbl) %>% 
-  mutate(ptid = as.numeric(ptid)) %>% 
+Z_plus_weights <- full_data_with_weights %>%
+  select(hvtn505_id, trt, HIVpreunbl, age, BMI, bhvrisk, weight) %>%
+  rename(ptid = hvtn505_id, Y = HIVpreunbl) %>%
+  mutate(ptid = as.numeric(ptid)) %>%
   filter(!is.na(Y), !is.na(age), !is.na(BMI), !is.na(bhvrisk))
 ```
 
@@ -326,7 +327,7 @@ We next define some useful functions that we will use in subsequent analyses:
 
 The following code runs the full Super Learner with a reduced library of candidate learners. This is for illustration only --- we recommend using a large library of candidate learners, as we did in the original analysis. Please note, however, that the following code chunk may take several minutes to run. If the code chunk does not run, a useful first debugging step is to make sure that you have installed all of the required packages.
 
-```{r run-full-sl-with-small-lib}
+```{r run-full-sl-with-small-lib, eval = FALSE}
 # load required libraries and functions
 library("methods")
 library("SuperLearner")
@@ -356,18 +357,23 @@ source(paste0("code/utils.R"))
 # read in the full dataset
 data("dat.505", package = "HVTN505")
 # read in the super learner variables
-suppressWarnings(data("var.super", package = "HVTN505")) # even if there is a warning message, it still exists
+# even if there is a warning message, it still exists
+suppressWarnings(data("var.super", package = "HVTN505"))
 # note that "var.super" contains individual vars for vaccine-matched antigens,
 # and for vaccine-mismatched antigens, has either individual var (if only one)
 # or PC1 and/or MDW (only PC1 if cor(PC1, MDW) > 0.9)
 
 # scale vaccine recipients to have mean 0, sd 1 for all vars
 for (a in var.super$varname) {
-  dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1]))
-  dat.505[[a%.%"_bin"]] <- scale(dat.505[[a%.%"_bin"]], center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]), scale = sd(dat.505[[a%.%"_bin"]][dat.505$trt == 1]))
+  dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]),
+                        scale = sd(dat.505[[a]][dat.505$trt == 1]))
+  dat.505[[a%.%"_bin"]] <- scale(dat.505[[a%.%"_bin"]],
+                                 center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]),
+                                 scale = sd(dat.505[[a%.%"_bin"]][dat.505$trt == 1]))
 }
 for (a in c("age", "BMI", "bhvrisk")) {
-  dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1]))
+  dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]),
+                        scale = sd(dat.505[[a]][dat.505$trt == 1]))
 }
 
 # set up X, Y for super learning
@@ -391,17 +397,17 @@ X_vaccine <- vaccinees %>%
   select(-Y, -weights)
 
 # match the rows in vaccinees to get Z, C
-all_cc_vaccine <- Z_plus_weights %>% 
+all_cc_vaccine <- Z_plus_weights %>%
   filter(ptid %in% vaccinees$ptid, trt == 1)
 # pull out the participants who are NOT in the cc cohort and received the vaccine
-all_non_cc_vaccine <- Z_plus_weights %>% 
+all_non_cc_vaccine <- Z_plus_weights %>%
   filter(!(ptid %in% vaccinees$ptid), trt == 1)
 # put them back together
-phase_1_data_vaccine <- dplyr::bind_rows(all_cc_vaccine, all_non_cc_vaccine) %>% 
+phase_1_data_vaccine <- dplyr::bind_rows(all_cc_vaccine, all_non_cc_vaccine) %>%
   select(-trt)
-Z_vaccine <- phase_1_data_vaccine %>% 
+Z_vaccine <- phase_1_data_vaccine %>%
   select(-ptid, -weight)
-all_ipw_weights_vaccine <- phase_1_data_vaccine %>% 
+all_ipw_weights_vaccine <- phase_1_data_vaccine %>%
   pull(weight)
 C <- (phase_1_data_vaccine$ptid %in% vaccinees$ptid)
 
@@ -416,8 +422,8 @@ V_inner <- length(Y_vaccine) - 1
 # ensure reproducibility
 set.seed(4747)
 seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
-fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, 
-                           X_mat = X_vaccine, family = "binomial", 
+fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine,
+                           X_mat = X_vaccine, family = "binomial",
                            Z = Z_vaccine, C = C, z_lib = "SL.glm",
                            obsWeights = weights_vaccine,
                            scale = "logit",
@@ -430,7 +436,7 @@ fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine,
 )
 sl_fits_varset_11_all <- fits
 # do the same thing for confounders only
-fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, 
+fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine,
                            X_mat = X_none, family = "binomial",
                            Z = Z_vaccine, C = C, z_lib = "SL.glm",
                            obsWeights = weights_vaccine,
@@ -459,14 +465,15 @@ library("vimp")
 
 We next ran multiple Super Learners with reduced sets of covariates. Again, we originally ran this code on an HPC computer, and recommend that any final analyses use the full library of candidate learners. However, in the code below, we use a smaller library for illustration. Please note that this code chunk may take a couple of minutes to run.
 
-```{r run-assays-with-small-lib}
+```{r run-assays-with-small-lib, eval = FALSE}
 # only include the following variable sets:
 assays <- unique(var.super$assay)
 antigens <- unique(var.super$antigen)
 # 1. None (baseline variables only)
 var_set_none <- rep(FALSE, ncol(X_markers))
 # 2. IgG + IgA (all antigens)
-var_set_igg_iga <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA"), assays_to_exclude = "IgG3")
+var_set_igg_iga <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA"),
+                                              assays_to_exclude = "IgG3")
 # 3. IgG3
 var_set_igg3 <- get_nms_group_all_antigens(X_markers, assays = "IgG3")
 # 4. T cells (all antigens)
@@ -476,19 +483,28 @@ var_set_fxab <- get_nms_group_all_antigens(X_markers, assays = c("phago", "R2a",
 # 6. 1+2+3
 var_set_igg_iga_igg3 <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3"))
 # 7. 1+2+4
-var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8"), assays_to_exclude = "IgG3")
+var_set_igg_iga_tcells <- get_nms_group_all_antigens(X_markers,
+                                                     assays = c("IgG", "IgA", "CD4", "CD8"),
+                                                     assays_to_exclude = "IgG3")
 # 8. 1+2+3+4
-var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "CD4", "CD8"))
+var_set_igg_iga_igg3_tcells <- get_nms_group_all_antigens(X_markers,
+                                                          assays = c("IgG", "IgA", "IgG3", "CD4", "CD8"))
 # 9. 1+2+3+5
-var_set_igg_iga_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "IgG3", "phago", "R2a", "R3a"))
+var_set_igg_iga_igg3_fxab <- get_nms_group_all_antigens(X_markers,
+                                                        assays = c("IgG", "IgA", "IgG3", "phago", "R2a", "R3a"))
 # 10. 1+4+5
-var_set_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("CD4", "CD8", "phago", "R2a", "R3a"))
+var_set_tcells_fxab <- get_nms_group_all_antigens(X_markers,
+                                                  assays = c("CD4", "CD8", "phago", "R2a", "R3a"))
 # 11. All
 var_set_all <- rep(TRUE, ncol(X_markers))
 # 12--14: extra runs to get variable importance
-var_set_igg3_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "phago", "R2a", "R3a"))
-var_set_igg_iga_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG", "IgA", "CD4", "CD8", "phago", "R2a", "R3a"), assays_to_exclude = "IgG3")
-var_set_igg3_tcells_fxab <- get_nms_group_all_antigens(X_markers, assays = c("IgG3", "CD4", "CD8", "phago", "R2a", "R3a"))
+var_set_igg3_fxab <- get_nms_group_all_antigens(X_markers,
+                                                assays = c("IgG3", "phago", "R2a", "R3a"))
+var_set_igg_iga_tcells_fxab <- get_nms_group_all_antigens(X_markers,
+                                                          assays = c("IgG", "IgA", "CD4", "CD8", "phago", "R2a", "R3a"),
+                                                          assays_to_exclude = "IgG3")
+var_set_igg3_tcells_fxab <- get_nms_group_all_antigens(X_markers,
+                                                       assays = c("IgG3", "CD4", "CD8", "phago", "R2a", "R3a"))
 
 var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_igg3","4_tcells", "5_fxab",
                    "6_igg_iga_igg3", "7_igg_iga_tcells", "8_igg_iga_igg3_tcells",
@@ -497,7 +513,12 @@ var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_igg3","4_tcells", "5_f
                    "12_igg3_fxab", "13_igg_iga_tcells_fxab", "14_igg3_tcells_fxab")
 
 # set up a matrix of all
-var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_igg3, var_set_tcells, var_set_fxab, var_set_igg_iga_igg3, var_set_igg_iga_tcells, var_set_igg_iga_igg3_tcells, var_set_igg_iga_igg3_fxab, var_set_tcells_fxab, var_set_all, var_set_igg3_fxab, var_set_igg_iga_tcells_fxab, var_set_igg3_tcells_fxab)
+var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_igg3,
+                        var_set_tcells, var_set_fxab, var_set_igg_iga_igg3,
+                        var_set_igg_iga_tcells, var_set_igg_iga_igg3_tcells,
+                        var_set_igg_iga_igg3_fxab, var_set_tcells_fxab,
+                        var_set_all, var_set_igg3_fxab,
+                        var_set_igg_iga_tcells_fxab, var_set_igg3_tcells_fxab)
 for (i in (1:14)[-11]) {
   job_id <- i
   this_var_set <- var_set_matrix[job_id, ]
@@ -519,17 +540,17 @@ for (i in (1:14)[-11]) {
   X_vaccine <- vaccinees %>%
     select(-Y, -weights)
   # match the rows in vaccinees to get Z, C
-  all_cc_vaccine <- Z_plus_weights %>% 
+  all_cc_vaccine <- Z_plus_weights %>%
     filter(ptid %in% vaccinees$ptid, trt == 1)
   # pull out the participants who are NOT in the cc cohort and received the vaccine
-  all_non_cc_vaccine <- Z_plus_weights %>% 
+  all_non_cc_vaccine <- Z_plus_weights %>%
     filter(!(ptid %in% vaccinees$ptid), trt == 1)
   # put them back together
-  phase_1_data_vaccine <- dplyr::bind_rows(all_cc_vaccine, all_non_cc_vaccine) %>% 
+  phase_1_data_vaccine <- dplyr::bind_rows(all_cc_vaccine, all_non_cc_vaccine) %>%
     select(-trt)
-  Z_vaccine <- phase_1_data_vaccine %>% 
+  Z_vaccine <- phase_1_data_vaccine %>%
     select(-ptid, -weight)
-  all_ipw_weights_vaccine <- phase_1_data_vaccine %>% 
+  all_ipw_weights_vaccine <- phase_1_data_vaccine %>%
     pull(weight)
   C <- (phase_1_data_vaccine$ptid %in% vaccinees$ptid)
 
@@ -550,9 +571,9 @@ for (i in (1:14)[-11]) {
   # ensure reproducibility
   set.seed(4747)
   seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
-  fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, 
+  fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine,
                              X_mat = X_vaccine,
-                             family = "binomial", 
+                             family = "binomial",
                              C = C, Z = Z_vaccine, z_lib = "SL.glm",
                              obsWeights = weights_vaccine,
                              scale = "logit",
@@ -574,7 +595,7 @@ for (i in (1:14)[-11]) {
 
 The following code compiles results and creates plots, and must be run after all Super Learner fits have been obtained.
 
-```{r compile-results-small-lib}
+```{r compile-results-small-lib, eval = FALSE}
 # results from full SL analysis
 # includes CV-AUC plots
 
@@ -599,7 +620,7 @@ cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2"
 # read in the full dataset
 data("dat.505", package = "HVTN505")
 # read in the super learner variables
-suppressWarnings(data("var.super", package = "HVTN505")) # even if there is a warning message, it still exists
+suppressWarnings(data("var.super", package = "HVTN505"))
 
 weights_vaccine <- dat.505$wt[dat.505$trt == 1]
 # --------------------------------------------------------------------------------------------------------------------------------------
@@ -637,6 +658,10 @@ avg_aucs <- bind_rows(avg_aucs_1_baseline_exposure, avg_aucs_2_igg_iga, avg_aucs
                       avg_aucs_11_all)
 ```
 
+```{r test}
+avg_aucs <- tibble(Learner = NA, varset_label = NA, AUC = NA, ci_ll = NA, ci_ul = NA)
+vimp_tibble <- tibble(assay_grp = NA, est = NA, cil = NA, ciu = NA)
+```
 The following code chunk creates a function that makes plots:
 ```{r plot-assays, code = readLines("code/plot_assays.R")}
 ```
@@ -647,13 +672,14 @@ We ran the Super Learner algorithm for each of the 11 variable sets defined in S
 
 In Figure \@ref(fig:sl-forest-plot-auc), we see improved performance of the Super Learner when including marker variables compared to baseline risk variables only. Indeed, the Super Learner using only baseline variables and no markers has a cross-validated AUC of `r round((avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC, 3)`. Other variable sets have a smaller estimated cross-validated AUC, but this is likely due to the small candidate library that we used for this analysis. Our proposed estimator of HIV-1 infection risk among vaccinees, the cross-validated Super Learner, has an estimated AUC of `r round((avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$AUC, 3)` based on all markers, with a 95\% confidence interval of `r paste0("[", round((avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ll, 3), ", ", round((avg_aucs %>% filter(Learner == "SL", varset_label == "All markers"))$ci_ul, 3), "]")`. This is an improvement over the Super Learner based on only the baseline risk variables, with an estimated AUC of `r round((avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$AUC, 3)` `r paste0("[", round((avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ll, 3), ", ", round((avg_aucs %>% filter(Learner == "SL", varset_label == "No markers"))$ci_ul, 3), "]")`. These results must be interpreted with the large caveat that we have used a restricted set of learners in our Super Learner library to reduce computation time. A fuller set of learners is recommended for any publication-ready analysis (indeed, when we used the full library of learners in the full published analysis, the Super Learner based on all markers had a much improved AUC over the Super Learner with baseline risk variables only).
 
-```{r sl-forest-plot-auc, fig.cap = "Forest plot of cross-validated AUC for the Super Learner and the top individual learner for each assay combination.", fig.width = 20, fig.height = 8}
+```{r sl-forest-plot-auc, fig.cap = "Forest plot of cross-validated AUC for the Super Learner and the top individual learner for each assay combination.", fig.width = 20, fig.height = 8, eval = FALSE}
 # The palette with black:
 cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 # load in code to plot CV performance (described above)
 source("code/plot_assays.R")
 # -----------------------------------------------------------------------------------
-# FIGURE 1: forest plot of CV-AUC for the top learner and SL for each assay combination
+# FIGURE 1: forest plot of CV-AUC for the top learner
+#           and SL for each assay combination
 # -----------------------------------------------------------------------------------
 title_font_size <- 18
 main_font_size <- 5
@@ -664,7 +690,8 @@ auc_forest_plot_init <- plot_assays(avgs = avg_aucs, type = "auc",
                                main_font_size_lab = main_font_size,
                                sl_only = FALSE, immunoassay = FALSE,
                                point_size = 1.5)
-sl_plus_top_learner_auc_plot <- plot_grid(auc_forest_plot_init$top_learner_nms_plot, auc_forest_plot_init$top_learner_plot, nrow = 1, align = "h") +
+sl_plus_top_learner_auc_plot <- plot_grid(auc_forest_plot_init$top_learner_nms_plot,
+                                          auc_forest_plot_init$top_learner_plot, nrow = 1, align = "h") +
   draw_label("Assay combination", size = title_font_size, x = 0.075, y = y_title) +
   draw_label("Algorithm", size = title_font_size, x = 0.175, y = y_title) +
   draw_label("Screen", size = title_font_size, x = 0.25, y = y_title) +
@@ -687,14 +714,18 @@ auc_forest_plot_plus_assay <- plot_assays(avgs = avg_aucs, type = "auc",
                                colors = cbbPalette,
                                point_size = point_size,
                                x_lim = c(0.4, 1.2),
-                               lgnd_pos = c(0.6, 0.2)) 
+                               lgnd_pos = c(0.6, 0.2))
 auc_immunoassay_plot <- plot_grid(auc_forest_plot_plus_assay$top_learner_nms_plot,
-                                            auc_forest_plot_plus_assay$top_learner_plot, 
+                                            auc_forest_plot_plus_assay$top_learner_plot,
                                             nrow = 1, align = "h") +
-  draw_label("Month 7", size = title_font_size, x = 0.07, y = y_title + 0.04, fontface = "bold") +
-  draw_label("Marker Set", size = title_font_size, x = 0.08, y = y_title, fontface = "bold") +
-  draw_label("CV-AUC", size = title_font_size, x = 0.35, y = y_title + 0.04, fontface = "bold") +
-  draw_label("[95% CI]", size = title_font_size, x = 0.35, y = y_title, fontface = "bold")
+  draw_label("Month 7", size = title_font_size, x = 0.07, y = y_title + 0.04,
+             fontface = "bold") +
+  draw_label("Marker Set", size = title_font_size, x = 0.08, y = y_title,
+             fontface = "bold") +
+  draw_label("CV-AUC", size = title_font_size, x = 0.35, y = y_title + 0.04,
+             fontface = "bold") +
+  draw_label("[95% CI]", size = title_font_size, x = 0.35, y = y_title,
+             fontface = "bold")
 auc_immunoassay_plot
 ```
 
@@ -702,7 +733,7 @@ auc_immunoassay_plot
 
 We estimated the variable importance for 10 groups: all marker variables, IgG + IgA, IgG3, T cells, functional antibodies, IgG + IgA and IgG3, IgG + IgA and T cells, IgG + IgA and IgG3 and T cells, IgG + IgA and IgG3 and functional antibodies, and T cells and functional antibodies. In each case, we used the cross-validated Super Learner predictions from the analysis based on using the appropriate set of marker variables and baseline risk variables as our estimate of the full regression function; we then used the cross-validated Super Learner based on the baseline risk variables only to define the reduced regression function. This defines variable importance as the improvement in prediction performance from including a group of marker variables relative to including baseline variables only. The following code compiles the variable importance results for easy plotting:
 
-```{r compile-vimp-results}
+```{r compile-vimp-results, eval = FALSE}
 # ---------------------------------------------------------------------------------
 # Variable importance plot for the different assay combinations:
 # All markers yields the full regression fit
@@ -718,19 +749,22 @@ We estimated the variable importance for 10 groups: all marker variables, IgG + 
 # read in the full dataset
 data("dat.505", package = "HVTN505")
 # read in the super learner variables
-suppressWarnings(data("var.super", package = "HVTN505")) # even if there is a warning message, it still exists
+suppressWarnings(data("var.super", package = "HVTN505"))
 # note that "var.super" contains individual vars for vaccine-matched antigens,
 # and for vaccine-mismatched antigens, has either individual var (if only one)
 # or PC1 and/or MDW (only PC1 if cor(PC1, MDW) > 0.9)
 
 # scale vaccine recipients to have mean 0, sd 1 for all vars
 for (a in var.super$varname) {
-  dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1]))
-  dat.505[[a%.%"_bin"]] <- scale(dat.505[[a%.%"_bin"]], center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]),
+  dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]),
+                        scale = sd(dat.505[[a]][dat.505$trt == 1]))
+  dat.505[[a%.%"_bin"]] <- scale(dat.505[[a%.%"_bin"]],
+                                 center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]),
                                  scale = sd(dat.505[[a%.%"_bin"]][dat.505$trt == 1]))
 }
 for (a in c("age", "BMI", "bhvrisk")) {
-  dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1]))
+  dat.505[[a]] <- scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]),
+                        scale = sd(dat.505[[a]][dat.505$trt == 1]))
 }
 
 # set up X, Y for super learning
@@ -852,12 +886,13 @@ vimp_tibble <- tibble(assay_grp = c("All markers",
                               vimp_tcells$ci_ul,
                               vimp_igg3$ci_ul,
                               vimp_igg_iga$ci_ul))
-vimp_tibble <- tibble::add_column(vimp_tibble, immunoassay_set = get_immunoassay_set(vimp_tibble$assay_grp))
+vimp_tibble <- tibble::add_column(vimp_tibble,
+                                  immunoassay_set = get_immunoassay_set(vimp_tibble$assay_grp))
 ```
 
 The results based on cross-validated AUC are presented in Figure \@ref(fig:vimp-plot-auc). Here, we see that using the group of all marker variables results in an estimated increase in cross-validated AUC of only `r round((vimp_tibble %>% filter(assay_grp == "All markers"))$est, 3)` over using the baseline risk variables only. Interestingly, the groups of IgG, IgA, IgG3, and T cell markers; IgG, IgA, and T cell markers; and T cell markers and those markers measured in functional antibody assays have estimated equivalent prediction performance. The most important group appears to be IgG3 markers, with an estimated increase in cross-validated AUC of approximately `r round((vimp_tibble %>% filter(assay_grp == "IgG3"))$est, 3)` compared to using baseline risk variables only. Again, these results must be interpreted with the large caveat that we have used a restricted set of learners in our Super Learner library to reduce computation time. A fuller set of learners is recommended for any publication-ready analysis.
 
-```{r vimp-plot-auc, fig.cap = "Estimated variable importance (based on the difference in AUCs relative to a model with baseline exposure variables only) for each assay combination.", fig.height = 8, fig.width = 20}
+```{r vimp-plot-auc, fig.cap = "Estimated variable importance (based on the difference in AUCs relative to a model with baseline exposure variables only) for each assay combination.", fig.height = 8, fig.width = 20, eval = FALSE}
 title_font_size <- 26
 main_font_size_forest <- 31
 main_font_size_lab <- 9.3
@@ -866,19 +901,24 @@ point_size <- 5
 lgnd_pos <- c(0.75, 0.8)
 # forest plot of vimp, with labels for the groups
 vimp_forest_plot <- vimp_tibble %>%
-  ggplot(aes(x = est, y = factor(assay_grp, levels = assay_grp[order(est, decreasing = TRUE)], labels = assay_grp[order(est, decreasing = TRUE)]))) +
+  ggplot(aes(x = est, y = factor(assay_grp,
+                                 levels = assay_grp[order(est, decreasing = TRUE)],
+                                 labels = assay_grp[order(est, decreasing = TRUE)]))) +
   geom_errorbarh(aes(xmin = cil, xmax = ciu, color = immunoassay_set), size = point_size/2) +
   geom_point(size = point_size) +
-  scale_color_manual(values = cbbPalette[-2]) + # make sure that colors match with other forest plot
+  scale_color_manual(values = cbbPalette[-2]) +
   ylab("Month 7 Marker Set") +
   labs(color = "Assay set") +
-  xlab(paste0("Variable importance estimate: difference in CV-", ifelse(risk_type == "r_squared", expression(R^2), "AUC"))) +
+  xlab(paste0("Variable importance estimate: difference in CV-",
+              ifelse(risk_type == "r_squared", expression(R^2), "AUC"))) +
   theme(legend.position = lgnd_pos,
         axis.text.y = element_text(size = main_font_size_forest),
         text = element_text(size = main_font_size_forest),
         axis.title = element_text(size = main_font_size_forest),
         axis.text.x = element_text(size = main_font_size_forest),
-        axis.title.x = element_text(margin = ggplot2::margin(t = 20, r = 0, b = 0, l = 0), size = main_font_size_forest),
+        axis.title.x = element_text(margin = ggplot2::margin(t = 20, r = 0,
+                                                             b = 0, l = 0),
+                                    size = main_font_size_forest),
         plot.margin=unit(c(1,0.5,0,0),"cm")) # top, right, bottom, left
 vimp_forest_plot
 ```

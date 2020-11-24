@@ -55,18 +55,22 @@ X_markers <- dat.505 %>%
   select(var.super$varname, paste0(var.super$varname, "_bin"))
 X_exposure <- dat.505 %>%
   select(age, BMI, bhvrisk)
-X <- data.frame(trt = dat.505$trt, X_exposure, X_markers)
-weights <- dat.505$wt
-Y <- dat.505$case
-vaccinees <- cbind.data.frame(Y, weights, X) %>%
+X <- tibble::tibble(ptid = dat.505$ptid, trt = dat.505$trt,
+                    weight = dat.505$wt) %>%
+     bind_cols(X_exposure, X_markers_varset)
+Y <- tibble(Y = dat.505$case)
+vaccinees <- dplyr::bind_cols(Y, X) %>%
   filter(trt == 1) %>%
   select(-trt)
 Y_vaccine <- vaccinees$Y
-weights_vaccine <- vaccinees$weights
+weights_vaccine <- vaccinees$weight
 X_vaccine <- vaccinees %>%
-  select(-Y, -weights)
-
-# Set up Z, C: variables measured in phase 1 (i.e., vars measured on all participants)
+  select(-Y, -weight, -ptid)
+# read in the full phase 1 dataset and weights,
+# and reorder so that rows match rows of X_vaccine with the remaining rows after
+# note that in this case, Z_plus_weights has 2494 rows
+# (the number of participants with complete data on age, BMI, bhvrisk)
+# and that the number of vaccinees is 1250
 Z_plus_weights <- readRDS(file = paste0(data_dir, "z_and_weights_for_505_analysis.rds"))
 # pull out the participants in the cc cohort who also received the vaccine;
 # this matches the rows in vaccinees
