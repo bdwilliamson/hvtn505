@@ -57,7 +57,7 @@ X_exposure <- dat.505 %>%
   select(age, BMI, bhvrisk)
 X <- tibble::tibble(ptid = dat.505$ptid, trt = dat.505$trt,
                     weight = dat.505$wt) %>%
-     bind_cols(X_exposure, X_markers_varset)
+     bind_cols(X_exposure, X_markers)
 Y <- tibble(Y = dat.505$case)
 vaccinees <- dplyr::bind_cols(Y, X) %>%
   filter(trt == 1) %>%

@@ -57,11 +57,7 @@ cv_auc <- function(preds, Y, folds, scale = "identity",
                    weights = rep(1, length(Y)), C = rep(1, length(Y)),
                    Z = NULL, ...) {
   V <- length(folds)
-  # fold_row_nums <- as.vector(do.call(cbind, folds))
-  fold_row_nums <- unlist(folds)
-  folds_init <- rep(as.numeric(names(folds)), each = length(Y)/length(folds))
-  folds_mat <- cbind(fold_row_nums, folds_init)
-  folds_numeric <- folds_mat[order(folds_mat[, 1]), 2]
+  folds_numeric <- get_cv_sl_folds(folds)
   folds_z <- c(folds_numeric, sample(seq_len(V), nrow(Z) - length(folds_numeric), 
                                      replace = TRUE))
   ests_cis <- do.call(rbind.data.frame, lapply(as.list(1:V), function(v) {
@@ -74,6 +70,21 @@ cv_auc <- function(preds, Y, folds, scale = "identity",
   se <- colMeans(ests_cis)[4]
   ci <- vimp::vimp_ci(est, se, scale = scale, level = 0.95)
   return(list(auc = est, se = se, ci = ci))
+}
+# get the folds from a CV.SL object, make them a vector
+# @param cv_sl_folds the CV.SL folds (a named list of row numbers)
+# @return a vector with the correct folds
+get_cv_sl_folds <- function(cv_sl_folds) {
+  folds_with_row_nums <- sapply(1:length(cv_sl_folds), 
+                                function(x) 
+                                  list(
+                                    row_nums = cv_sl_folds[[x]], 
+                                    fold = rep(x, length(cv_sl_folds[[x]]))
+                                    ), 
+                                simplify = FALSE
+                                )
+  folds_df <- data.table::rbindlist(folds_with_row_nums)
+  folds_df$fold[order(folds_df$row_nums)]
 }
 # get the CV-AUC for all learners fit with SL
 # @param sl_fit the super learner fit object
@@ -174,7 +185,8 @@ get_all_aucs_lst <- function(sl_fit_lst, scale = "identity",
                      scale = scale,
                      folds = sl_fit_lst$fit$folds, weights = weights,
                      C = C, Z = Z, ...)
-    out <- data.frame(Learner="SL", Screen="All", AUC = sl_auc$auc, 
+    out <- data.frame(Learner="SL", Screen="All", AUC = sl_auc$auc,
+                      se = sl_auc$se[1],
                       ci_ll = sl_auc$ci[1],
                       ci_ul=sl_auc$ci[2])
 
@@ -186,6 +198,7 @@ get_all_aucs_lst <- function(sl_fit_lst, scale = "identity",
                               weights = weights, C = C, Z = Z, ...)
     out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All", 
                                  AUC = discrete_sl_auc$auc,
+                                 se = discrete_sl_auc$se[1],
                                  ci_ll = discrete_sl_auc$ci[1], 
                                  ci_ul = discrete_sl_auc$ci[2]))
 
@@ -265,11 +278,7 @@ cv_r2 <- function(preds, Y, folds, scale = "identity",
                   weights = rep(1, length(Y)),
                   C = rep(1, length(Y)), Z = NULL, ...) {
   V <- length(folds)
-  # fold_row_nums <- as.vector(do.call(cbind, folds))
-  fold_row_nums <- unlist(folds)
-  folds_init <- rep(as.numeric(names(folds)), each = length(Y)/length(folds))
-  folds_mat <- cbind(fold_row_nums, folds_init)
-  folds_numeric <- folds_mat[order(folds_mat[, 1]), 2]
+  folds_numeric <- get_cv_sl_folds(folds)
   ests_cis <- do.call(rbind.data.frame, lapply(as.list(1:V), function(v) {
     one_r2(preds = preds[folds_numeric == v], Y[folds_numeric == v],
            scale = scale,
