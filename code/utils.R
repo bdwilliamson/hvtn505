@@ -57,7 +57,8 @@ cv_auc <- function(preds, Y, folds, scale = "identity",
                    weights = rep(1, length(Y)), C = rep(1, length(Y)),
                    Z = NULL, ...) {
   V <- length(folds)
-  fold_row_nums <- as.vector(do.call(cbind, folds))
+  # fold_row_nums <- as.vector(do.call(cbind, folds))
+  fold_row_nums <- unlist(folds)
   folds_init <- rep(as.numeric(names(folds)), each = length(Y)/length(folds))
   folds_mat <- cbind(fold_row_nums, folds_init)
   folds_numeric <- folds_mat[order(folds_mat[, 1]), 2]
@@ -264,7 +265,8 @@ cv_r2 <- function(preds, Y, folds, scale = "identity",
                   weights = rep(1, length(Y)),
                   C = rep(1, length(Y)), Z = NULL, ...) {
   V <- length(folds)
-  fold_row_nums <- as.vector(do.call(cbind, folds))
+  # fold_row_nums <- as.vector(do.call(cbind, folds))
+  fold_row_nums <- unlist(folds)
   folds_init <- rep(as.numeric(names(folds)), each = length(Y)/length(folds))
   folds_mat <- cbind(fold_row_nums, folds_init)
   folds_numeric <- folds_mat[order(folds_mat[, 1]), 2]
