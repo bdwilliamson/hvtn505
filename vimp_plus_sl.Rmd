@@ -335,7 +335,7 @@ We next define some useful functions that we will use in subsequent analyses:
 
 The following code runs the full Super Learner with a reduced library of candidate learners. This is for illustration only --- we recommend using a large library of candidate learners, as we did in the original analysis. Please note, however, that the following code chunk may take several minutes to run. If the code chunk does not run, a useful first debugging step is to make sure that you have installed all of the required packages.
 
-```{r run-full-sl-with-small-lib}
+```{r run-full-sl-with-small-lib, cache = TRUE}
 # load required libraries and functions
 library("methods")
 library("SuperLearner")
@@ -374,11 +374,20 @@ suppressWarnings(data("var.super", package = "HVTN505"))
 # scale vaccine recipients to have mean 0, sd 1 for all vars
 # scale vaccine recipients to have mean 0, sd 1 for all vars
 for (a in var.super$varname) {
-  dat.505[[a]] <- as.vector(scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1])))
-  dat.505[[a%.%"_bin"]] <- as.vector(scale(dat.505[[a%.%"_bin"]], center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]), scale = sd(dat.505[[a%.%"_bin"]][dat.505$trt == 1])))
+  dat.505[[a]] <- as.vector(
+    scale(dat.505[[a]], 
+          center = mean(dat.505[[a]][dat.505$trt == 1]), 
+          scale = sd(dat.505[[a]][dat.505$trt == 1])))
+  dat.505[[a%.%"_bin"]] <- as.vector(
+    scale(dat.505[[a%.%"_bin"]], 
+          center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]), 
+          scale = sd(dat.505[[a%.%"_bin"]][dat.505$trt == 1])))
 }
 for (a in c("age", "BMI", "bhvrisk")) {
-  dat.505[[a]] <- as.vector(scale(dat.505[[a]], center = mean(dat.505[[a]][dat.505$trt == 1]), scale = sd(dat.505[[a]][dat.505$trt == 1])))
+  dat.505[[a]] <- as.vector(
+    scale(dat.505[[a]], 
+          center = mean(dat.505[[a]][dat.505$trt == 1]), 
+          scale = sd(dat.505[[a]][dat.505$trt == 1])))
 }
 
 # set up X, Y for super learning
@@ -437,6 +446,7 @@ fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once,
                            Z = Z_vaccine, 
                            C = C, z_lib = "SL.glm",
                            obsWeights = weights_vaccine,
+                           all_weights = all_ipw_weights_vaccine,
                            scale = "logit",
                            sl_lib = SL_library[1],
                            method = "method.CC_nloglik",
@@ -464,7 +474,7 @@ library("vimp")
 
 We next ran multiple Super Learners with reduced sets of covariates. Again, we originally ran this code on an HPC computer, and recommend that any final analyses use the full library of candidate learners. However, in the code below, we use a smaller library for illustration. Please note that this code chunk may take a couple of minutes to run.
 
-```{r run-assays-with-small-lib}
+```{r run-assays-with-small-lib, cache = TRUE}
 # only include the following variable sets:
 assays <- unique(var.super$assay)
 antigens <- unique(var.super$antigen)
@@ -618,6 +628,7 @@ for (i in (1:14)[-11]) {
                              family = "binomial",
                              C = C, Z = Z_vaccine, z_lib = "SL.glm",
                              obsWeights = weights_vaccine,
+                             all_weights = all_ipw_weights_vaccine,
                              scale = "logit",
                              sl_lib = sl_lib,
                              method = "method.CC_nloglik",
@@ -714,12 +725,6 @@ avg_aucs <- bind_rows(avg_aucs_1_baseline_exposure, avg_aucs_2_igg_iga,
                       avg_aucs_11_all)
 ```
 
-```{r test}
-avg_aucs <- tibble(Learner = NA, varset_label = NA, AUC = NA, 
-                   ci_ll = NA, ci_ul = NA)
-vimp_tibble <- tibble(assay_grp = NA, est = NA, 
-                      cil = NA, ciu = NA)
-```
 The following code chunk creates a function that makes plots:
 ```{r plot-assays, code = readLines("code/plot_assays.R")}
 ```
@@ -1028,11 +1033,11 @@ The main limitation of this analysis is that, to save computation time in this v
 
 Code to reproduce the full Super Learning analysis is provided here. The original analysis of the HVTN 505 data [@neidich2019] used a previous version of the `vimp` package (specifically, `vimp` version 1.3.0); in this version of the package, hypothesis testing was not available, and the regressions based on the group of covariates of interest (e.g., IgG + IgA variables) and the group of remaining covariates (e.g., all variables besides IgG + IgA) were estimated on the same data. In the updated `vimp` version used here (version 2.1.4), it is possible to do hypothesis testing and the inverse weighting is properly handled. However, the hypothesis testing relies on the regressions being estimated on separate splits of the data; we do not do that here to harmonize this analysis with the original analysis.
 
-```{r run-full-sl, code = readLines("code/run_sl.R")}
+```{r run-full-sl, code = readLines("code/run_sl.R"), eval = FALSE}
 ```
 
 Code to reproduce the full variable importance analysis:
-```{r run-assays, code = readLines("code/run_sl_assays.R")}
+```{r run-assays, code = readLines("code/run_sl_assays.R"), eval = FALSE}
 ```
 
 # References
