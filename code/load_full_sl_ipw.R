@@ -57,7 +57,7 @@ X_exposure <- dat.505 %>%
   select(age, BMI, bhvrisk)
 X <- tibble::tibble(ptid = dat.505$ptid, trt = dat.505$trt,
                     weight = dat.505$wt) %>%
-     bind_cols(X_exposure, X_markers)
+  bind_cols(X_exposure, X_markers)
 Y <- tibble(Y = dat.505$case)
 vaccinees <- dplyr::bind_cols(Y, X) %>%
   filter(trt == 1) %>%
@@ -102,9 +102,9 @@ for (i in 1:length(var_set_names)) {
     text = 
       paste0("sl_fits_varset_", var_set_names[i], 
              " <- readRDS(paste0(results_dir, 'sl_fits_varset_', var_set_names[i],
-             '.rds'))")
-    )
-    )
+             '_ipw.rds'))")
+  )
+  )
 }
 
 # check the discrete SL for each fold (baseline exposure only)
@@ -167,7 +167,7 @@ avg_aucs <- bind_rows(avg_aucs_1_baseline_exposure, avg_aucs_2_igg_iga, avg_aucs
                       avg_aucs_7_igg_iga_tcells, avg_aucs_8_igg_iga_igg3_tcells,
                       avg_aucs_9_igg_iga_igg3_fxab, avg_aucs_10_tcells_fxab,
                       avg_aucs_11_all)
-saveRDS(avg_aucs, file = "results/auc_results/avg_aucs.rds")
+saveRDS(avg_aucs, file = "results/auc_results/avg_aucs_ipw.rds")
 # forest plot of AUCs; this one is super nasty, but shows that it works
 full_forest_plot_auc <- avg_aucs %>%
   ggplot(aes(x = AUC, y = factor(paste0(Screen, "_", Learner, "_", assay), levels = paste0(Screen, "_", Learner, "_", assay)[order(AUC)]))) +
@@ -185,19 +185,22 @@ main_font_size <- 5
 fig_width <- fig_height <- 2590
 y_title <- 0.96
 auc_forest_plot_init <- plot_assays(avgs = avg_aucs, type = "auc",
-                               main_font_size_forest = main_font_size * 3,
-                               main_font_size_lab = main_font_size,
-                               sl_only = FALSE, immunoassay = FALSE,
-                               point_size = 1.5)
+                                    main_font_size_forest = main_font_size * 3,
+                                    main_font_size_lab = main_font_size,
+                                    sl_only = FALSE, immunoassay = FALSE,
+                                    point_size = 1.5)
 sl_plus_top_learner_auc_plot <- plot_grid(auc_forest_plot_init$top_learner_nms_plot, auc_forest_plot_init$top_learner_plot, nrow = 1, align = "h") +
   draw_label("Assay combination", size = title_font_size, x = 0.075, y = y_title) +
   draw_label("Algorithm", size = title_font_size, x = 0.175, y = y_title) +
   draw_label("Screen", size = title_font_size, x = 0.25, y = y_title) +
   draw_label("CV-AUC [95% CI]", size = title_font_size, x = 0.43, y = y_title)
-ggsave(filename = paste0(plots_dir, "cv_auc_forest_plot_sl_plus_top_learner.png"),
-       plot = sl_plus_top_learner_auc_plot,
-       width = 45, height = 25,
-       units = "cm")
+ggsave(
+  filename = paste0(plots_dir, 
+                    "cv_auc_forest_plot_sl_plus_top_learner_ipw.png"
+                    ),
+  plot = sl_plus_top_learner_auc_plot,
+  width = 45, height = 25, units = "cm"
+  )
 
 # add on immunoassay set
 avg_aucs <- avg_aucs %>%
@@ -210,29 +213,29 @@ fig_width <- fig_height <- 2590
 y_title <- 0.945
 point_size <- 2
 auc_forest_plot_plus_assay <- plot_assays(avgs = avg_aucs, type = "auc",
-                               main_font_size_forest = main_font_size_forest,
-                               main_font_size_lab = main_font_size_lab,
-                               sl_only = TRUE, immunoassay = TRUE,
-                               colors = cbbPalette,
-                               point_size = point_size,
-                               x_lim = c(0.4, 1.2),
-                               lgnd_pos = c(0.6, 0.2))
+                                          main_font_size_forest = main_font_size_forest,
+                                          main_font_size_lab = main_font_size_lab,
+                                          sl_only = TRUE, immunoassay = TRUE,
+                                          colors = cbbPalette,
+                                          point_size = point_size,
+                                          x_lim = c(0.4, 1.2),
+                                          lgnd_pos = c(0.6, 0.2))
 auc_immunoassay_plot <- plot_grid(auc_forest_plot_plus_assay$top_learner_nms_plot,
-                                            auc_forest_plot_plus_assay$top_learner_plot,
-                                            nrow = 1, align = "h") +
+                                  auc_forest_plot_plus_assay$top_learner_plot,
+                                  nrow = 1, align = "h") +
   draw_label("Month 7", size = title_font_size, x = 0.14, y = y_title + 0.04, fontface = "bold") +
   draw_label("Marker Set", size = title_font_size, x = 0.1375, y = y_title, fontface = "bold") +
   draw_label("CV-AUC", size = title_font_size, x = 0.4, y = y_title + 0.04, fontface = "bold") +
   draw_label("[95% CI]", size = title_font_size, x = 0.4, y = y_title, fontface = "bold")
-ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl.png"),
+ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl_ipw.png"),
        plot = auc_immunoassay_plot,
        width = 50, height = 25, units = "cm")
 
-ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl.tiff"),
+ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl_ipw.tiff"),
        plot = auc_immunoassay_plot,
        width = 50, height = 25, units = "cm")
 
-ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl.pdf"),
+ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl_ipw.pdf"),
        plot = auc_immunoassay_plot,
        width = 50, height = 25, units = "cm")
 
@@ -294,9 +297,9 @@ main_font_size_lab <- 8
 fig_width <- fig_height <- 2590
 y_title <- 0.96
 r2_forest_plot <- plot_assays(avg_r2s, type = "r2", main_font_size_forest = main_font_size_forest,
-                                   main_font_size_lab = main_font_size_lab,
-                                   sl_only = TRUE, immunoassay = TRUE,
-                                   colors = cbbPalette)
+                              main_font_size_lab = main_font_size_lab,
+                              sl_only = TRUE, immunoassay = TRUE,
+                              colors = cbbPalette)
 ggsave(paste0(plots_dir, "cv_r2_forest_plot_sl.png"),
        plot = plot_grid(r2_forest_plot$top_learner_nms_plot,
                         r2_forest_plot$top_learner_plot, nrow = 1, align = "h") +
@@ -356,9 +359,9 @@ if (risk_type == "auc" && vimp_version >= "2.1.4") {
                                                    risk_type = risk_type,
                                                    scale = scale)
   vimp_igg_iga_igg3_tcells <- get_cv_vim_precomputed(full_ests = avg_aucs_8_igg_iga_igg3_tcells,
-                                              reduced_ests = avg_aucs_1_baseline_exposure,
-                                              risk_type = risk_type,
-                                              scale = scale)
+                                                     reduced_ests = avg_aucs_1_baseline_exposure,
+                                                     risk_type = risk_type,
+                                                     scale = scale)
   vimp_igg_iga_tcells <- get_cv_vim_precomputed(full_ests = avg_aucs_7_igg_iga_tcells,
                                                 reduced_ests = avg_aucs_1_baseline_exposure,
                                                 risk_type = risk_type,
@@ -434,7 +437,7 @@ if (risk_type == "auc" && vimp_version >= "2.1.4") {
                                  scale = scale,
                                  Z = Z, C = C, SL.library = sl_lib_ipcw)
   vimp_all_markers_avg <- get_avg_est_ci(vimp_all_markers)
-
+  
   # (10) T cells  + Fx Ab
   vimp_tcells_fxab <- get_cv_vim(full_fit = full_fit_10_tcells_fxab,
                                  reduced_fit = reduced_fit_none,
@@ -443,7 +446,7 @@ if (risk_type == "auc" && vimp_version >= "2.1.4") {
                                  scale = scale,
                                  Z = Z, C = C, SL.library = sl_lib_ipcw)
   vimp_tcells_fxab_avg <- get_avg_est_ci(vimp_tcells_fxab)
-
+  
   # (9) IgG + IgA + IgG3 + Fx Ab
   vimp_igg_iga_igg3_fxab <- get_cv_vim(full_fit = full_fit_9_igg_iga_igg3_fxab,
                                        reduced_fit = reduced_fit_none,
@@ -452,7 +455,7 @@ if (risk_type == "auc" && vimp_version >= "2.1.4") {
                                        scale = scale,
                                        Z = Z, C = C, SL.library = sl_lib_ipcw)
   vimp_igg_iga_igg3_fxab_avg <- get_avg_est_ci(vimp_igg_iga_igg3_fxab)
-
+  
   # (8) IgG + IgA + IgG3 + T cells
   vimp_igg_iga_igg3_tcells <- get_cv_vim(full_fit = full_fit_8_igg_iga_igg3_tcells,
                                          reduced_fit = reduced_fit_none,
@@ -461,7 +464,7 @@ if (risk_type == "auc" && vimp_version >= "2.1.4") {
                                          scale = scale,
                                          Z = Z, C = C, SL.library = sl_lib_ipcw)
   vimp_igg_iga_igg3_tcells_avg <- get_avg_est_ci(vimp_igg_iga_igg3_tcells)
-
+  
   # (7) IgG + IgA + T cells
   vimp_igg_iga_tcells <- get_cv_vim(full_fit = full_fit_7_igg_iga_tcells,
                                     reduced_fit = reduced_fit_none,
@@ -470,7 +473,7 @@ if (risk_type == "auc" && vimp_version >= "2.1.4") {
                                     scale = scale,
                                     Z = Z, C = C, SL.library = sl_lib_ipcw)
   vimp_igg_iga_tcells_avg <- get_avg_est_ci(vimp_igg_iga_tcells)
-
+  
   # (6) IgG + IgA + IgG3
   vimp_igg_iga_igg3 <- get_cv_vim(full_fit = full_fit_6_igg_iga_igg3,
                                   reduced_fit = reduced_fit_none,
@@ -479,7 +482,7 @@ if (risk_type == "auc" && vimp_version >= "2.1.4") {
                                   scale = scale,
                                   Z = Z, C = C, SL.library = sl_lib_ipcw)
   vimp_igg_iga_igg3_avg <- get_avg_est_ci(vimp_igg_iga_igg3)
-
+  
   # (5) Fx Ab
   vimp_fxab <- get_cv_vim(full_fit = full_fit_5_fxab,
                           reduced_fit = reduced_fit_none,
@@ -488,7 +491,7 @@ if (risk_type == "auc" && vimp_version >= "2.1.4") {
                           scale = scale,
                           Z = Z, C = C, SL.library = sl_lib_ipcw)
   vimp_fxab_avg <- get_avg_est_ci(vimp_fxab)
-
+  
   # (4) T cells
   vimp_tcells <- get_cv_vim(full_fit = full_fit_4_tcells,
                             reduced_fit = reduced_fit_none,
@@ -497,7 +500,7 @@ if (risk_type == "auc" && vimp_version >= "2.1.4") {
                             scale = scale,
                             Z = Z, C = C, SL.library = sl_lib_ipcw)
   vimp_tcells_avg <- get_avg_est_ci(vimp_tcells)
-
+  
   # (3) IgG3
   vimp_igg3 <- get_cv_vim(full_fit = full_fit_3_igg3,
                           reduced_fit = reduced_fit_none,
@@ -506,7 +509,7 @@ if (risk_type == "auc" && vimp_version >= "2.1.4") {
                           scale = scale,
                           Z = Z, C = C, SL.library = sl_lib_ipcw)
   vimp_igg3_avg <- get_avg_est_ci(vimp_igg3)
-
+  
   # (2) IgG + IgA
   vimp_igg_iga <- get_cv_vim(full_fit = full_fit_2_igg_iga,
                              reduced_fit = reduced_fit_none,
@@ -515,7 +518,7 @@ if (risk_type == "auc" && vimp_version >= "2.1.4") {
                              scale = scale,
                              Z = Z, C = C, SL.library = sl_lib_ipcw)
   vimp_igg_iga_avg <- get_avg_est_ci(vimp_igg_iga)
-
+  
   # combine together
   vimp_tibble <- tibble(assay_grp = c("All markers",
                                       "T Cells + Fx Ab",
@@ -560,8 +563,8 @@ if (risk_type == "auc" && vimp_version >= "2.1.4") {
 }
 vimp_tibble <- tibble::add_column(vimp_tibble, immunoassay_set = get_immunoassay_set(vimp_tibble$assay_grp))
 # save this object for easy loading
-saveRDS(vimp_tibble, paste0(results_dir, "vimp_tibble_", risk_type, ".rds"))
-vimp_tibble <- readRDS(paste0(results_dir, "vimp_tibble_", risk_type, ".rds"))
+saveRDS(vimp_tibble, paste0(results_dir, "vimp_tibble_", risk_type, "_ipw.rds"))
+vimp_tibble <- readRDS(paste0(results_dir, "vimp_tibble_", risk_type, "_ipw.rds"))
 
 title_font_size <- 26
 main_font_size_forest <- 31
@@ -589,10 +592,14 @@ vimp_forest_plot <- vimp_tibble %>%
         axis.text.x = element_text(size = main_font_size_forest),
         axis.title.x = element_text(margin = ggplot2::margin(t = 20, r = 0, b = 0, l = 0), size = main_font_size_forest),
         plot.margin=unit(c(1,0.5,0,0),"cm")) # top, right, bottom, left
-ggsave(filename = paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline.png"),
+ggsave(filename = 
+         paste0(plots_dir, 
+                "vimp_forest_plot_", risk_type, "_rel_to_baseline_ipw.png"),
        plot = vimp_forest_plot,
        width = 50, height = 25, units = "cm")
-ggsave(filename = paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline.pdf"),
+ggsave(filename = 
+         paste0(plots_dir, 
+                "vimp_forest_plot_", risk_type, "_rel_to_baseline_ipw.pdf"),
        plot = vimp_forest_plot,
        width = 50, height = 25, units = "cm")
 

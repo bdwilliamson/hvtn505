@@ -25,7 +25,7 @@
 one_auc <- function(preds, Y, scale = "identity",
                     weights = rep(1, length(Y)), C = rep(1, length(Y)),
                     Z = NULL, ...) {
-  auc_lst <- vimp::measure_auc(
+  auc_lst <- measure_auc(
     fitted_values = preds, y = Y, C = C, 
     Z = Z,
     ipc_weights = weights, 
@@ -248,7 +248,7 @@ get_all_aucs_lst <- function(sl_fit_lst, scale = "identity",
 #             for 5-fold cross-validated super learner)
 one_r2 <- function(preds, Y, scale = "identity", weights = rep(1, length(Y)),
                    C = rep(1, length(Y)), Z = NULL, ...) {
-  r2_lst <- vimp::measure_r_squared(fitted_values = preds, y = Y, 
+  r2_lst <- measure_r_squared(fitted_values = preds, y = Y, 
                                     C = C, Z = Z,
                                     ipc_weights = weights, 
                                     ipc_fit_type = "SL", ...)
