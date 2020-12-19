@@ -29,30 +29,6 @@ noise_screen_dynamic_range <- function(Y, X, family,
   vars[vars][ranked_vars > nVar] <- FALSE
   return(vars)
 }
-# screen dynamic range score: only keep variables with 
-# sd(vacinees)/sd(placebo) > 75th percentile
-# relies on having var.super loaded in the environment
-noise_screen_dynamic_range_score <- function(Y, X, family, 
-                                                     obsWeights, id, 
-                                                     var_super = var.super, 
-                                                     nVar = 4, ...) {
-  # set all to false
-  vars <- rep(FALSE, ncol(X))
-  # need to apply with the correct label in place of X
-  vars_sd_ratio <- ifelse(is.na(var_super$sd.ratio), TRUE, 
-                          var_super$sd.ratio > quantile(var_super$sd.ratio, 
-                                                        probs = c(0.5), 
-                                                        na.rm = TRUE))
-  vars <- names(X) %in% var_super$varname[vars_sd_ratio] | 
-    names(X) %in% paste0(var_super$varname[vars_sd_ratio], "_bin")
-  # keep only a max of nVar immune markers; rank by univariate p-value 
-  X_initial_screen <- X %>%
-    select(names(X)[vars])
-  ranked_vars <- noise_rank_univariate_logistic_pval(Y,  X_initial_screen, 
-                                                     family, obsWeights, id)
-  vars[vars][ranked_vars > nVar] <- FALSE
-  return(vars)
-}
 # screen based on lasso
 noise_screen_glmnet <- function(Y, X, family, 
                                         obsWeights, id, alpha = 1, 
@@ -148,7 +124,6 @@ noise_screens <- c(
   paste0("noise_screen_univariate_logistic_pval_", 
          c(0.01, 0.05, 0.1)), 
   "noise_screen_dynamic_range", 
-  "noise_screen_dynamic_range_score", 
   "noise_screen_highcor"
 )
 noise_screen_method_frame <- expand.grid(screen = noise_screens, 

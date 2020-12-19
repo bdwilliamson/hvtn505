@@ -36,9 +36,9 @@ if (!is.na(Sys.getenv("RSTUDIO", unset = NA))) { # if running locally
 num_cores <- parallel::detectCores()
 print(num_cores)
 source(paste0(code_dir, "sl_screens.R")) # set up the screen/algorithm combinations
-source(paste0(code_dir, "utils.R")) # get CV-AUC for all algs
 source(paste0(code_dir, "measure_auc_ipw.R"))
 measure_auc <- measure_auc_ipw
+source(paste0(code_dir, "utils.R")) # get CV-AUC for all algs
 
 # ------------------------------------------------------------------------------
 # pre-process the data

@@ -38,6 +38,7 @@ print(num_cores)
 source(paste0(code_dir, "sl_screens.R")) # set up the screen/algorithm combinations
 source(paste0(code_dir, "utils.R")) # get CV-AUC for all algs
 source(paste0(code_dir, "measure_auc_ipw.R"))
+source(paste0(code_dir, "noise_screens.R"))
 
 parser <- ArgumentParser()
 parser$add_argument("--aipw", default = "TRUE", 
@@ -94,16 +95,16 @@ cat("\n Running noise variables; run ", job_id, "\n")
 set.seed(1234)
 noise_seeds <- round(runif(50, 1e3, 1e5))
 set.seed(noise_seeds[job_id])
-X_noise <- as_tibble(replicate(10, rnorm(nrow(X_markers), 0, 1)))
+X_noise <- as_tibble(data.frame(replicate(10, rnorm(nrow(X_markers), 0, 1))))
 
 # get the current phase 2 dataset based on the markers of interest
-X_markers_varset <- X_noise
-X_exposure <- dat.505 %>%
-  as_tibble() %>%
-  select(age, BMI, bhvrisk)
+# X_exposure <- dat.505 %>%
+#   as_tibble() %>%
+#   select(age, BMI, bhvrisk)
 X <- tibble::tibble(ptid = dat.505$ptid, trt = dat.505$trt,
                     weight = dat.505$wt) %>%
-  bind_cols(X_exposure, X_markers_varset)
+  # bind_cols(X_exposure, X_markers_varset)
+  bind_cols(X_noise)
 Y <- tibble(Y = dat.505$case)
 vaccinees <- dplyr::bind_cols(Y, X) %>%
   filter(trt == 1) %>%
@@ -140,7 +141,7 @@ V_inner <- length(Y_vaccine) - 1
 
 # get the SL library
 # if var_set_none, then don't need screens; otherwise do
-sl_lib <- SL_library_noise[!grepl("earth", SL_library_noise)] 
+sl_lib <- SL_library_noise[!grepl("earth", SL_library_noise)]
 # ------------------------------------------------------------------------------
 # run super learner, with leave-one-out cross-validation and all screens
 # do 10 random starts, average over these
@@ -161,6 +162,6 @@ fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine,
                            innerCvControl = list(list(V = V_inner)),
                            vimp = FALSE,
                            mc.cores = num_cores)
-saveRDS(fits, paste0("sl_fits_noise_", switch((args$aipw) + 1, "ipw", "aipw"),
+saveRDS(fits, paste0("noise_sim/sl_fits_noise_", switch((args$aipw) + 1, "ipw", "aipw"),
                      "_", job_id, ".rds"))
 warnings()
