@@ -16,18 +16,27 @@
 #' @return A named list of: (1) the estimated AUC of the fitted regression function; (2) the estimated influence function; and (3) the IPC EIF predictions.
 #' @importFrom SuperLearner predict.SuperLearner SuperLearner
 #' @export
-measure_auc_ipw <- function(fitted_values, y, C = rep(1, length(y)), Z = NULL, ipc_weights = rep(1, length(y)), ipc_fit_type = "external", ipc_eif_preds = rep(1, length(y)), scale = "identity", na.rm = FALSE, ...) {
+measure_auc_ipw <- function(fitted_values, y, C = rep(1, length(y)), 
+                            Z = NULL, ipc_weights = rep(1, length(y)), 
+                            ipc_fit_type = "external", 
+                            ipc_eif_preds = rep(1, length(y)), 
+                            scale = "identity", na.rm = FALSE, ...) {
   # compute the point estimate (on only data with all obs, if IPC weights are entered)
   preds <- ROCR::prediction(predictions = fitted_values, labels = y)
-  est <- unlist(ROCR::performance(prediction.obj = preds, measure = "auc", x.measure = "cutoff")@y.values)
+  est <- unlist(ROCR::performance(prediction.obj = preds, measure = "auc", 
+                                  x.measure = "cutoff")@y.values)
   # compute the EIF: if there is coarsening, do a correction
   if (!all(ipc_weights == 1)) {
     # marginal probabilities
     p_0 <- mean(y == 0)
     p_1 <- mean(y == 1)
     # sensitivity and specificity
-    sens <- unlist(lapply(as.list(fitted_values), function(x) mean(fitted_values[(y == 0)] < x, na.rm = na.rm)))
-    spec <- unlist(lapply(as.list(fitted_values), function(x) mean(fitted_values[(y == 1)] > x, na.rm = na.rm)))
+    sens <- unlist(lapply(as.list(fitted_values), 
+                          function(x) mean(fitted_values[(y == 0)] < x, 
+                                           na.rm = na.rm)))
+    spec <- unlist(lapply(as.list(fitted_values), 
+                          function(x) mean(fitted_values[(y == 1)] > x, 
+                                           na.rm = na.rm)))
     
     # contributions from cases and controls
     contrib_1 <- (y == 1) / p_1 * sens
@@ -37,8 +46,17 @@ measure_auc_ipw <- function(fitted_values, y, C = rep(1, length(y)), Z = NULL, i
     obs_grad <- contrib_1 + contrib_0 - ( (y == 0) / p_0 + (y == 1) / p_1 ) * est
     # if IPC EIF preds aren't entered, estimate the regression
     if (ipc_fit_type != "external") {
-      ipc_eif_mod <- SuperLearner::SuperLearner(Y = obs_grad, X = subset(Z, C == 1, drop = FALSE), method = "method.CC_LS", ...)
-      ipc_eif_preds <- SuperLearner::predict.SuperLearner(ipc_eif_mod, newdata = Z, onlySL = TRUE)$pred
+      arg_lst <- list(...)
+      if (grepl("cvControl", names(arg_lst))) {
+        arg_lst$cvControl$stratifyCV <- FALSE
+      }
+      ipc_eif_mod <- SuperLearner::SuperLearner(
+        Y = obs_grad, X = subset(Z, C == 1, drop = FALSE), 
+        method = "method.CC_LS", arg_lst
+      )
+      ipc_eif_preds <- SuperLearner::predict.SuperLearner(
+        ipc_eif_mod, newdata = Z, onlySL = TRUE
+      )$pred
     }
     weighted_obs_grad <- rep(0, length(C))
     weighted_obs_grad[C == 1] <- obs_grad * ipc_weights[C == 1]
