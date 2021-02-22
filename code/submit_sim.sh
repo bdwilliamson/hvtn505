@@ -10,7 +10,8 @@ ml jbigkit
 # 04: the i/o file prefix (e.g., "aipw")
 num_n=4
 njobs=`expr $2 / $3 \* $num_n`
-io_file="${4}/slurm-%A_%A.out"
+mkdir -p $4
+io_file="${4}/slurm-%A_%a.out"
 
 echo -e "#!/bin/bash \n Rscript run_sl_assays_sim.R --sim-name ${1} --nreps-total ${2} --nreps-per-job ${3}" > ipw_sim.sh
 chmod u+x ipw_sim.sh

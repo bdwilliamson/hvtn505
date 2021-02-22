@@ -7,8 +7,11 @@
 # ------------------------------------
 library("SuperLearner")
 # only run this if necessary to update package
-# devtools::install_github("bdwilliamson/vimp", upgrade = "never")
-library("vimp")
+# devtools::install_github("bdwilliamson/vimp", upgrade = "never", lib = .libPaths()[2])
+library("vimp", lib.loc = switch(
+  (!is.na(Sys.getenv("RSTUDIO", unset = NA))) + 1,
+  .libPaths()[2], .libPaths()[1]
+))
 library("methods")
 library("argparse")
 library("xgboost")
@@ -51,8 +54,9 @@ print(paste0("Running noise sim using ",
 toupper(args$sim_name), "."))
 
 if (!grepl("a", args$sim_name)) {
-  source(here(code_prefix, "measure_auc_ipw.R"))
-  measure_auc <- measure_auc_ipw
+  ipc_est_type <- "ipw"
+} else {
+  ipc_est_type <- "aipw"
 }
 
 # set up static args
@@ -87,6 +91,7 @@ system.time(
                 xdim = 50,
                 zdim = 2,
                 V = V, SL_V = SL_V,
+                ipc_est_type = ipc_est_type,
                 learner_lib = learner_lib
             )
         }, simplify = FALSE
