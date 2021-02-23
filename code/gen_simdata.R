@@ -6,7 +6,7 @@ gen_data <- function(n = 100, p = 50, q = 2) {
     y <- rbinom(n, 1, 0.5)
 
     # inclusion into subsample
-    samp <- rbinom(n, 1, 0.25)
+    samp <- rbinom(n, 1, 0.4)
 
     # ideal dataset
     data_star <- data.frame(y = y, cbind(t, x))

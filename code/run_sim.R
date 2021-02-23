@@ -13,7 +13,10 @@ run_sim_once <- function(iteration = 1, n = 100, xdim = 50, zdim = 2, V = 5,
         select(-y, -delta)
     names(obs_x) <- paste0("X", 1:ncol(obs_x))
     # note weights are independent of X
-    weights <- rep(.25 ^ (-1), length(obs_delta)) 
+    # weights <- rep(.25 ^ (-1), length(obs_delta)) 
+    obs_z <- obs_x[, 1:(zdim + 1)]
+    weight_mod <- glm(obs_delta ~ ., family = "binomial", data = obs_z)
+    weights <- predict(weight_mod, type = "response") ^ (-1)
     # estimate cross-validated AUC
     vim_est <- vimp::cv_vim(
         Y = obs_y,

@@ -70,13 +70,14 @@ param_grid <- expand.grid(mc_id = 1:nreps_per_combo, n = ns)
 
 # get current dynamic args
 current_dynamic_args <- param_grid[job_id, ]
+print(paste0("n = ", current_dynamic_args$n))
 
 # set up SuperLearner library
-learner_lib <- c("SL.ranger", "SL.glm", "SL.mean")
+learner_lib <- c("SL.ranger", "SL.glm")
 #----------------------------------------
 # run the simulation nreps_per_job times
 #----------------------------------------
-current_seed <- current_dynamic_args$mc_id + current_dynamic_args$n + job_id
+current_seed <- current_dynamic_args$mc_id + current_dynamic_args$n
 print(current_seed)
 set.seed(current_seed)
 system.time(

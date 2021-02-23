@@ -37,7 +37,7 @@ ipw_output_files <- here("results", "noise_sim",
                          )
 read_func <- function(x) {
   tryCatch(readRDS(x), error = function(e) tibble(mc_id = NA, n = NA, est = NA, 
-                                                  se = NA, cil = NA, ciu = NA, 
+                                                  cil = NA, ciu = NA, 
                                                   test = NA, p_value = NA))
 }
 aipw_output_tib <- as_tibble(
@@ -62,21 +62,22 @@ output_tib <- bind_rows(aipw_output_tib %>%
 # -------------------------------------------
 plot_tib <- output_tib %>% 
   mutate(est_fct = factor(est_type, levels = unique(est_type),
-                          labels = c("AIPW", "IPW")))
+                          labels = c("AIPW", "IPW"))) %>% 
+  group_by(n, est_fct) %>%
+  summarize(mn_est = mean(est), se = sd(est, na.rm = TRUE) / sqrt(1000), 
+            .groups = "drop")
 
 cv_auc_plot <- plot_tib %>% 
-  ggplot(aes(x = est_fct, y = est)) +
-  geom_boxplot() +
-  geom_point(position = position_dodge2(width = 0.1)) +
+  ggplot(aes(x = factor(n), y = mn_est, shape = est_fct)) +
+  geom_point(size = 4, position = position_dodge(width = 0.5)) +
+  geom_errorbar(aes(ymin = mn_est - 1.96 * se, 
+                     ymax = mn_est + 1.96 * se),
+                position = position_dodge(width = 0.5)) +
   geom_hline(yintercept = 0.5, color = "red", linetype = "dashed") +
   ylab("CV-AUC") +
-  xlab("Estimator") + 
-  facet_wrap(~ n)
+  xlab("Sample size") +
+  labs(shape = "Estimator")
 
 ggsave(filename = here("plots", "noise_sim_cv_auc.png"),
        plot = cv_auc_plot,
        width = 10, height = 10, units = "cm")
-
-output_tib %>% 
-  group_by(n, est_type) %>% 
-  summarize(mn_est = mean(est))
