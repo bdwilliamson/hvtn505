@@ -18,6 +18,8 @@ library("dplyr")
 library("HVTN505")
 library("kyotil")
 library("argparse")
+library("nloptr")
+library("quadprog")
 # only run this if something has changed
 # devtools::install_github("bdwilliamson/vimp", upgrade = "never")
 
@@ -37,6 +39,11 @@ num_cores <- parallel::detectCores()
 print(num_cores)
 source(paste0(code_dir, "sl_screens.R")) # set up the screen/algorithm combinations
 source(paste0(code_dir, "utils.R")) # get CV-AUC for all algs
+
+parser <- ArgumentParser()
+parser$add_argument("--weight-type", default = "aipw", 
+                    help = "type of weighting to use")
+args <- parser$parse_args()
 
 # ------------------------------------------------------------------------------
 # pre-process the data
@@ -150,7 +157,8 @@ var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_igg3,
                         var_set_igg3_tcells_fxab)
 job_id <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
 this_var_set <- var_set_matrix[job_id, ]
-cat("\n Running ", var_set_names[job_id], "\n")
+cat("\n Running", var_set_names[job_id], "\n")
+cat("\n using", toupper(args$weight_type), "\n")
 
 # get the current phase 2 dataset based on the markers of interest
 X_markers_varset <- X_markers %>%
@@ -220,7 +228,8 @@ fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine,
                            method = "method.CC_nloglik",
                            cvControl = list(V = V_outer, stratifyCV = TRUE),
                            innerCvControl = list(list(V = V_inner)),
-                           vimp = FALSE,
+                           vimp = FALSE, weight_type = args$weight_type,
                            mc.cores = num_cores)
-saveRDS(fits, paste0("sl_fits_varset_", var_set_names[job_id], ".rds"))
+saveRDS(fits, paste0("sl_fits_varset_", var_set_names[job_id],
+                     "_", weight_type, ".rds"))
 warnings()

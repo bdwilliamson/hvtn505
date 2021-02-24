@@ -24,12 +24,12 @@
 #             for 5-fold cross-validated super learner)
 one_auc <- function(preds, Y, scale = "identity",
                     weights = rep(1, length(Y)), C = rep(1, length(Y)),
-                    Z = NULL, ...) {
+                    Z = NULL, weight_type = "aipw", ...) {
   auc_lst <- measure_auc(
     fitted_values = preds, y = Y, C = C, 
     Z = Z,
     ipc_weights = weights, 
-    ipc_fit_type = "SL", ...)
+    ipc_fit_type = "SL", ipc_est_type = weight_type, ...)
   se <- vimp::vimp_se(auc_lst$point_est, auc_lst$eif)
   ci <- vimp::vimp_ci(est = auc_lst$point_est, se = se, scale = scale, 
                       level = 0.95)
@@ -55,7 +55,7 @@ one_auc <- function(preds, Y, scale = "identity",
 #             for 5-fold cross-validated super learner)
 cv_auc <- function(preds, Y, folds, scale = "identity",
                    weights = rep(1, length(Y)), C = rep(1, length(Y)),
-                   Z = NULL, ...) {
+                   Z = NULL, weight_type = "aipw", ...) {
   V <- length(folds)
   folds_numeric <- get_cv_sl_folds(folds)
   folds_z <- c(folds_numeric, sample(seq_len(V), nrow(Z) - length(folds_numeric), 
@@ -64,7 +64,7 @@ cv_auc <- function(preds, Y, folds, scale = "identity",
     one_auc(preds = preds[folds_numeric == v], Y[folds_numeric == v],
             scale = scale,
             weights = weights[folds_z == v], C = C[folds_z == v],
-            Z = Z[folds_z == v, , drop = FALSE], ...)
+            Z = Z[folds_z == v, , drop = FALSE], weight_type = weight_type, ...)
   }))
   est <- colMeans(ests_cis)[1]
   se <- colMeans(ests_cis)[4]
@@ -105,11 +105,12 @@ get_cv_sl_folds <- function(cv_sl_folds) {
 get_all_aucs <- function(sl_fit, scale = "identity", 
                          weights = rep(1, length(sl_fit$Y)),
                          C = rep(1, length(sl_fit$Y)),
-                         Z = NULL, ...) {
+                         Z = NULL, weight_type = "aipw", ...) {
   # get the CV-AUC of the SuperLearner predictions
   sl_auc <- cv_auc(preds = sl_fit$SL.predict, Y = sl_fit$Y, 
                    folds = sl_fit$folds,
-                   scale = scale, weights = weights, C = C, Z = Z, ...)
+                   scale = scale, weights = weights, C = C, Z = Z, 
+                   weight_type = weight_type, ...)
   out <- data.frame(Learner="SL", Screen="All", AUC = sl_auc$auc,
                     se = sl_auc$se, ci_ll = sl_auc$ci[1], ci_ul=sl_auc$ci[2])
 
@@ -117,7 +118,7 @@ get_all_aucs <- function(sl_fit, scale = "identity",
   discrete_sl_auc <- cv_auc(preds = sl_fit$discreteSL.predict, Y = sl_fit$Y,
                             folds = sl_fit$folds, scale = scale, 
                             weights = weights, C = C,
-                            Z = Z, ...)
+                            Z = Z, weight_type = weight_type, ...)
   out <- rbind(out, data.frame(Learner="Discrete SL", Screen="All",
                                AUC = discrete_sl_auc$auc, 
                                se = discrete_sl_auc$se,
@@ -127,12 +128,13 @@ get_all_aucs <- function(sl_fit, scale = "identity",
   # Get the cvauc of the individual learners in the library
   get_individual_auc <- function(sl_fit, col, scale = "identity", 
                                  weights = rep(1, length(sl_fit$Y)),
-                                 C = rep(1, length(sl_fit$Y)), Z = NULL, ...) {
+                                 C = rep(1, length(sl_fit$Y)), Z = NULL, 
+                                 weight_type = "aipw", ...) {
     if(any(is.na(sl_fit$library.predict[, col]))) return(NULL)
     alg_auc <- cv_auc(preds = sl_fit$library.predict[, col], Y = sl_fit$Y,
                       scale = scale,
                       folds = sl_fit$folds, weights = weights, 
-                      C = C, Z = Z, ...)
+                      C = C, Z = Z, weight_type = weight_type, ...)
     # get the regexp object
     alg_screen_string <- strsplit(colnames(sl_fit$library.predict)[col], "_",
                                   fixed = TRUE)[[1]]
@@ -152,7 +154,7 @@ get_all_aucs <- function(sl_fit, scale = "identity",
                                 col = x, 
                                 scale = scale,
                                 weights = weights, 
-                                C = C, Z = Z, ...)
+                                C = C, Z = Z, weight_type = weight_type, ...)
                             )
   rbind(out, other_aucs)
 }
@@ -452,7 +454,8 @@ run_cv_sl_once <- function(seed = 1, Y = NULL, X_mat = NULL,
                            cvControl = list(V = 5), 
                            innerCvControl = list(V = 5), vimp = FALSE,
                            C = rep(1, length(Y)), Z = NULL, 
-                           z_lib = "SL.ranger", scale = "identity") {
+                           z_lib = "SL.ranger", scale = "identity",
+                           weight_type = "aipw") {
   set.seed(seed)
   fit <- SuperLearner::CV.SuperLearner(Y = Y, X = X_mat, family = family,
                                        obsWeights = obsWeights, 
@@ -460,7 +463,8 @@ run_cv_sl_once <- function(seed = 1, Y = NULL, X_mat = NULL,
                                        method = method, cvControl = cvControl,
                                        innerCvControl = innerCvControl)
   aucs <- get_all_aucs(sl_fit = fit, scale = scale, weights = all_weights,
-                       C = C, Z = Z, SL.library = z_lib)
+                       C = C, Z = Z, SL.library = z_lib, 
+                       weight_type = weight_type)
   ret_lst <- list(fit = fit, folds = fit$folds, aucs = aucs)
   if (vimp) {
     ret_lst <- list(fit = fit$SL.predict, folds = fit$folds, aucs = aucs)
