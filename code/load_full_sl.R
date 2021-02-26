@@ -21,15 +21,21 @@ library("kyotil")
 method <- "method.CC_nloglik" # since SuperLearner relies on this to be in GlobalEnv
 library("xgboost")
 library("ranger")
+library("argparse")
 source("code/plot_assays.R")
 source("code/utils.R")
 source("code/sl_screens.R")
+
+parser <- ArgumentParser()
+parser$add_argument("--weight-type", default = "aipw",
+                    help = "type of weighting")
+args <- parser$parse_args()
 
 results_dir <- "results/"
 plots_dir <- "plots/"
 data_dir <- "data/"
 # the version of vimp that you used to run run_sl_assays
-vimp_version <- "2.1.5"
+vimp_version <- "2.1.8"
 
 # The palette with black:
 cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
@@ -97,14 +103,26 @@ var_set_names <- c("1_baseline_exposure", "2_igg_iga", "3_igg3","4_tcells", "5_f
                    "6_igg_iga_igg3", "7_igg_iga_tcells", "8_igg_iga_igg3_tcells",
                    "9_igg_iga_igg3_fxab", "10_tcells_fxab",
                    "11_all")
-for (i in 1:length(var_set_names)) {
-  eval(parse(
-    text = 
-      paste0("sl_fits_varset_", var_set_names[i], 
-             " <- readRDS(paste0(results_dir, 'sl_fits_varset_', var_set_names[i],
+if (vimp_version >= "2.1.8") {
+  for (i in 1:length(var_set_names)) {
+    eval(parse(
+      text = 
+        paste0("sl_fits_varset_", var_set_names[i], 
+               " <- readRDS(paste0(results_dir, 'sl_fits_varset_', var_set_names[i],
+             '_', args$weight_type, '.rds'))")
+    )
+    )
+  }  
+} else {
+  for (i in 1:length(var_set_names)) {
+    eval(parse(
+      text = 
+        paste0("sl_fits_varset_", var_set_names[i], 
+               " <- readRDS(paste0(results_dir, 'sl_fits_varset_', var_set_names[i],
              '.rds'))")
     )
     )
+  }
 }
 
 # check the discrete SL for each fold (baseline exposure only)
@@ -167,7 +185,8 @@ avg_aucs <- bind_rows(avg_aucs_1_baseline_exposure, avg_aucs_2_igg_iga, avg_aucs
                       avg_aucs_7_igg_iga_tcells, avg_aucs_8_igg_iga_igg3_tcells,
                       avg_aucs_9_igg_iga_igg3_fxab, avg_aucs_10_tcells_fxab,
                       avg_aucs_11_all)
-saveRDS(avg_aucs, file = "results/auc_results/avg_aucs.rds")
+saveRDS(avg_aucs, file = paste0("results/auc_results/avg_aucs_", 
+                                args$weight_type, ".rds"))
 # forest plot of AUCs; this one is super nasty, but shows that it works
 full_forest_plot_auc <- avg_aucs %>%
   ggplot(aes(x = AUC, y = factor(paste0(Screen, "_", Learner, "_", assay), levels = paste0(Screen, "_", Learner, "_", assay)[order(AUC)]))) +
@@ -194,7 +213,8 @@ sl_plus_top_learner_auc_plot <- plot_grid(auc_forest_plot_init$top_learner_nms_p
   draw_label("Algorithm", size = title_font_size, x = 0.175, y = y_title) +
   draw_label("Screen", size = title_font_size, x = 0.25, y = y_title) +
   draw_label("CV-AUC [95% CI]", size = title_font_size, x = 0.43, y = y_title)
-ggsave(filename = paste0(plots_dir, "cv_auc_forest_plot_sl_plus_top_learner.png"),
+ggsave(filename = paste0(plots_dir, paste0("cv_auc_forest_plot_sl_plus_top_learner_", 
+                                           args$weight_type, ".png")),
        plot = sl_plus_top_learner_auc_plot,
        width = 45, height = 25,
        units = "cm")
@@ -224,15 +244,18 @@ auc_immunoassay_plot <- plot_grid(auc_forest_plot_plus_assay$top_learner_nms_plo
   draw_label("Marker Set", size = title_font_size, x = 0.1375, y = y_title, fontface = "bold") +
   draw_label("CV-AUC", size = title_font_size, x = 0.4, y = y_title + 0.04, fontface = "bold") +
   draw_label("[95% CI]", size = title_font_size, x = 0.4, y = y_title, fontface = "bold")
-ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl.png"),
+ggsave(paste0(plots_dir, paste0("cv_auc_forest_plot_sl_", 
+                                args$weight_type, ".png")),
        plot = auc_immunoassay_plot,
        width = 50, height = 25, units = "cm")
 
-ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl.tiff"),
+ggsave(paste0(plots_dir, paste0("cv_auc_forest_plot_sl_", 
+                                args$weight_type, ".tiff")),
        plot = auc_immunoassay_plot,
        width = 50, height = 25, units = "cm")
 
-ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl.pdf"),
+ggsave(paste0(plots_dir, paste0("cv_auc_forest_plot_sl_", 
+                                args$weight_type, ".pdf")),
        plot = auc_immunoassay_plot,
        width = 50, height = 25, units = "cm")
 
@@ -240,71 +263,71 @@ ggsave(paste0(plots_dir, "cv_auc_forest_plot_sl.pdf"),
 # FIGURE 2: forest plot of CV-R^2 for the top learner and SL for each assay combination
 # --------------------------------------------------------------------------------------------------------------------------------------
 # get the R-squareds
-for (i in 1:(length(var_set_names))) {
-  this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
-  eval(parse(text = paste0("all_r2s_i <- as_tibble(rbindlist(lapply(sl_fits_varset_",
-                           var_set_names[i],
-                           ", function(x) {
-                             if (!is.null(x)) {
-                                get_all_r2s_lst(sl_fit_lst = x, weights = all_ipw_weights_vaccine,
-                           scale = 'identity', C = C, Z = Z_vaccine, SL.library = sl_lib_ipcw,
-                           cvControl = list(V = V_inner))
-                             } else {
-                                data.frame(Learner = NA, Screen = NA, R2 = NA, se = NA, ci_ll = NA, ci_ul = NA)
-                             }
-                            }), fill = TRUE))")))
-  all_r2s_i <- all_r2s_i %>%
-    filter(!is.na(Learner))
-  eval(parse(text = paste0("avg_r2s_", var_set_names[i]," <- all_r2s_i %>%
-    group_by(Learner, Screen) %>%
-    summarize(R2 = mean(R2), se = mean(se), ci_ll = mean(ci_ll), ci_ul = mean(ci_ul), .groups = 'drop') %>%
-    mutate(assay = this_name, varset_label = var_set_labels[i])")))
-}
-
-# combine into a full tibble; add a column to each that is the assay
-avg_r2s <- bind_rows(avg_r2s_1_baseline_exposure, avg_r2s_2_igg_iga, avg_r2s_3_igg3,
-                     avg_r2s_4_tcells, avg_r2s_5_fxab, avg_r2s_6_igg_iga_igg3,
-                     avg_r2s_7_igg_iga_tcells, avg_r2s_8_igg_iga_igg3_tcells,
-                     avg_r2s_9_igg_iga_igg3_fxab, avg_r2s_10_tcells_fxab,
-                     avg_r2s_11_all)
-
-title_font_size <- 18
-main_font_size <- 5
-fig_width <- fig_height <- 2590
-y_title <- 0.96
-r2_forest_plot <- plot_assays(avg_r2s, type = "r2", main_font_size, main_font_size,
-                              sl_only = FALSE, immunoassay = FALSE)
-r2_plus_learner_plot <- plot_grid(r2_forest_plot$top_learner_nms_plot, r2_forest_plot$top_learner_plot, nrow = 1, align = "h", rel_widths = c(1, 0.55)) +
-  draw_label("Assay combination", size = title_font_size, x = 0.075, y = y_title) +
-  draw_label("Algorithm", size = title_font_size, x = 0.25, y = y_title) +
-  draw_label("Screen", size = title_font_size, x = 0.34, y = y_title) +
-  draw_label(expression(paste("CV-", R^2, " [95% CI]", sep = "")), size = title_font_size, x = 0.55, y = y_title)
-ggsave(filename = paste0(plots_dir, "cv_r2_forest_plot_sl_plus_top_learner.png"),
-       plot = r2_plus_learner_plot,
-       width = 45, height = 25,
-       units = "cm")
-
-# add on immunoassay set
-avg_r2s <- avg_r2s %>%
-  mutate(immunoassay_set = get_immunoassay_set(varset_label))
-
-title_font_size <- 22
-main_font_size_forest <- 15
-main_font_size_lab <- 8
-fig_width <- fig_height <- 2590
-y_title <- 0.96
-r2_forest_plot <- plot_assays(avg_r2s, type = "r2", main_font_size_forest = main_font_size_forest,
-                                   main_font_size_lab = main_font_size_lab,
-                                   sl_only = TRUE, immunoassay = TRUE,
-                                   colors = cbbPalette)
-ggsave(paste0(plots_dir, "cv_r2_forest_plot_sl.png"),
-       plot = plot_grid(r2_forest_plot$top_learner_nms_plot,
-                        r2_forest_plot$top_learner_plot, nrow = 1, align = "h") +
-         draw_label("Month 7", size = title_font_size, x = 0.14, y = y_title + 0.04, fontface = "bold") +
-         draw_label("Marker Set", size = title_font_size, x = 0.1375, y = y_title, fontface = "bold") +
-         draw_label(expression(paste("CV-", R^2, " [95% CI]", sep = "")), size = title_font_size, x = 0.4, y = y_title + 0.04, fontface = "bold") +
-         draw_label("[95% CI]", size = title_font_size, x = 0.4, y = y_title, fontface = "bold"),
-       width = 50, height = 25, units = "cm")
+# for (i in 1:(length(var_set_names))) {
+#   this_name <- paste(unlist(strsplit(var_set_names[i], "_", fixed = TRUE))[-1], collapse = "_")
+#   eval(parse(text = paste0("all_r2s_i <- as_tibble(rbindlist(lapply(sl_fits_varset_",
+#                            var_set_names[i],
+#                            ", function(x) {
+#                              if (!is.null(x)) {
+#                                 get_all_r2s_lst(sl_fit_lst = x, weights = all_ipw_weights_vaccine,
+#                            scale = 'identity', C = C, Z = Z_vaccine, SL.library = sl_lib_ipcw,
+#                            cvControl = list(V = V_inner))
+#                              } else {
+#                                 data.frame(Learner = NA, Screen = NA, R2 = NA, se = NA, ci_ll = NA, ci_ul = NA)
+#                              }
+#                             }), fill = TRUE))")))
+#   all_r2s_i <- all_r2s_i %>%
+#     filter(!is.na(Learner))
+#   eval(parse(text = paste0("avg_r2s_", var_set_names[i]," <- all_r2s_i %>%
+#     group_by(Learner, Screen) %>%
+#     summarize(R2 = mean(R2), se = mean(se), ci_ll = mean(ci_ll), ci_ul = mean(ci_ul), .groups = 'drop') %>%
+#     mutate(assay = this_name, varset_label = var_set_labels[i])")))
+# }
+# 
+# # combine into a full tibble; add a column to each that is the assay
+# avg_r2s <- bind_rows(avg_r2s_1_baseline_exposure, avg_r2s_2_igg_iga, avg_r2s_3_igg3,
+#                      avg_r2s_4_tcells, avg_r2s_5_fxab, avg_r2s_6_igg_iga_igg3,
+#                      avg_r2s_7_igg_iga_tcells, avg_r2s_8_igg_iga_igg3_tcells,
+#                      avg_r2s_9_igg_iga_igg3_fxab, avg_r2s_10_tcells_fxab,
+#                      avg_r2s_11_all)
+# 
+# title_font_size <- 18
+# main_font_size <- 5
+# fig_width <- fig_height <- 2590
+# y_title <- 0.96
+# r2_forest_plot <- plot_assays(avg_r2s, type = "r2", main_font_size, main_font_size,
+#                               sl_only = FALSE, immunoassay = FALSE)
+# r2_plus_learner_plot <- plot_grid(r2_forest_plot$top_learner_nms_plot, r2_forest_plot$top_learner_plot, nrow = 1, align = "h", rel_widths = c(1, 0.55)) +
+#   draw_label("Assay combination", size = title_font_size, x = 0.075, y = y_title) +
+#   draw_label("Algorithm", size = title_font_size, x = 0.25, y = y_title) +
+#   draw_label("Screen", size = title_font_size, x = 0.34, y = y_title) +
+#   draw_label(expression(paste("CV-", R^2, " [95% CI]", sep = "")), size = title_font_size, x = 0.55, y = y_title)
+# ggsave(filename = paste0(plots_dir, "cv_r2_forest_plot_sl_plus_top_learner.png"),
+#        plot = r2_plus_learner_plot,
+#        width = 45, height = 25,
+#        units = "cm")
+# 
+# # add on immunoassay set
+# avg_r2s <- avg_r2s %>%
+#   mutate(immunoassay_set = get_immunoassay_set(varset_label))
+# 
+# title_font_size <- 22
+# main_font_size_forest <- 15
+# main_font_size_lab <- 8
+# fig_width <- fig_height <- 2590
+# y_title <- 0.96
+# r2_forest_plot <- plot_assays(avg_r2s, type = "r2", main_font_size_forest = main_font_size_forest,
+#                                    main_font_size_lab = main_font_size_lab,
+#                                    sl_only = TRUE, immunoassay = TRUE,
+#                                    colors = cbbPalette)
+# ggsave(paste0(plots_dir, "cv_r2_forest_plot_sl.png"),
+#        plot = plot_grid(r2_forest_plot$top_learner_nms_plot,
+#                         r2_forest_plot$top_learner_plot, nrow = 1, align = "h") +
+#          draw_label("Month 7", size = title_font_size, x = 0.14, y = y_title + 0.04, fontface = "bold") +
+#          draw_label("Marker Set", size = title_font_size, x = 0.1375, y = y_title, fontface = "bold") +
+#          draw_label(expression(paste("CV-", R^2, " [95% CI]", sep = "")), size = title_font_size, x = 0.4, y = y_title + 0.04, fontface = "bold") +
+#          draw_label("[95% CI]", size = title_font_size, x = 0.4, y = y_title, fontface = "bold"),
+#        width = 50, height = 25, units = "cm")
 
 # --------------------------------------------------------------------------------------------------------------------------------------
 # Variable importance plot for the different assay combinations:
@@ -560,8 +583,10 @@ if (risk_type == "auc" && vimp_version >= "2.1.4") {
 }
 vimp_tibble <- tibble::add_column(vimp_tibble, immunoassay_set = get_immunoassay_set(vimp_tibble$assay_grp))
 # save this object for easy loading
-saveRDS(vimp_tibble, paste0(results_dir, "vimp_tibble_", risk_type, ".rds"))
-vimp_tibble <- readRDS(paste0(results_dir, "vimp_tibble_", risk_type, ".rds"))
+saveRDS(vimp_tibble, paste0(results_dir, "vimp_tibble_", risk_type,
+                            "_", args$weight_type, ".rds"))
+vimp_tibble <- readRDS(paste0(results_dir, "vimp_tibble_", risk_type,
+                              "_", args$weight_type, ".rds"))
 
 title_font_size <- 26
 main_font_size_forest <- 31
@@ -589,10 +614,12 @@ vimp_forest_plot <- vimp_tibble %>%
         axis.text.x = element_text(size = main_font_size_forest),
         axis.title.x = element_text(margin = ggplot2::margin(t = 20, r = 0, b = 0, l = 0), size = main_font_size_forest),
         plot.margin=unit(c(1,0.5,0,0),"cm")) # top, right, bottom, left
-ggsave(filename = paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline.png"),
+ggsave(filename = paste0(plots_dir, "vimp_forest_plot_", risk_type, 
+                         "_rel_to_baseline_", args$weight_type, ".png"),
        plot = vimp_forest_plot,
        width = 50, height = 25, units = "cm")
-ggsave(filename = paste0(plots_dir, "vimp_forest_plot_", risk_type, "_rel_to_baseline.pdf"),
+ggsave(filename = paste0(plots_dir, "vimp_forest_plot_", risk_type, 
+                         "_rel_to_baseline_", args$weight_type, ".pdf"),
        plot = vimp_forest_plot,
        width = 50, height = 25, units = "cm")
 

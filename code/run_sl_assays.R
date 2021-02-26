@@ -41,7 +41,7 @@ source(paste0(code_dir, "sl_screens.R")) # set up the screen/algorithm combinati
 source(paste0(code_dir, "utils.R")) # get CV-AUC for all algs
 
 parser <- ArgumentParser()
-parser$add_argument("--weight-type", default = "aipw", 
+parser$add_argument("--weight-type", default = "aipw",
                     help = "type of weighting to use")
 args <- parser$parse_args()
 
@@ -59,20 +59,20 @@ data("var.super", package = "HVTN505") # even if there is a warning message, it 
 # scale vaccine recipients to have mean 0, sd 1 for all vars
 for (a in var.super$varname) {
   dat.505[[a]] <- as.vector(
-    scale(dat.505[[a]], 
-          center = mean(dat.505[[a]][dat.505$trt == 1]), 
+    scale(dat.505[[a]],
+          center = mean(dat.505[[a]][dat.505$trt == 1]),
           scale = sd(dat.505[[a]][dat.505$trt == 1]))
     )
   dat.505[[a%.%"_bin"]] <- as.vector(
-    scale(dat.505[[a%.%"_bin"]], 
-          center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]), 
+    scale(dat.505[[a%.%"_bin"]],
+          center = mean(dat.505[[a%.%"_bin"]][dat.505$trt == 1]),
           scale = sd(dat.505[[a%.%"_bin"]][dat.505$trt == 1]))
     )
 }
 for (a in c("age", "BMI", "bhvrisk")) {
   dat.505[[a]] <- as.vector(
-    scale(dat.505[[a]], 
-          center = mean(dat.505[[a]][dat.505$trt == 1]), 
+    scale(dat.505[[a]],
+          center = mean(dat.505[[a]][dat.505$trt == 1]),
           scale = sd(dat.505[[a]][dat.505$trt == 1]))
     )
 }
@@ -129,31 +129,31 @@ var_set_igg3_fxab <- get_nms_group_all_antigens(
   X_markers, assays = c("IgG3", "phago", "R2a", "R3a")
   )
 var_set_igg_iga_tcells_fxab <- get_nms_group_all_antigens(
-  X_markers, 
-  assays = c("IgG", "IgA", "CD4", "CD8", "phago", "R2a", "R3a"), 
+  X_markers,
+  assays = c("IgG", "IgA", "CD4", "CD8", "phago", "R2a", "R3a"),
   assays_to_exclude = "IgG3"
   )
 var_set_igg3_tcells_fxab <- get_nms_group_all_antigens(
   X_markers, assays = c("IgG3", "CD4", "CD8", "phago", "R2a", "R3a")
   )
 
-var_set_names <- c("1_baseline_exposure", "2_igg_iga", 
+var_set_names <- c("1_baseline_exposure", "2_igg_iga",
                    "3_igg3","4_tcells", "5_fxab",
-                   "6_igg_iga_igg3", "7_igg_iga_tcells", 
+                   "6_igg_iga_igg3", "7_igg_iga_tcells",
                    "8_igg_iga_igg3_tcells",
                    "9_igg_iga_igg3_fxab", "10_tcells_fxab",
                    "11_all",
-                   "12_igg3_fxab", "13_igg_iga_tcells_fxab", 
+                   "12_igg3_fxab", "13_igg_iga_tcells_fxab",
                    "14_igg3_tcells_fxab")
 
 # set up a matrix of all
-var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_igg3, 
+var_set_matrix <- rbind(var_set_none, var_set_igg_iga, var_set_igg3,
                         var_set_tcells, var_set_fxab,
-                        var_set_igg_iga_igg3, var_set_igg_iga_tcells, 
+                        var_set_igg_iga_igg3, var_set_igg_iga_tcells,
                         var_set_igg_iga_igg3_tcells,
                         var_set_igg_iga_igg3_fxab, var_set_tcells_fxab,
                         var_set_all,
-                        var_set_igg3_fxab, var_set_igg_iga_tcells_fxab, 
+                        var_set_igg3_fxab, var_set_igg_iga_tcells_fxab,
                         var_set_igg3_tcells_fxab)
 job_id <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
 this_var_set <- var_set_matrix[job_id, ]
@@ -182,7 +182,7 @@ X_vaccine <- vaccinees %>%
 # note that in this case, Z_plus_weights has 2494 rows
 # (the number of participants with complete data on age, BMI, bhvrisk)
 # and that the number of vaccinees is 1250
-Z_plus_weights <- readRDS(file = paste0(data_dir, 
+Z_plus_weights <- readRDS(file = paste0(data_dir,
                                         "z_and_weights_for_505_analysis.rds"))
 # pull out the participants in the cc cohort who also received the vaccine;
 # this matches the rows in vaccinees
@@ -208,7 +208,7 @@ V_inner <- length(Y_vaccine) - 1
 if (job_id == 1) {
   sl_lib <- methods[!grepl("earth", methods)]
 } else {
-  sl_lib <- SL_library[!grepl("earth", SL_library)] 
+  sl_lib <- SL_library[!grepl("earth", SL_library)]
 }
 # ------------------------------------------------------------------------------
 # run super learner, with leave-one-out cross-validation and all screens
@@ -217,9 +217,9 @@ if (job_id == 1) {
 # ensure reproducibility
 set.seed(4747)
 seeds <- round(runif(10, 1000, 10000)) # average over 10 random starts
-fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine, 
+fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine,
                            X_mat = X_vaccine, family = "binomial",
-                           Z = Z_vaccine, C = C, 
+                           Z = Z_vaccine, C = C,
                            z_lib = methods[!grepl("earth", methods)],
                            obsWeights = weights_vaccine,
                            all_weights = all_ipw_weights_vaccine,
@@ -231,5 +231,5 @@ fits <- parallel::mclapply(seeds, FUN = run_cv_sl_once, Y = Y_vaccine,
                            vimp = FALSE, weight_type = args$weight_type,
                            mc.cores = num_cores)
 saveRDS(fits, paste0("sl_fits_varset_", var_set_names[job_id],
-                     "_", weight_type, ".rds"))
+                     "_", args$weight_type, ".rds"))
 warnings()
