@@ -67,7 +67,7 @@ cv_auc <- function(preds, Y, folds, scale = "identity",
             Z = Z[folds_z == v, , drop = FALSE], weight_type = weight_type, ...)
   }))
   est <- colMeans(ests_cis)[1]
-  se <- colMeans(ests_cis)[4]
+  se <- sqrt(mean(ests_cis[, 4] ^ 2))
   ci <- vimp::vimp_ci(est, se, scale = scale, level = 0.95)
   return(list(auc = est, se = se, ci = ci))
 }
@@ -288,7 +288,7 @@ cv_r2 <- function(preds, Y, folds, scale = "identity",
            Z = Z[folds_numeric == v, , drop = FALSE], ...)
   }))
   est <- colMeans(ests_cis)[1]
-  se <- colMeans(ests_cis)[4]
+  se <- sqrt(mean(ests_cis[, 4] ^ 2))
   ci <- vimp::vimp_ci(est = est, se = se, scale = scale, level = 0.95)
   return(list(r2 = est, se = se, ci = ci))
 }
