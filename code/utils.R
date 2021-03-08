@@ -22,18 +22,14 @@
 #            and may include control parameters for the super learner
 #            (e.g., cvControl = list(V = 5) 
 #             for 5-fold cross-validated super learner)
-one_auc <- function(preds, Y, scale = "identity",
+one_auc <- function(preds, Y, full_y = NULL, scale = "identity",
                     weights = rep(1, length(Y)), C = rep(1, length(Y)),
                     Z = NULL, weight_type = "aipw", ...) {
-  auc_lst <- measure_auc(
-    fitted_values = preds, y = Y, C = C, 
-    Z = Z,
+  auc_lst <- vimp::measure_auc(
+    fitted_values = preds, y = Y, full_y = full_y, C = C, Z = Z,
     ipc_weights = weights, 
     ipc_fit_type = "SL", ipc_est_type = weight_type, ...)
-  se <- vimp::vimp_se(auc_lst$point_est, auc_lst$eif)
-  ci <- vimp::vimp_ci(est = auc_lst$point_est, se = se, scale = scale, 
-                      level = 0.95)
-  data.frame(auc = auc_lst$point_est, cil = ci[, 1], ciu = ci[, 2], se = se[1])
+  list(auc = auc_lst$point_est, eif = auc_lst$eif)
 }
 # get the cross-fitted CV-AUC for a single learner's predicted values
 # @param preds the fitted values
@@ -60,14 +56,15 @@ cv_auc <- function(preds, Y, folds, scale = "identity",
   folds_numeric <- get_cv_sl_folds(folds)
   folds_z <- c(folds_numeric, sample(seq_len(V), nrow(Z) - length(folds_numeric), 
                                      replace = TRUE))
-  ests_cis <- do.call(rbind.data.frame, lapply(as.list(1:V), function(v) {
+  ests_eifs <- lapply(as.list(1:V), function(v) {
     one_auc(preds = preds[folds_numeric == v], Y[folds_numeric == v],
-            scale = scale,
+            full_y = Y, scale = scale,
             weights = weights[folds_z == v], C = C[folds_z == v],
             Z = Z[folds_z == v, , drop = FALSE], weight_type = weight_type, ...)
-  }))
-  est <- colMeans(ests_cis)[1]
-  se <- sqrt(mean(ests_cis[, 4] ^ 2))
+  })
+  est <- mean(unlist(lapply(ests_eifs, function(l) l$auc)))
+  all_eifs <- lapply(ests_eifs, function(l) l$eif)
+  se <- vimp::vimp_se(list(est = est, all_eifs = all_eifs), n = length(Y))
   ci <- vimp::vimp_ci(est, se, scale = scale, level = 0.95)
   return(list(auc = est, se = se, ci = ci))
 }
@@ -248,15 +245,14 @@ get_all_aucs_lst <- function(sl_fit_lst, scale = "identity",
 #            and may include control parameters for the super learner
 #            (e.g., cvControl = list(V = 5) 
 #             for 5-fold cross-validated super learner)
-one_r2 <- function(preds, Y, scale = "identity", weights = rep(1, length(Y)),
+one_r2 <- function(preds, Y, full_y = NULL, scale = "identity", 
+                   weights = rep(1, length(Y)),
                    C = rep(1, length(Y)), Z = NULL, ...) {
-  r2_lst <- measure_r_squared(fitted_values = preds, y = Y, 
-                                    C = C, Z = Z,
+  r2_lst <- vimp::measure_r_squared(fitted_values = preds, y = Y, 
+                                    full_y = full_y, C = C, Z = Z,
                                     ipc_weights = weights, 
                                     ipc_fit_type = "SL", ...)
-  se <- vimp::vimp_se(r2_lst$point_est, r2_lst$eif)
-  ci <- vimp::vimp_ci(r2_lst$point_est, se, scale = scale, level = 0.95)
-  data.frame(r2 = r2_lst$point_est, cil = ci[, 1], ciu = ci[, 2], se = se[1])
+  list(r2 = r2_lst$point_est, eif = r2_lst$eif)
 }
 # get the cross-fitted CV-R^2 for a single learner's predicted values
 # @param preds the fitted values
@@ -281,14 +277,15 @@ cv_r2 <- function(preds, Y, folds, scale = "identity",
                   C = rep(1, length(Y)), Z = NULL, ...) {
   V <- length(folds)
   folds_numeric <- get_cv_sl_folds(folds)
-  ests_cis <- do.call(rbind.data.frame, lapply(as.list(1:V), function(v) {
+  ests_eifs <- lapply(as.list(1:V), function(v) {
     one_r2(preds = preds[folds_numeric == v], Y[folds_numeric == v],
-           scale = scale,
+           full_y = Y, scale = scale,
            weights = weights[folds_numeric == v], C = C[folds_numeric == v],
            Z = Z[folds_numeric == v, , drop = FALSE], ...)
-  }))
-  est <- colMeans(ests_cis)[1]
-  se <- sqrt(mean(ests_cis[, 4] ^ 2))
+  })
+  est <- mean(unlist(lapply(ests_eifs, function(l) l$r2)))
+  all_eifs <- lapply(ests_eifs, function(l) l$eif)
+  se <- vimp::vimp_se(list(est = est, all_eifs = all_eifs), n = length(Y))
   ci <- vimp::vimp_ci(est = est, se = se, scale = scale, level = 0.95)
   return(list(r2 = est, se = se, ci = ci))
 }

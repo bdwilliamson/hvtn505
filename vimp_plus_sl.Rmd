@@ -170,7 +170,7 @@ We performed some data cleaning and a dimension reduction step prior to the stat
 * For variables with a positive response call (IgG, IgG3, IgA, R2a, R3a, phago, Tier 1 nAb) require $>$ 20% vaccine group positive response.  For all variables, require a significantly greater response in the vaccine group than the placebo group to include in the analysis (Wilcoxon rank sum test 2-sided p $<$ 0.01).  Note that no Tier 1 nAb variables are included because none met the $>$ 20% vaccine group response criterion.
 * For all variables in an interpretable variable set (defined by assay and antigen) that are for vaccine-mismatched antigens, aggregate the variables into two scores to be kept for CoR analysis: PC1 and the maximal diversity weighted score (MDWS).
 
-The data are included in the R package HVTN505. The data are available at the [Statistical Center for HIV/AIDS Research and Prevention](https://atlas.scharp.org/cpas/project/HVTN%20Public%20Data/HVTN%20505/begin.view) website, in the `correlates` subfolder. Install the package from `HVTN505_2019-4-25.tar.gz` (you may only have access to a later date) using the following code:
+The data are included in the R package HVTN505. The data are available at the [Statistical Center for HIV/AIDS Research and Prevention](https://atlas.scharp.org/cpas/project/HVTN%20Public%20Data/HVTN%20505/begin.view) website, in the `correlates` subfolder. Install the package from `HVTN505_2019-4-25.tar.gz` (the version at the time of the final analysis; the current version online is dated 2020-8-4) using the following code:
 
 ```{r install-hvtn505}
 # only run this line if the package isn't already installed; edit the file path
@@ -354,7 +354,7 @@ library("kyotil")
 library("argparse")
 
 num_cores <- parallel::detectCores()
-print(num_cores)
+# print(num_cores)
 # read in screens/algos and utility functions (shown above)
 source(paste0("code/sl_screens.R"))
 source(paste0("code/utils.R"))
@@ -467,7 +467,7 @@ The code to reproduce the results of the original analysis is provided in the Ap
 We use the `vimp` package to compute variable importance estimates and confidence intervals. In all cases, we consider variable importance as a summary of the true data-generating distribution. Since our outcome is binary, we estimate variable importance using the population difference in area under the receiver operating characteristic curve (AUC) [@williamson2020b]. We interpret the AUC-based importance as the difference in our ability to discriminate between cases and controls based on using a group of covariates. Load the `vimp` package using the following code:
 
 ```{r load-vimp}
-# only run the next line if you haven't already installed 'vimp' version 2.1.4 or later
+# only run the next line if you haven't already installed 'vimp' version 2.1.9 or later
 # devtools::install_github("bdwilliamson/vimp", upgrade = "never")
 library("vimp")
 ```
