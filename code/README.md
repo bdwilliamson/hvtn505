@@ -17,4 +17,56 @@ The `R` scripts contain the code necessary to run Super Learners and obtain risk
 
 The bash scripts run the analyses:
 
-*  
+* `submit_sl.sh` submits the full Super Learner to the HPC cluster (and calls `run_sl.sh`);
+* `submit_sl_assays.sh` submits an array of jobs to the HPC cluster, one job for each immunoassay set (and calls `run_sl_assays.sh`);
+* `submit_sl_vimp_assay.sh` submits an array of jobs to the HPC cluster, one job for each immunoassay set necessary for variable importance (that hasn't been run already; this code calls `run_sl_vimp.sh`)
+* `submit_sl_groups.sh` submits an array of jobs to the HPC cluster, based on groups of variables for the variable importance analysis (groups that haven't already been run in `submit_sl_assays.sh` or `submit_sl_vimp_assay.sh`; this code calls `run_sl_vimp.sh`);
+* `submit_sl_indiv.sh` submits an array of jobs to the HPC cluster, based on invididual variables for the variable importance analysis (this calls `run_sl_vimp.sh`);
+* other bash scripts for testing the augmented IPW vs IPW approach (`submit_all_sims.sh`, `submit_sim.sh`, `submit_sl_assays_noise.sh`, `submit_sl-assays_test.sh`).
+
+Again, all analysis code in this repository assumes that you are running on a HPC; in particular, the Fred Hutch `gizmo` cluster. If you are not, you need to modify all of the batch submission scripts `submit_*.sh` to load the appropriate `R` version for your HPC, and/or run the analyses locally using `run_*.sh` (making sure to appropriately edit the `.R` files to take in different command-line arguments for assay or individual variable runs).
+
+## Obtaining an HIV infection risk estimator using all variables
+
+To run the Super Learner on all available variables and obtain estimates of cross-validated AUC, run the following from the command line:
+```{bash}
+chmod u+x submit_sl.sh
+./submit_sl.sh
+```  
+This submits the full Super Learner analysis to the cluster, requesting 10 cores and allowing the job to run for a maximum of 7 days.
+
+## Obtaining an HIV infection risk estimator using sets of immunoassay variables
+
+To run the Super Learner on each set of immunoassay variables and obtain estimates of cross-validated AUC, run the following from the command line:
+```{bash}
+chmod u+x submit_sl_assays.sh
+./submit_sl_assays.sh
+```
+This submits a job array with 14 jobs, each requesting 10 cores and running for a maximum of 7 days; these correspond to the following sets of variables (specified in `run_sl_assays.R`):
+1. baseline variables only
+2. IgG + IgA variables
+3. IgG3 variables
+4. T cell variables
+5. Functional antibody variables
+6. Sets 1 + 2 + 3
+7. Sets 1 + 2 + 4
+8. Sets 1 + 2 + 3 + 4
+9. Sets 1 + 2 + 3 + 5
+10. Sets 1 + 4 + 5
+11. All variables
+12. Sets 1 + 3 + 5 (for variable importance)
+13. Sets 1 + 2 + 5 (for variable importance)
+14. Sets 1 + 3 + 4 + 5 (for variable importance)
+
+## Obtaining an HIV infection risk estimator based on individual immunoassay variables
+
+To run the Super Learner on each individual immunoassay variable and obtain estimates of cross-validated AUC, run the following from the command line:
+```{bash}
+chmod u+x submit_sl_indiv.sh
+./submit_sl_indiv.sh
+```
+This submits a job array with 419 jobs, each requesting 10 cores and running for a maximum of 7 days. Each job corresponds to studying an individual assay variable (combined with the baseline risk variables).
+
+## Compiling results and creating plots
+
+Once the first two analyses (the full Super Learner and the immunoassay groups) have finished, run `load_full_sl.R` to compile the results and create plots. This can be run either interactively or from the command line using `Rscript load_full_sl.R`
